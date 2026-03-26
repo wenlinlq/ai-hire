@@ -1,0 +1,1403 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>团队管理 - AI招聘平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: "#fefaf6",
+                100: "#fdf5ee",
+                200: "#f9e8d8",
+                300: "#f2d0b0",
+                400: "#e9b888",
+                500: "#dd9f60",
+                600: "#c98a48",
+                700: "#a87038",
+                800: "#8c5c2c",
+                900: "#734b23",
+              },
+              accent: {
+                50: "#f7f8f4",
+                100: "#edf0e6",
+                200: "#dce3cd",
+                300: "#c0cba0",
+                400: "#a1ae78",
+                500: "#829150",
+                600: "#69773e",
+              },
+              neutral: {
+                50: "#f9f9f7",
+                100: "#f2f2f0",
+                200: "#e6e6e3",
+                300: "#d1d1cc",
+                400: "#b0b0a9",
+                500: "#8f8f87",
+                600: "#707069",
+                700: "#50504a",
+                800: "#33332f",
+                900: "#20201d",
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .sidebar-item {
+        transition-colors: transition-colors;
+      }
+      .sidebar-item.active {
+        background-color: #f9f9f7;
+        color: #dd9f60;
+        border-right: 3px solid #dd9f60;
+      }
+      .content-tab {
+        display: none;
+      }
+      .content-tab.active {
+        display: block;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 50;
+      }
+      .modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-content {
+        background-color: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow:
+          0 20px 25px -5px rgba(0, 0, 0, 0.1),
+          0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+    </style>
+  </head>
+  <body class="bg-neutral-50 text-neutral-700 min-h-screen flex">
+    <!-- 侧边栏 -->
+    <div
+      class="w-64 bg-white border-r border-neutral-200 h-screen sticky top-0"
+    >
+      <!-- 品牌标识 -->
+      <div class="p-4 border-b border-neutral-200">
+        <div class="flex items-center space-x-2">
+          <svg
+            class="w-8 h-8 text-primary-600"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+          <span class="text-xl font-bold text-neutral-800">AI招聘</span>
+        </div>
+      </div>
+
+      <!-- 导航菜单 -->
+      <nav class="py-4">
+        <div class="px-4 mb-2 text-xs font-semibold text-neutral-500 uppercase">
+          团队管理
+        </div>
+        <ul class="space-y-1">
+          <li>
+            <button
+              class="sidebar-item active w-full text-left px-4 py-3 flex items-center space-x-3"
+              data-tab="user"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+              <span>用户管理</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="sidebar-item w-full text-left px-4 py-3 flex items-center space-x-3 hover:bg-neutral-50"
+              data-tab="team"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              <span>团队管理</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="sidebar-item w-full text-left px-4 py-3 flex items-center space-x-3 hover:bg-neutral-50"
+              data-tab="stats"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+              <span>数据统计</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="sidebar-item w-full text-left px-4 py-3 flex items-center space-x-3 hover:bg-neutral-50"
+              data-tab="config"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              <span>系统配置</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="flex-1 flex flex-col">
+      <!-- 顶部导航 -->
+      <header
+        class="bg-white border-b border-neutral-200 h-16 flex items-center justify-between px-6 sticky top-0 z-10"
+      >
+        <div class="flex items-center space-x-4">
+          <h1 class="text-xl font-bold text-neutral-800">团队管理</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          <button
+            class="p-2 rounded-full hover:bg-neutral-100 transition-colors"
+          >
+            <svg
+              class="w-5 h-5 text-neutral-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+              />
+            </svg>
+          </button>
+          <div class="flex items-center space-x-2">
+            <div
+              class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+            >
+              <span class="text-primary-600 font-semibold">张</span>
+            </div>
+            <span class="text-sm font-medium text-neutral-700">张经理</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- 内容区域 -->
+      <main class="flex-1 p-6">
+        <!-- 用户管理 -->
+        <div id="user" class="content-tab active">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-neutral-800">用户管理</h2>
+            <button
+              class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+            >
+              添加用户
+            </button>
+          </div>
+
+          <div
+            class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden"
+          >
+            <div class="p-4 border-b border-neutral-200">
+              <div class="flex items-center space-x-4">
+                <div class="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="搜索用户"
+                    class="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <svg
+                    class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <select
+                  class="px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option>全部角色</option>
+                  <option>管理员</option>
+                  <option>招聘专员</option>
+                  <option>面试官</option>
+                </select>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead class="bg-neutral-50">
+                  <tr>
+                    <th
+                      class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
+                    >
+                      用户
+                    </th>
+                    <th
+                      class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
+                    >
+                      邮箱
+                    </th>
+                    <th
+                      class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
+                    >
+                      角色
+                    </th>
+                    <th
+                      class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
+                    >
+                      状态
+                    </th>
+                    <th
+                      class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
+                    >
+                      操作
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-neutral-200">
+                  <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10">
+                          <div
+                            class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center"
+                          >
+                            <span class="text-primary-600 font-semibold"
+                              >张</span
+                            >
+                          </div>
+                        </div>
+                        <div class="ml-4">
+                          <div class="text-sm font-medium text-neutral-900">
+                            张经理
+                          </div>
+                          <div class="text-sm text-neutral-500">管理员</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-neutral-900">
+                        zhang@example.com
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800"
+                      >
+                        管理员
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
+                      >
+                        活跃
+                      </span>
+                    </td>
+                    <td
+                      class="px-6 py-4 whitespace-nowrap text-sm text-neutral-500"
+                    >
+                      <button
+                        class="text-primary-600 hover:text-primary-900 mr-3"
+                      >
+                        编辑
+                      </button>
+                      <button class="text-red-600 hover:text-red-900">
+                        删除
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10">
+                          <div
+                            class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center"
+                          >
+                            <span class="text-primary-600 font-semibold"
+                              >李</span
+                            >
+                          </div>
+                        </div>
+                        <div class="ml-4">
+                          <div class="text-sm font-medium text-neutral-900">
+                            李助理
+                          </div>
+                          <div class="text-sm text-neutral-500">招聘专员</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-neutral-900">li@example.com</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
+                      >
+                        招聘专员
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
+                      >
+                        活跃
+                      </span>
+                    </td>
+                    <td
+                      class="px-6 py-4 whitespace-nowrap text-sm text-neutral-500"
+                    >
+                      <button
+                        class="text-primary-600 hover:text-primary-900 mr-3"
+                      >
+                        编辑
+                      </button>
+                      <button class="text-red-600 hover:text-red-900">
+                        删除
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10">
+                          <div
+                            class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center"
+                          >
+                            <span class="text-primary-600 font-semibold"
+                              >王</span
+                            >
+                          </div>
+                        </div>
+                        <div class="ml-4">
+                          <div class="text-sm font-medium text-neutral-900">
+                            王面试官
+                          </div>
+                          <div class="text-sm text-neutral-500">面试官</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-neutral-900">
+                        wang@example.com
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800"
+                      >
+                        面试官
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800"
+                      >
+                        未活跃
+                      </span>
+                    </td>
+                    <td
+                      class="px-6 py-4 whitespace-nowrap text-sm text-neutral-500"
+                    >
+                      <button
+                        class="text-primary-600 hover:text-primary-900 mr-3"
+                      >
+                        编辑
+                      </button>
+                      <button class="text-red-600 hover:text-red-900">
+                        删除
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div
+              class="px-6 py-4 border-t border-neutral-200 flex items-center justify-between"
+            >
+              <div class="text-sm text-neutral-700">显示 1 到 3，共 12 条</div>
+              <div class="flex space-x-2">
+                <button
+                  class="px-3 py-1 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                  disabled
+                >
+                  上一页
+                </button>
+                <button
+                  class="px-3 py-1 border border-primary-500 bg-primary-500 text-white rounded-lg text-sm"
+                >
+                  1
+                </button>
+                <button
+                  class="px-3 py-1 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50"
+                >
+                  2
+                </button>
+                <button
+                  class="px-3 py-1 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50"
+                >
+                  3
+                </button>
+                <button
+                  class="px-3 py-1 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 团队管理 -->
+        <div id="team" class="content-tab">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-neutral-800">团队管理</h2>
+            <button
+              class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+            >
+              创建团队
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div
+              class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6"
+            >
+              <div class="flex justify-between items-start mb-4">
+                <h3 class="text-lg font-semibold text-neutral-800">产品团队</h3>
+                <span
+                  class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full"
+                >
+                  3 人
+                </span>
+              </div>
+              <p class="text-sm text-neutral-600 mb-4">
+                负责产品设计和管理的团队
+              </p>
+              <div class="flex items-center space-x-2 mb-4">
+                <div
+                  class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-primary-600 font-semibold">张</span>
+                </div>
+                <div
+                  class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-primary-600 font-semibold">李</span>
+                </div>
+                <div
+                  class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-primary-600 font-semibold">王</span>
+                </div>
+              </div>
+              <div class="flex justify-end space-x-2">
+                <button
+                  class="px-3 py-1 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50"
+                >
+                  编辑
+                </button>
+                <button
+                  class="px-3 py-1 border border-red-300 rounded-lg text-sm text-red-700 hover:bg-red-50"
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+
+            <div
+              class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6"
+            >
+              <div class="flex justify-between items-start mb-4">
+                <h3 class="text-lg font-semibold text-neutral-800">技术团队</h3>
+                <span
+                  class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full"
+                >
+                  5 人
+                </span>
+              </div>
+              <p class="text-sm text-neutral-600 mb-4">
+                负责技术开发和维护的团队
+              </p>
+              <div class="flex items-center space-x-2 mb-4">
+                <div
+                  class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-primary-600 font-semibold">赵</span>
+                </div>
+                <div
+                  class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-primary-600 font-semibold">钱</span>
+                </div>
+                <div
+                  class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-primary-600 font-semibold">孙</span>
+                </div>
+                <div
+                  class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-primary-600 font-semibold">周</span>
+                </div>
+                <div
+                  class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-primary-600 font-semibold">吴</span>
+                </div>
+              </div>
+              <div class="flex justify-end space-x-2">
+                <button
+                  class="px-3 py-1 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50"
+                >
+                  编辑
+                </button>
+                <button
+                  class="px-3 py-1 border border-red-300 rounded-lg text-sm text-red-700 hover:bg-red-50"
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+
+            <div
+              class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6"
+            >
+              <div class="flex justify-between items-start mb-4">
+                <h3 class="text-lg font-semibold text-neutral-800">设计团队</h3>
+                <span
+                  class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full"
+                >
+                  2 人
+                </span>
+              </div>
+              <p class="text-sm text-neutral-600 mb-4">负责UI/UX设计的团队</p>
+              <div class="flex items-center space-x-2 mb-4">
+                <div
+                  class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-primary-600 font-semibold">郑</span>
+                </div>
+                <div
+                  class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-primary-600 font-semibold">王</span>
+                </div>
+              </div>
+              <div class="flex justify-end space-x-2">
+                <button
+                  class="px-3 py-1 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50"
+                >
+                  编辑
+                </button>
+                <button
+                  class="px-3 py-1 border border-red-300 rounded-lg text-sm text-red-700 hover:bg-red-50"
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 数据统计 -->
+        <div id="stats" class="content-tab">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-neutral-800">数据统计</h2>
+            <div class="flex space-x-2">
+              <select
+                class="px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option>最近7天</option>
+                <option>最近30天</option>
+                <option>最近90天</option>
+                <option>自定义</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div
+              class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6"
+            >
+              <h3 class="text-lg font-semibold text-neutral-800 mb-4">
+                用户活跃度
+              </h3>
+              <div id="activeChart" class="w-full h-80"></div>
+            </div>
+            <div
+              class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6"
+            >
+              <h3 class="text-lg font-semibold text-neutral-800 mb-4">
+                团队分布
+              </h3>
+              <div id="teamChart" class="w-full h-80"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div
+              class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6"
+            >
+              <h3 class="text-lg font-semibold text-neutral-800 mb-4">
+                功能使用频率
+              </h3>
+              <div id="usageChart" class="w-full h-80"></div>
+            </div>
+            <div
+              class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6"
+            >
+              <h3 class="text-lg font-semibold text-neutral-800 mb-4">
+                系统性能
+              </h3>
+              <div id="performanceChart" class="w-full h-80"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 系统配置 -->
+        <div id="config" class="content-tab">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-neutral-800">系统配置</h2>
+            <button
+              class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+            >
+              保存配置
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div
+              class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6"
+            >
+              <h3 class="text-lg font-semibold text-neutral-800 mb-4">
+                基本设置
+              </h3>
+              <form class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1"
+                    >系统名称</label
+                  >
+                  <input
+                    type="text"
+                    class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    value="AI招聘平台"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1"
+                    >联系邮箱</label
+                  >
+                  <input
+                    type="email"
+                    class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    value="contact@aihire.com"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1"
+                    >系统语言</label
+                  >
+                  <select
+                    class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option>简体中文</option>
+                    <option>English</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1"
+                    >时区</label
+                  >
+                  <select
+                    class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option>Asia/Shanghai (UTC+8)</option>
+                    <option>America/New_York (UTC-5)</option>
+                    <option>Europe/London (UTC+0)</option>
+                  </select>
+                </div>
+              </form>
+            </div>
+
+            <div
+              class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6"
+            >
+              <h3 class="text-lg font-semibold text-neutral-800 mb-4">
+                安全设置
+              </h3>
+              <form class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <label class="block text-sm font-medium text-neutral-700"
+                    >启用两步验证</label
+                  >
+                  <label
+                    class="relative inline-flex items-center cursor-pointer"
+                  >
+                    <input type="checkbox" class="sr-only peer" checked />
+                    <div
+                      class="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                    ></div>
+                  </label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <label class="block text-sm font-medium text-neutral-700"
+                    >密码复杂度要求</label
+                  >
+                  <label
+                    class="relative inline-flex items-center cursor-pointer"
+                  >
+                    <input type="checkbox" class="sr-only peer" checked />
+                    <div
+                      class="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                    ></div>
+                  </label>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1"
+                    >密码有效期（天）</label
+                  >
+                  <input
+                    type="number"
+                    class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    value="90"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1"
+                    >登录失败次数限制</label
+                  >
+                  <input
+                    type="number"
+                    class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    value="5"
+                  />
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div
+            class="mt-6 bg-white rounded-xl shadow-sm border border-neutral-200 p-6"
+          >
+            <h3 class="text-lg font-semibold text-neutral-800 mb-4">
+              通知设置
+            </h3>
+            <form class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex items-center justify-between">
+                  <label class="block text-sm font-medium text-neutral-700"
+                    >邮件通知</label
+                  >
+                  <label
+                    class="relative inline-flex items-center cursor-pointer"
+                  >
+                    <input type="checkbox" class="sr-only peer" checked />
+                    <div
+                      class="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                    ></div>
+                  </label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <label class="block text-sm font-medium text-neutral-700"
+                    >短信通知</label
+                  >
+                  <label
+                    class="relative inline-flex items-center cursor-pointer"
+                  >
+                    <input type="checkbox" class="sr-only peer" />
+                    <div
+                      class="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                    ></div>
+                  </label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <label class="block text-sm font-medium text-neutral-700"
+                    >系统内通知</label
+                  >
+                  <label
+                    class="relative inline-flex items-center cursor-pointer"
+                  >
+                    <input type="checkbox" class="sr-only peer" checked />
+                    <div
+                      class="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                    ></div>
+                  </label>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // 标签切换功能
+      document.addEventListener("DOMContentLoaded", function () {
+        const sidebarItems = document.querySelectorAll(".sidebar-item");
+        const contentTabs = document.querySelectorAll(".content-tab");
+
+        sidebarItems.forEach((item) => {
+          item.addEventListener("click", function () {
+            const tabId = this.getAttribute("data-tab");
+
+            // 移除所有活动状态
+            sidebarItems.forEach((i) => i.classList.remove("active"));
+            contentTabs.forEach((t) => t.classList.remove("active"));
+
+            // 添加当前活动状态
+            this.classList.add("active");
+            document.getElementById(tabId).classList.add("active");
+
+            // 初始化图表
+            if (tabId === "stats") {
+              initCharts();
+            }
+          });
+        });
+
+        // 初始化图表
+        function initCharts() {
+          // 用户活跃度图表
+          const activeChart = echarts.init(
+            document.getElementById("activeChart"),
+          );
+          activeChart.setOption({
+            tooltip: {
+              trigger: "axis",
+            },
+            grid: {
+              left: "3%",
+              right: "4%",
+              bottom: "3%",
+              containLabel: true,
+            },
+            xAxis: {
+              type: "category",
+              boundaryGap: false,
+              data: ["1月", "2月", "3月", "4月", "5月", "6月", "7月"],
+            },
+            yAxis: {
+              type: "value",
+            },
+            series: [
+              {
+                name: "活跃用户",
+                type: "line",
+                stack: "Total",
+                data: [120, 132, 101, 134, 90, 230, 210],
+                itemStyle: { color: "#dd9f60" },
+              },
+            ],
+          });
+
+          // 团队分布图表
+          const teamChart = echarts.init(document.getElementById("teamChart"));
+          teamChart.setOption({
+            tooltip: {
+              trigger: "item",
+            },
+            legend: {
+              top: "5%",
+              left: "center",
+            },
+            series: [
+              {
+                name: "团队分布",
+                type: "pie",
+                radius: ["40%", "70%"],
+                avoidLabelOverlap: false,
+                itemStyle: {
+                  borderRadius: 10,
+                  borderColor: "#fff",
+                  borderWidth: 2,
+                },
+                label: {
+                  show: false,
+                  position: "center",
+                },
+                emphasis: {
+                  label: {
+                    show: true,
+                    fontSize: 20,
+                    fontWeight: "bold",
+                  },
+                },
+                labelLine: {
+                  show: false,
+                },
+                data: [
+                  {
+                    value: 3,
+                    name: "产品团队",
+                    itemStyle: { color: "#dd9f60" },
+                  },
+                  {
+                    value: 5,
+                    name: "技术团队",
+                    itemStyle: { color: "#829150" },
+                  },
+                  {
+                    value: 2,
+                    name: "设计团队",
+                    itemStyle: { color: "#a1ae78" },
+                  },
+                ],
+              },
+            ],
+          });
+
+          // 功能使用频率图表
+          const usageChart = echarts.init(
+            document.getElementById("usageChart"),
+          );
+          usageChart.setOption({
+            tooltip: {
+              trigger: "axis",
+              axisPointer: {
+                type: "shadow",
+              },
+            },
+            grid: {
+              left: "3%",
+              right: "4%",
+              bottom: "3%",
+              containLabel: true,
+            },
+            xAxis: {
+              type: "category",
+              data: [
+                "职位管理",
+                "候选人管理",
+                "面试管理",
+                "数据分析",
+                "系统设置",
+              ],
+            },
+            yAxis: {
+              type: "value",
+            },
+            series: [
+              {
+                name: "使用次数",
+                type: "bar",
+                data: [120, 80, 90, 60, 40],
+                itemStyle: {
+                  color: function (params) {
+                    const colors = [
+                      "#dd9f60",
+                      "#e9b888",
+                      "#f2d0b0",
+                      "#f9e8d8",
+                      "#a1ae78",
+                    ];
+                    return colors[params.dataIndex];
+                  },
+                },
+              },
+            ],
+          });
+
+          // 系统性能图表
+          const performanceChart = echarts.init(
+            document.getElementById("performanceChart"),
+          );
+          performanceChart.setOption({
+            tooltip: {
+              trigger: "axis",
+            },
+            legend: {
+              data: ["CPU使用率", "内存使用率", "响应时间"],
+            },
+            grid: {
+              left: "3%",
+              right: "4%",
+              bottom: "3%",
+              containLabel: true,
+            },
+            xAxis: {
+              type: "category",
+              boundaryGap: false,
+              data: ["1月", "2月", "3月", "4月", "5月", "6月", "7月"],
+            },
+            yAxis: {
+              type: "value",
+            },
+            series: [
+              {
+                name: "CPU使用率",
+                type: "line",
+                stack: "Total",
+                data: [10, 15, 12, 18, 15, 20, 18],
+                itemStyle: { color: "#dd9f60" },
+              },
+              {
+                name: "内存使用率",
+                type: "line",
+                stack: "Total",
+                data: [20, 25, 30, 35, 30, 40, 35],
+                itemStyle: { color: "#829150" },
+              },
+              {
+                name: "响应时间",
+                type: "line",
+                stack: "Total",
+                data: [50, 60, 55, 70, 65, 80, 75],
+                itemStyle: { color: "#a1ae78" },
+              },
+            ],
+          });
+
+          // 响应式调整
+          window.addEventListener("resize", function () {
+            activeChart.resize();
+            teamChart.resize();
+            usageChart.resize();
+            performanceChart.resize();
+          });
+        }
+
+        // 初始化默认图表
+        if (document.getElementById("stats").classList.contains("active")) {
+          initCharts();
+        }
+
+        // 弹窗功能
+        initModals();
+      });
+
+      // 初始化弹窗功能
+      function initModals() {
+        // 获取所有弹窗
+        const userModal = document.getElementById("userModal");
+        const teamModal = document.getElementById("teamModal");
+
+        // 关闭按钮
+        const closeButtons = document.querySelectorAll(".close-modal");
+
+        // 使用事件委托监听所有按钮点击
+        document.addEventListener("click", function (e) {
+          const button = e.target.closest("button");
+          if (!button) return;
+
+          const text = button.textContent.trim();
+
+          if (text == "添加用户") {
+            userModal.classList.add("active");
+          } else if (text == "创建团队") {
+            teamModal.classList.add("active");
+          }
+        });
+
+        // 关闭弹窗
+        closeButtons.forEach(function (button) {
+          button.addEventListener("click", function () {
+            const modal = this.closest(".modal");
+            modal.classList.remove("active");
+          });
+        });
+
+        // 点击弹窗外部关闭
+        const modals = document.querySelectorAll(".modal");
+        modals.forEach(function (modal) {
+          modal.addEventListener("click", function (e) {
+            if (e.target === modal) {
+              modal.classList.remove("active");
+            }
+          });
+        });
+      }
+    </script>
+
+    <!-- 弹窗 -->
+    <!-- 添加用户弹窗 -->
+    <div id="userModal" class="modal">
+      <div class="modal-content">
+        <div
+          class="p-6 border-b border-neutral-200 flex justify-between items-center"
+        >
+          <h3 class="text-xl font-bold text-neutral-800">添加用户</h3>
+          <button class="close-modal text-neutral-500 hover:text-neutral-700">
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="p-6">
+          <form class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-neutral-700 mb-1"
+                >姓名</label
+              >
+              <input
+                type="text"
+                class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="请输入姓名"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-neutral-700 mb-1"
+                >邮箱</label
+              >
+              <input
+                type="email"
+                class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="请输入邮箱"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-neutral-700 mb-1"
+                >角色</label
+              >
+              <select
+                class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option>请选择角色</option>
+                <option>管理员</option>
+                <option>招聘专员</option>
+                <option>面试官</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-neutral-700 mb-1"
+                >密码</label
+              >
+              <input
+                type="password"
+                class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="请输入密码"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-neutral-700 mb-1"
+                >确认密码</label
+              >
+              <input
+                type="password"
+                class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="请确认密码"
+              />
+            </div>
+          </form>
+        </div>
+        <div class="p-6 border-t border-neutral-200 flex justify-end space-x-4">
+          <button
+            class="close-modal px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors"
+          >
+            取消
+          </button>
+          <button
+            class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+          >
+            添加用户
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 创建团队弹窗 -->
+    <div id="teamModal" class="modal">
+      <div class="modal-content">
+        <div
+          class="p-6 border-b border-neutral-200 flex justify-between items-center"
+        >
+          <h3 class="text-xl font-bold text-neutral-800">创建团队</h3>
+          <button class="close-modal text-neutral-500 hover:text-neutral-700">
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="p-6">
+          <form class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-neutral-700 mb-1"
+                >团队名称</label
+              >
+              <input
+                type="text"
+                class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="请输入团队名称"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-neutral-700 mb-1"
+                >团队描述</label
+              >
+              <textarea
+                class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 h-24"
+                placeholder="请输入团队描述"
+              ></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-neutral-700 mb-1"
+                >团队负责人</label
+              >
+              <select
+                class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option>请选择负责人</option>
+                <option>张经理</option>
+                <option>李助理</option>
+                <option>王面试官</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-neutral-700 mb-1"
+                >团队成员</label
+              >
+              <div class="border border-neutral-300 rounded-lg p-4">
+                <div class="flex items-center space-x-2 mb-2">
+                  <input
+                    type="checkbox"
+                    id="member1"
+                    class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+                  />
+                  <label for="member1" class="ml-2 text-sm text-neutral-700"
+                    >张经理</label
+                  >
+                </div>
+                <div class="flex items-center space-x-2 mb-2">
+                  <input
+                    type="checkbox"
+                    id="member2"
+                    class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+                  />
+                  <label for="member2" class="ml-2 text-sm text-neutral-700"
+                    >李助理</label
+                  >
+                </div>
+                <div class="flex items-center space-x-2 mb-2">
+                  <input
+                    type="checkbox"
+                    id="member3"
+                    class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+                  />
+                  <label for="member3" class="ml-2 text-sm text-neutral-700"
+                    >王面试官</label
+                  >
+                </div>
+                <div class="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="member4"
+                    class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+                  />
+                  <label for="member4" class="ml-2 text-sm text-neutral-700"
+                    >赵六</label
+                  >
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="p-6 border-t border-neutral-200 flex justify-end space-x-4">
+          <button
+            class="close-modal px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors"
+          >
+            取消
+          </button>
+          <button
+            class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+          >
+            创建团队
+          </button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

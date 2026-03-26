@@ -1,28 +1,45 @@
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import userApi from "../api/userApi";
 
 type SiteNavProps = {
-  current?: 'home' | 'hall' | 'interview' | 'profile'
-}
+  current?: "home" | "hall" | "interview" | "profile";
+};
 
 const navItems = [
-  { key: 'home', label: '首页', to: '/' },
-  { key: 'hall', label: '招新大厅', to: '/hall' },
-  { key: 'interview', label: 'AI模拟面试', to: '/interview' },
-  { key: 'profile', label: '个人中心', to: '/profile' },
-] as const
+  { key: "home", label: "首页", to: "/" },
+  { key: "hall", label: "招新大厅", to: "/hall" },
+  { key: "interview", label: "AI模拟面试", to: "/interview" },
+] as const;
 
-const jobServiceLinks = ['职位搜索', '简历优化', 'AI模拟面试', '职业规划']
-const employerLinks = ['发布职位', '人才搜索', 'AI简历筛选', '招聘解决方案']
+const jobServiceLinks = ["职位搜索", "简历优化", "AI模拟面试", "职业规划"];
+const employerLinks = ["发布职位", "人才搜索", "AI简历筛选", "招聘解决方案"];
 
-export function LogoMark({ className = 'h-8 w-8' }: { className?: string }) {
+export function LogoMark({ className = "h-8 w-8" }: { className?: string }) {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <svg
+      className={className}
+      fill="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
       <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
     </svg>
-  )
+  );
 }
 
 export function SiteNav({ current }: SiteNavProps) {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const navigate = useNavigate();
+  const user = userApi.getCurrentUser();
+  const isLoggedIn = userApi.isLoggedIn();
+
+  const handleLogout = () => {
+    userApi.logout();
+    setIsDropdownOpen(false);
+    navigate("/");
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-primary-700 text-white shadow-lg">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -38,7 +55,9 @@ export function SiteNav({ current }: SiteNavProps) {
               to={item.to}
               className={({ isActive }) =>
                 `transition-colors ${
-                  isActive || current === item.key ? 'text-primary-200' : 'hover:text-primary-200'
+                  isActive || current === item.key
+                    ? "text-primary-200"
+                    : "hover:text-primary-200"
                 }`
               }
             >
@@ -47,23 +66,54 @@ export function SiteNav({ current }: SiteNavProps) {
           ))}
         </div>
 
-        <div className="flex space-x-4">
-          <Link
-            to="/login"
-            className="rounded-lg border border-white/30 px-4 py-2 transition-colors hover:bg-white/10"
-          >
-            登录
-          </Link>
-          <Link
-            to="/login"
-            className="rounded-lg bg-accent-500 px-4 py-2 transition-colors hover:bg-accent-600"
-          >
-            注册
-          </Link>
-        </div>
+        {isLoggedIn ? (
+          <div className="relative">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-white/10"
+            >
+              <div className="h-8 w-8 rounded-full bg-accent-500 flex items-center justify-center">
+                {user?.username.charAt(0).toUpperCase()}
+              </div>
+              <span className="hidden sm:inline">{user?.username}</span>
+            </button>
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white shadow-lg text-neutral-800 py-2 z-10">
+                <Link
+                  to="/profile"
+                  className="block px-4 py-2 hover:bg-neutral-100 transition-colors"
+                  onClick={() => setIsDropdownOpen(false)}
+                >
+                  个人中心
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 hover:bg-neutral-100 transition-colors"
+                >
+                  退出登录
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex space-x-4">
+            <Link
+              to="/login"
+              className="rounded-lg border border-white/30 px-4 py-2 transition-colors hover:bg-white/10"
+            >
+              登录
+            </Link>
+            <Link
+              to="/login"
+              className="rounded-lg bg-accent-500 px-4 py-2 transition-colors hover:bg-accent-600"
+            >
+              注册
+            </Link>
+          </div>
+        )}
       </div>
     </nav>
-  )
+  );
 }
 
 export function SiteFooter() {
@@ -84,7 +134,10 @@ export function SiteFooter() {
             <ul className="space-y-2 text-sm">
               {jobServiceLinks.map((item) => (
                 <li key={item}>
-                  <a href="#" className="transition-colors hover:text-primary-400">
+                  <a
+                    href="#"
+                    className="transition-colors hover:text-primary-400"
+                  >
                     {item}
                   </a>
                 </li>
@@ -97,7 +150,10 @@ export function SiteFooter() {
             <ul className="space-y-2 text-sm">
               {employerLinks.map((item) => (
                 <li key={item}>
-                  <a href="#" className="transition-colors hover:text-primary-400">
+                  <a
+                    href="#"
+                    className="transition-colors hover:text-primary-400"
+                  >
                     {item}
                   </a>
                 </li>
@@ -120,5 +176,5 @@ export function SiteFooter() {
         </div>
       </div>
     </footer>
-  )
+  );
 }

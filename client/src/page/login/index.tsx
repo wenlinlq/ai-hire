@@ -1,62 +1,59 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import userApi from "../../api/userApi";
 
-type AuthTab = 'login' | 'register'
+type AuthTab = "login" | "register";
 
 type LoginFormState = {
-  username: string
-  password: string
-  remember: boolean
-}
+  username: string;
+  password: string;
+  remember: boolean;
+};
 
 type RegisterFormState = {
-  phone: string
-  code: string
-  password: string
-  confirmPassword: string
-  agree: boolean
-}
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  agree: boolean;
+};
 
 const initialLoginForm: LoginFormState = {
-  username: '',
-  password: '',
+  username: "",
+  password: "",
   remember: false,
-}
+};
 
 const initialRegisterForm: RegisterFormState = {
-  phone: '',
-  code: '',
-  password: '',
-  confirmPassword: '',
+  username: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
   agree: false,
-}
+};
 
 function LogoMark() {
   return (
-    <svg className="h-10 w-10 text-primary-600" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <svg
+      className="h-10 w-10 text-primary-600"
+      fill="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
       <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
     </svg>
-  )
+  );
 }
 
 function Login() {
-  const [activeTab, setActiveTab] = useState<AuthTab>('login')
-  const [countdown, setCountdown] = useState(0)
-  const [loginForm, setLoginForm] = useState<LoginFormState>(initialLoginForm)
-  const [registerForm, setRegisterForm] = useState<RegisterFormState>(initialRegisterForm)
-
-  useEffect(() => {
-    if (countdown <= 0) {
-      return
-    }
-
-    const timerId = window.setTimeout(() => {
-      setCountdown((current) => current - 1)
-    }, 1000)
-
-    return () => window.clearTimeout(timerId)
-  }, [countdown])
-
-  const codeButtonLabel = countdown > 0 ? `${countdown}秒后重新获取` : '获取验证码'
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<AuthTab>("login");
+  const [loginForm, setLoginForm] = useState<LoginFormState>(initialLoginForm);
+  const [registerForm, setRegisterForm] =
+    useState<RegisterFormState>(initialRegisterForm);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   return (
     <main className="flex min-h-screen flex-1 items-center justify-center bg-neutral-50 py-16 text-neutral-700">
@@ -75,39 +72,75 @@ function Login() {
               <button
                 type="button"
                 className={`flex-1 border-b-2 py-4 text-center font-semibold transition-colors ${
-                  activeTab === 'login'
-                    ? 'border-primary-500 text-primary-500'
-                    : 'border-transparent text-neutral-600 hover:text-primary-500'
+                  activeTab === "login"
+                    ? "border-primary-500 text-primary-500"
+                    : "border-transparent text-neutral-600 hover:text-primary-500"
                 }`}
-                onClick={() => setActiveTab('login')}
+                onClick={() => setActiveTab("login")}
               >
                 登录
               </button>
               <button
                 type="button"
                 className={`flex-1 border-b-2 py-4 text-center font-semibold transition-colors ${
-                  activeTab === 'register'
-                    ? 'border-primary-500 text-primary-500'
-                    : 'border-transparent text-neutral-600 hover:text-primary-500'
+                  activeTab === "register"
+                    ? "border-primary-500 text-primary-500"
+                    : "border-transparent text-neutral-600 hover:text-primary-500"
                 }`}
-                onClick={() => setActiveTab('register')}
+                onClick={() => setActiveTab("register")}
               >
                 注册
               </button>
             </div>
           </div>
 
-          {activeTab === 'login' ? (
+          {activeTab === "login" ? (
             <div className="p-8">
-              <h2 className="mb-6 text-2xl font-bold text-neutral-800">账号登录</h2>
+              <h2 className="mb-6 text-2xl font-bold text-neutral-800">
+                账号登录
+              </h2>
+              {error && (
+                <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-600">
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="mb-4 rounded-lg bg-green-50 p-4 text-green-600">
+                  {success}
+                </div>
+              )}
               <form
                 className="space-y-6"
-                onSubmit={(event) => {
-                  event.preventDefault()
+                onSubmit={async (event) => {
+                  event.preventDefault();
+                  setError(null);
+                  setSuccess(null);
+                  setIsLoading(true);
+
+                  try {
+                    await userApi.login({
+                      username: loginForm.username,
+                      password: loginForm.password,
+                    });
+                    setSuccess("登录成功！正在跳转...");
+                    setTimeout(() => {
+                      navigate("/");
+                    }, 1000);
+                  } catch (err: any) {
+                    setError(
+                      err.response?.data?.message ||
+                        "登录失败，请检查用户名和密码",
+                    );
+                  } finally {
+                    setIsLoading(false);
+                  }
                 }}
               >
                 <div>
-                  <label htmlFor="login-username" className="mb-2 block text-sm font-medium text-neutral-700">
+                  <label
+                    htmlFor="login-username"
+                    className="mb-2 block text-sm font-medium text-neutral-700"
+                  >
                     用户名
                   </label>
                   <input
@@ -115,7 +148,10 @@ function Login() {
                     type="text"
                     value={loginForm.username}
                     onChange={(event) =>
-                      setLoginForm((current) => ({ ...current, username: event.target.value }))
+                      setLoginForm((current) => ({
+                        ...current,
+                        username: event.target.value,
+                      }))
                     }
                     className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     placeholder="请输入用户名"
@@ -123,7 +159,10 @@ function Login() {
                 </div>
 
                 <div>
-                  <label htmlFor="login-password" className="mb-2 block text-sm font-medium text-neutral-700">
+                  <label
+                    htmlFor="login-password"
+                    className="mb-2 block text-sm font-medium text-neutral-700"
+                  >
                     密码
                   </label>
                   <input
@@ -131,7 +170,10 @@ function Login() {
                     type="password"
                     value={loginForm.password}
                     onChange={(event) =>
-                      setLoginForm((current) => ({ ...current, password: event.target.value }))
+                      setLoginForm((current) => ({
+                        ...current,
+                        password: event.target.value,
+                      }))
                     }
                     className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     placeholder="请输入密码"
@@ -144,14 +186,22 @@ function Login() {
                       type="checkbox"
                       checked={loginForm.remember}
                       onChange={(event) =>
-                        setLoginForm((current) => ({ ...current, remember: event.target.checked }))
+                        setLoginForm((current) => ({
+                          ...current,
+                          remember: event.target.checked,
+                        }))
                       }
                       className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                     />
-                    <span className="ml-2 block text-sm text-neutral-600">记住我</span>
+                    <span className="ml-2 block text-sm text-neutral-600">
+                      记住我
+                    </span>
                   </label>
 
-                  <a href="#" className="text-sm text-primary-600 hover:text-primary-700">
+                  <a
+                    href="#"
+                    className="text-sm text-primary-600 hover:text-primary-700"
+                  >
                     忘记密码？
                   </a>
                 </div>
@@ -159,70 +209,118 @@ function Login() {
                 <div>
                   <button
                     type="submit"
-                    className="w-full rounded-lg bg-primary-500 px-4 py-3 font-semibold text-white transition-colors hover:bg-primary-600"
+                    disabled={isLoading}
+                    className="w-full rounded-lg bg-primary-500 px-4 py-3 font-semibold text-white transition-colors hover:bg-primary-600 disabled:bg-primary-400 disabled:cursor-not-allowed"
                   >
-                    登录
+                    {isLoading ? "登录中..." : "登录"}
                   </button>
                 </div>
               </form>
             </div>
           ) : (
             <div className="p-8">
-              <h2 className="mb-6 text-2xl font-bold text-neutral-800">账号注册</h2>
+              <h2 className="mb-6 text-2xl font-bold text-neutral-800">
+                账号注册
+              </h2>
+              {error && (
+                <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-600">
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="mb-4 rounded-lg bg-green-50 p-4 text-green-600">
+                  {success}
+                </div>
+              )}
               <form
                 className="space-y-6"
-                onSubmit={(event) => {
-                  event.preventDefault()
+                onSubmit={async (event) => {
+                  event.preventDefault();
+                  setError(null);
+                  setSuccess(null);
+                  setIsLoading(true);
+
+                  try {
+                    // 验证密码确认
+                    if (
+                      registerForm.password !== registerForm.confirmPassword
+                    ) {
+                      throw new Error("两次输入的密码不一致");
+                    }
+
+                    // 验证是否同意协议
+                    if (!registerForm.agree) {
+                      throw new Error("请阅读并同意用户协议和隐私政策");
+                    }
+
+                    await userApi.register({
+                      username: registerForm.username,
+                      password: registerForm.password,
+                      email: registerForm.email,
+                      role: "student",
+                    });
+
+                    setSuccess("注册成功！请登录");
+                    setTimeout(() => {
+                      setActiveTab("login");
+                      setRegisterForm(initialRegisterForm);
+                    }, 1500);
+                  } catch (err: any) {
+                    setError(err.message || "注册失败，请稍后重试");
+                  } finally {
+                    setIsLoading(false);
+                  }
                 }}
               >
                 <div>
-                  <label htmlFor="register-phone" className="mb-2 block text-sm font-medium text-neutral-700">
-                    手机号
-                  </label>
-                  <div className="flex space-x-4">
-                    <input
-                      id="register-phone"
-                      type="tel"
-                      value={registerForm.phone}
-                      onChange={(event) =>
-                        setRegisterForm((current) => ({ ...current, phone: event.target.value }))
-                      }
-                      className="flex-1 rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                      placeholder="请输入手机号"
-                    />
-                    <button
-                      type="button"
-                      disabled={countdown > 0}
-                      onClick={() => setCountdown(60)}
-                      className={`whitespace-nowrap rounded-lg px-4 py-3 font-medium transition-colors ${
-                        countdown > 0
-                          ? 'cursor-not-allowed bg-neutral-200 text-neutral-500'
-                          : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                      }`}
-                    >
-                      {codeButtonLabel}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="register-code" className="mb-2 block text-sm font-medium text-neutral-700">
-                    验证码
+                  <label
+                    htmlFor="register-username"
+                    className="mb-2 block text-sm font-medium text-neutral-700"
+                  >
+                    用户名
                   </label>
                   <input
-                    id="register-code"
+                    id="register-username"
                     type="text"
-                    value={registerForm.code}
+                    value={registerForm.username}
                     onChange={(event) =>
-                      setRegisterForm((current) => ({ ...current, code: event.target.value }))
+                      setRegisterForm((current) => ({
+                        ...current,
+                        username: event.target.value,
+                      }))
                     }
                     className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    placeholder="请输入验证码"
+                    placeholder="请设置用户名"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="register-password" className="mb-2 block text-sm font-medium text-neutral-700">
+                  <label
+                    htmlFor="register-email"
+                    className="mb-2 block text-sm font-medium text-neutral-700"
+                  >
+                    邮箱
+                  </label>
+                  <input
+                    id="register-email"
+                    type="email"
+                    value={registerForm.email}
+                    onChange={(event) =>
+                      setRegisterForm((current) => ({
+                        ...current,
+                        email: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    placeholder="请输入邮箱"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="register-password"
+                    className="mb-2 block text-sm font-medium text-neutral-700"
+                  >
                     密码
                   </label>
                   <input
@@ -230,7 +328,10 @@ function Login() {
                     type="password"
                     value={registerForm.password}
                     onChange={(event) =>
-                      setRegisterForm((current) => ({ ...current, password: event.target.value }))
+                      setRegisterForm((current) => ({
+                        ...current,
+                        password: event.target.value,
+                      }))
                     }
                     className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     placeholder="请设置密码"
@@ -238,7 +339,10 @@ function Login() {
                 </div>
 
                 <div>
-                  <label htmlFor="register-confirm-password" className="mb-2 block text-sm font-medium text-neutral-700">
+                  <label
+                    htmlFor="register-confirm-password"
+                    className="mb-2 block text-sm font-medium text-neutral-700"
+                  >
                     确认密码
                   </label>
                   <input
@@ -246,7 +350,10 @@ function Login() {
                     type="password"
                     value={registerForm.confirmPassword}
                     onChange={(event) =>
-                      setRegisterForm((current) => ({ ...current, confirmPassword: event.target.value }))
+                      setRegisterForm((current) => ({
+                        ...current,
+                        confirmPassword: event.target.value,
+                      }))
                     }
                     className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     placeholder="请确认密码"
@@ -258,17 +365,26 @@ function Login() {
                     type="checkbox"
                     checked={registerForm.agree}
                     onChange={(event) =>
-                      setRegisterForm((current) => ({ ...current, agree: event.target.checked }))
+                      setRegisterForm((current) => ({
+                        ...current,
+                        agree: event.target.checked,
+                      }))
                     }
                     className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                   />
                   <span className="ml-2 block text-sm text-neutral-600">
                     我已阅读并同意
-                    <a href="#" className="text-primary-600 hover:text-primary-700">
+                    <a
+                      href="#"
+                      className="text-primary-600 hover:text-primary-700"
+                    >
                       《用户协议》
                     </a>
                     和
-                    <a href="#" className="text-primary-600 hover:text-primary-700">
+                    <a
+                      href="#"
+                      className="text-primary-600 hover:text-primary-700"
+                    >
                       《隐私政策》
                     </a>
                   </span>
@@ -277,9 +393,10 @@ function Login() {
                 <div>
                   <button
                     type="submit"
-                    className="w-full rounded-lg bg-primary-500 px-4 py-3 font-semibold text-white transition-colors hover:bg-primary-600"
+                    disabled={isLoading}
+                    className="w-full rounded-lg bg-primary-500 px-4 py-3 font-semibold text-white transition-colors hover:bg-primary-600 disabled:bg-primary-400 disabled:cursor-not-allowed"
                   >
-                    注册
+                    {isLoading ? "注册中..." : "注册"}
                   </button>
                 </div>
               </form>
@@ -288,7 +405,7 @@ function Login() {
         </div>
       </div>
     </main>
-  )
+  );
 }
 
-export default Login
+export default Login;

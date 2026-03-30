@@ -15,6 +15,7 @@ type RegisterFormState = {
   email: string;
   password: string;
   confirmPassword: string;
+  role: string;
   agree: boolean;
 };
 
@@ -29,6 +30,7 @@ const initialRegisterForm: RegisterFormState = {
   email: "",
   password: "",
   confirmPassword: "",
+  role: "student",
   agree: false,
 };
 
@@ -118,13 +120,20 @@ function Login() {
                   setIsLoading(true);
 
                   try {
-                    await userApi.login({
+                    const response = await userApi.login({
                       username: loginForm.username,
                       password: loginForm.password,
                     });
                     setSuccess("登录成功！正在跳转...");
+                    // 根据用户角色进行不同的跳转
                     setTimeout(() => {
-                      navigate("/");
+                      if (response.user.role === "admin") {
+                        navigate("/team");
+                      } else if (response.user.role === "hr") {
+                        navigate("/admin");
+                      } else {
+                        navigate("/");
+                      }
                     }, 1000);
                   } catch (err: any) {
                     setError(
@@ -257,7 +266,7 @@ function Login() {
                       username: registerForm.username,
                       password: registerForm.password,
                       email: registerForm.email,
-                      role: "student",
+                      role: registerForm.role,
                     });
 
                     setSuccess("注册成功！请登录");
@@ -314,6 +323,30 @@ function Login() {
                     className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     placeholder="请输入邮箱"
                   />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="register-role"
+                    className="mb-2 block text-sm font-medium text-neutral-700"
+                  >
+                    角色
+                  </label>
+                  <select
+                    id="register-role"
+                    value={registerForm.role}
+                    onChange={(event) =>
+                      setRegisterForm((current) => ({
+                        ...current,
+                        role: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  >
+                    <option value="student">普通用户</option>
+                    <option value="hr">团队管理员</option>
+                    <option value="admin">超级管理员</option>
+                  </select>
                 </div>
 
                 <div>

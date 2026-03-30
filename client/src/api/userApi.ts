@@ -22,6 +22,7 @@ interface User {
   email: string;
   role: string;
   phone?: string;
+  team?: string;
   avatar?: string;
   status: string;
   lastLogin?: Date;

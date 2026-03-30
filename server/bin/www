@@ -34,6 +34,10 @@ async function startServer() {
     const userModel = require("../models/userModel");
     await userModel.initIndexes();
 
+    // 导入团队模型并初始化索引
+    const teamModel = require("../models/teamModel");
+    await teamModel.initIndexes();
+
     // 启动服务器
     server.listen(port);
     server.on("error", onError);

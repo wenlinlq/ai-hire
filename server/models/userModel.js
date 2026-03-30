@@ -58,6 +58,8 @@ class UserModel {
         phone: userData.phone || "",
         // 用户角色（如：admin, user, manager 等）
         role: userData.role,
+        // 所属团队ID，如果没有提供则默认为空字符串
+        team: userData.team || "",
         // 头像 URL，如果没有提供则默认为空字符串
         avatar: userData.avatar || "",
         // 用户状态（active：激活，inactive：未激活，banned：封禁）

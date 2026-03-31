@@ -7,10 +7,18 @@ var cors = require("cors");
 
 // 导入用户模型
 const userModel = require("./models/userModel");
+// 导入团队模型
+const teamModel = require("./models/teamModel");
+// 导入岗位模型
+const positionModel = require("./models/positionModel");
+// 导入报名模型
+const applicationModel = require("./models/applicationModel");
 
 var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/api/users");
 var teamsRouter = require("./routes/api/teams");
+var positionsRouter = require("./routes/api/positions");
+var applicationsRouter = require("./routes/api/applications");
 
 var app = express();
 
@@ -36,6 +44,8 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/", indexRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/teams", teamsRouter);
+app.use("/api/positions", positionsRouter);
+app.use("/api/applications", applicationsRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -52,5 +62,23 @@ app.use(function (err, req, res, next) {
   res.status(err.status || 500);
   res.render("error");
 });
+
+// 初始化数据库索引
+async function initIndexes() {
+  try {
+    // 初始化用户模型索引
+    // await userModel.initIndexes();
+    // 初始化团队模型索引
+    // await teamModel.initIndexes();
+    // 初始化岗位模型索引
+    // await positionModel.initIndexes();
+    console.log("Database indexes initialized successfully");
+  } catch (error) {
+    console.error("Error initializing database indexes:", error);
+  }
+}
+
+// 调用初始化函数
+initIndexes();
 
 module.exports = app;

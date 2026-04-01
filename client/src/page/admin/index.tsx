@@ -87,37 +87,23 @@ interface JobFormState {
   teamId: string;
 }
 
-const candidates = [
-  {
-    name: "李四",
-    email: "lisi@example.com",
-    position: "产品经理",
-    date: "2024-01-15",
-    status: "复试",
-  },
-  {
-    name: "王五",
-    email: "wangwu@example.com",
-    position: "UI设计师",
-    date: "2024-01-14",
-    status: "初试",
-  },
-  {
-    name: "赵六",
-    email: "zhaoliu@example.com",
-    position: "前端工程师",
-    date: "2024-01-12",
-    status: "已录用",
-  },
-] as const;
-
 const interviewPrograms = [
   { title: "技术面试任务", count: 28, note: "本周计划完成 12 场" },
   { title: "评分分布", count: 86, note: "平均分稳定在 80 以上" },
 ] as const;
 
 function Admin() {
-  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
+  // 从localStorage读取标签页状态，如果没有则默认为dashboard
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    const savedTab = localStorage.getItem("adminActiveTab");
+    return (savedTab as AdminTab) || "dashboard";
+  });
+
+  // 切换标签页并保存到localStorage
+  const handleTabChange = (tab: AdminTab) => {
+    setActiveTab(tab);
+    localStorage.setItem("adminActiveTab", tab);
+  };
   const [modal, setModal] = useState<AdminModal>(null);
 
   // 职位列表状态
@@ -191,9 +177,10 @@ function Admin() {
 
   // 组件挂载时获取数据
   useEffect(() => {
-    if (activeTab === "jobs") {
-      fetchJobs();
-    } else if (activeTab === "candidates") {
+    // 无论当前标签页是什么，都获取职位列表，因为导入候选人弹窗需要使用
+    fetchJobs();
+
+    if (activeTab === "candidates") {
       fetchCandidates();
     }
   }, [activeTab]);
@@ -227,7 +214,7 @@ function Admin() {
                       ? "border-primary-500 bg-neutral-50 text-primary-500"
                       : "border-transparent hover:bg-neutral-50"
                   }`}
-                  onClick={() => setActiveTab(key as AdminTab)}
+                  onClick={() => handleTabChange(key as AdminTab)}
                 >
                   {label}
                 </button>
@@ -844,11 +831,15 @@ function Admin() {
                 <input
                   type="file"
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  accept=".xlsx,.xls,.csv"
                 />
                 <select className="w-full rounded-lg border border-neutral-300 px-4 py-3">
-                  <option>选择导入岗位</option>
-                  <option>高级前端工程师</option>
-                  <option>产品经理</option>
+                  <option value="">选择导入岗位</option>
+                  {jobs.map((job) => (
+                    <option key={job._id} value={job._id}>
+                      {job.title}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
@@ -879,21 +870,19 @@ function Admin() {
 
             <div className="mt-6 flex justify-end space-x-3">
               <button
-                type="button"
-                className="rounded-lg border border-neutral-300 px-4 py-2"
-                onClick={() => setModal(null)}
+                onClick={() => {
+                  setModal(null);
+                }}
+                className="rounded-lg border border-neutral-300 px-6 py-2.5 font-medium text-neutral-700 hover:bg-neutral-100"
               >
                 取消
               </button>
               <button
-                type="button"
-                className="rounded-lg bg-primary-500 px-4 py-2 text-white"
                 onClick={async () => {
                   try {
                     // 获取用户信息
                     const userStr = localStorage.getItem("user");
                     const user = userStr ? JSON.parse(userStr) : null;
-
                     // 准备表单数据
                     const formData = {
                       ...jobForm,
@@ -902,7 +891,6 @@ function Admin() {
                       // 确保teamId有值且格式正确
                       teamId: "660a0b6c4f1a2b3c4d5e6f71", // 固定使用有效的默认ObjectId
                     };
-
                     if (currentJobId) {
                       // 编辑职位
                       await positionApi.updatePosition(currentJobId, formData);
@@ -930,6 +918,7 @@ function Admin() {
                     window.message.error(errorMessage);
                   }
                 }}
+                className="rounded-lg bg-primary-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-primary-600"
               >
                 确认
               </button>

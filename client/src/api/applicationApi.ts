@@ -1,18 +1,18 @@
-import axios from 'axios';
+import axios from "axios";
 
 // API基础URL
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = "http://localhost:3000/api";
 
 // 从localStorage获取认证token
 const getAuthToken = (): string | null => {
-  return localStorage.getItem('token');
+  return localStorage.getItem("token");
 };
 
 // 创建axios实例，添加认证头
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -27,7 +27,7 @@ apiClient.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // 报名记录类型定义
@@ -88,7 +88,7 @@ export interface ApplicationUpdate {
 export default {
   // 获取所有报名记录
   getApplications: async (): Promise<Application[]> => {
-    const response = await apiClient.get('/applications');
+    const response = await apiClient.get("/applications");
     return response.data.data;
   },
 
@@ -99,25 +99,36 @@ export default {
   },
 
   // 获取岗位的所有报名记录
-  getApplicationsByPosition: async (positionId: string): Promise<Application[]> => {
-    const response = await apiClient.get(`/applications/position/${positionId}`);
+  getApplicationsByPosition: async (
+    positionId: string,
+  ): Promise<Application[]> => {
+    const response = await apiClient.get(
+      `/applications/position/${positionId}`,
+    );
     return response.data.data;
   },
 
   // 获取学生的所有报名记录
-  getApplicationsByStudent: async (studentId: string): Promise<Application[]> => {
+  getApplicationsByStudent: async (
+    studentId: string,
+  ): Promise<Application[]> => {
     const response = await apiClient.get(`/applications/student/${studentId}`);
     return response.data.data;
   },
 
   // 创建报名记录
-  createApplication: async (application: ApplicationCreate): Promise<Application> => {
-    const response = await apiClient.post('/applications', application);
+  createApplication: async (
+    application: ApplicationCreate,
+  ): Promise<Application> => {
+    const response = await apiClient.post("/applications", application);
     return response.data.data;
   },
 
   // 更新报名记录
-  updateApplication: async (id: string, application: ApplicationUpdate): Promise<Application> => {
+  updateApplication: async (
+    id: string,
+    application: ApplicationUpdate,
+  ): Promise<Application> => {
     const response = await apiClient.put(`/applications/${id}`, application);
     return response.data.data;
   },
@@ -130,14 +141,16 @@ export default {
 
   // 根据状态获取报名记录
   getApplicationsByStatus: async (status: string): Promise<Application[]> => {
-    const response = await apiClient.get(`/applications/status/${status}`);
+    const response = await apiClient.get(`/applications?status=${status}`);
     return response.data.data;
   },
 
-  // 按AI评分排序获取报名记录
-  getApplicationsByAiScore: async (positionId?: string): Promise<Application[]> => {
-    const response = await apiClient.get('/applications/ai-score/ranking', {
-      params: { positionId },
+  // 导入候选人
+  importCandidate: async (formData: FormData): Promise<Application> => {
+    const response = await apiClient.post("/applications/import", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     });
     return response.data.data;
   },

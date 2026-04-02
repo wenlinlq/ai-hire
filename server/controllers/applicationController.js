@@ -1,4 +1,19 @@
 const applicationModel = require("../models/applicationModel");
+const positionModel = require("../models/positionModel");
+const multer = require("multer");
+const path = require("path");
+
+// 配置multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, "../uploads"));
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+const upload = multer({ storage: storage });
 
 const applicationController = {
   // 初始化索引
@@ -226,15 +241,85 @@ const applicationController = {
     try {
       const applications = await applicationModel.findAllApplications();
 
+      // 从数据库获取职位信息
+      const jobs = await positionModel.findAllPositions();
+      const jobMap = new Map();
+      jobs.forEach((job) => {
+        jobMap.set(job._id.toString(), job.title);
+      });
+
+      // 为每个报名记录添加职位名称
+      const applicationsWithJobTitle = applications.map((application) => ({
+        ...application,
+        positionName:
+          jobMap.get(application.positionId.toString()) ||
+          application.positionId,
+      }));
+
       res.status(200).json({
         success: true,
-        data: applications,
+        data: applicationsWithJobTitle,
       });
     } catch (error) {
       console.error("Error getting all applications:", error);
       res.status(500).json({
         success: false,
         message: "获取报名记录失败",
+        error: error.message,
+      });
+    }
+  },
+
+  // 导入候选人
+  async importCandidate(req, res) {
+    try {
+      console.log("收到的请求数据:", req.body);
+      console.log("收到的文件:", req.file);
+      const { name, phone, email, grade, major, positionId } = req.body;
+
+      // 验证必要参数
+      if (!name || !phone || !email || !positionId) {
+        console.log("缺少的参数:", { name, phone, email, positionId });
+        return res.status(400).json({
+          success: false,
+          message: "缺少必要参数",
+        });
+      }
+
+      // 创建候选人记录
+      const applicationData = {
+        positionId,
+        studentId: email, // 使用邮箱作为学生ID
+        resumeId: req.file ? req.file.filename : "", // 保存上传的简历文件名
+        status: "pending",
+        grade,
+        major,
+        name, // 添加姓名
+        email, // 添加邮箱
+      };
+
+      const application =
+        await applicationModel.createApplication(applicationData);
+
+      res.status(201).json({
+        success: true,
+        message: "候选人导入成功",
+        data: application,
+      });
+    } catch (error) {
+      console.error("Error importing candidate:", error);
+
+      // 处理唯一索引冲突
+      if (error.code === 11000) {
+        return res.status(400).json({
+          success: false,
+          message: "该候选人已经报名过该岗位",
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: "导入候选人失败",
         error: error.message,
       });
     }

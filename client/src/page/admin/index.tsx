@@ -106,6 +106,15 @@ function Admin() {
   };
   const [modal, setModal] = useState<AdminModal>(null);
 
+  // 打开模态框时的处理
+  const openModal = (modalType: AdminModal) => {
+    setModal(modalType);
+    // 当打开面试弹框时，确保加载候选人数据
+    if (modalType === "interview" && candidates.length === 0) {
+      fetchCandidates();
+    }
+  };
+
   // 职位列表状态
   const [jobs, setJobs] = useState<Job[]>([]);
   // 加载状态
@@ -140,6 +149,22 @@ function Admin() {
     useState<boolean>(false);
   // 候选人错误状态
   const [errorCandidates, setErrorCandidates] = useState<string | null>(null);
+
+  // 候选人表单状态
+  const [candidateForm, setCandidateForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    grade: "",
+    major: "",
+    positionId: "",
+    resume: null,
+  });
+
+  // 查看候选人弹窗状态
+  const [viewModal, setViewModal] = useState(false);
+  // 当前查看的候选人信息
+  const [currentCandidate, setCurrentCandidate] = useState<any>(null);
 
   // 获取职位列表
   const fetchJobs = async () => {
@@ -358,7 +383,7 @@ function Admin() {
                       deadline: "",
                       teamId: "",
                     });
-                    setModal("job");
+                    openModal("job");
                   }}
                 >
                   发布新职位
@@ -532,7 +557,7 @@ function Admin() {
                 <button
                   type="button"
                   className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => setModal("candidate")}
+                  onClick={() => openModal("candidate")}
                 >
                   导入候选人
                 </button>
@@ -564,20 +589,26 @@ function Admin() {
                   <table className="w-full">
                     <thead className="bg-neutral-50">
                       <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
-                        {["候选人", "应聘职位", "投递时间", "状态", "操作"].map(
-                          (item) => (
-                            <th key={item} className="px-6 py-3">
-                              {item}
-                            </th>
-                          ),
-                        )}
+                        {[
+                          "候选人",
+                          "年级",
+                          "专业",
+                          "应聘职位",
+                          "投递时间",
+                          "状态",
+                          "操作",
+                        ].map((item) => (
+                          <th key={item} className="px-6 py-3">
+                            {item}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200">
                       {isLoadingCandidates ? (
                         <tr>
                           <td
-                            colSpan={5}
+                            colSpan={7}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             加载中...
@@ -586,7 +617,7 @@ function Admin() {
                       ) : errorCandidates ? (
                         <tr>
                           <td
-                            colSpan={5}
+                            colSpan={7}
                             className="px-6 py-8 text-center text-red-500"
                           >
                             {errorCandidates}
@@ -595,7 +626,7 @@ function Admin() {
                       ) : candidates.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={5}
+                            colSpan={7}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             暂无候选人
@@ -606,17 +637,20 @@ function Admin() {
                           <tr key={candidate._id}>
                             <td className="px-6 py-4">
                               <div className="text-sm font-medium text-neutral-900">
-                                {candidate.studentId}{" "}
-                                {/* 这里应该显示学生姓名，需要根据studentId获取 */}
+                                {candidate.name || candidate.studentId}{" "}
                               </div>
                               <div className="text-sm text-neutral-500">
-                                {candidate.studentId}{" "}
-                                {/* 这里应该显示学生邮箱，需要根据studentId获取 */}
+                                {candidate.email || candidate.studentId}{" "}
                               </div>
                             </td>
                             <td className="px-6 py-4 text-sm">
-                              {candidate.positionId}{" "}
-                              {/* 这里应该显示职位名称，需要根据positionId获取 */}
+                              {candidate.grade || "-"}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {candidate.major || "-"}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {candidate.positionName || candidate.positionId}
                             </td>
                             <td className="px-6 py-4 text-sm">
                               {new Date(
@@ -642,6 +676,10 @@ function Admin() {
                               <button
                                 type="button"
                                 className="mr-3 text-primary-600 hover:text-primary-900"
+                                onClick={() => {
+                                  setCurrentCandidate(candidate);
+                                  setViewModal(true);
+                                }}
                               >
                                 查看
                               </button>
@@ -671,7 +709,7 @@ function Admin() {
                 <button
                   type="button"
                   className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => setModal("interview")}
+                  onClick={() => openModal("interview")}
                 >
                   创建面试
                 </button>
@@ -829,11 +867,72 @@ function Admin() {
             {modal === "candidate" && (
               <div className="space-y-4">
                 <input
-                  type="file"
+                  type="text"
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  accept=".xlsx,.xls,.csv"
+                  placeholder="姓名"
+                  value={candidateForm.name}
+                  onChange={(e) =>
+                    setCandidateForm({ ...candidateForm, name: e.target.value })
+                  }
                 />
-                <select className="w-full rounded-lg border border-neutral-300 px-4 py-3">
+                <input
+                  type="tel"
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  placeholder="手机号"
+                  value={candidateForm.phone}
+                  onChange={(e) =>
+                    setCandidateForm({
+                      ...candidateForm,
+                      phone: e.target.value,
+                    })
+                  }
+                />
+                <input
+                  type="email"
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  placeholder="邮箱"
+                  value={candidateForm.email}
+                  onChange={(e) =>
+                    setCandidateForm({
+                      ...candidateForm,
+                      email: e.target.value,
+                    })
+                  }
+                />
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  placeholder="年级"
+                  value={candidateForm.grade}
+                  onChange={(e) =>
+                    setCandidateForm({
+                      ...candidateForm,
+                      grade: e.target.value,
+                    })
+                  }
+                />
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  placeholder="专业"
+                  value={candidateForm.major}
+                  onChange={(e) =>
+                    setCandidateForm({
+                      ...candidateForm,
+                      major: e.target.value,
+                    })
+                  }
+                />
+                <select
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  value={candidateForm.positionId}
+                  onChange={(e) =>
+                    setCandidateForm({
+                      ...candidateForm,
+                      positionId: e.target.value,
+                    })
+                  }
+                >
                   <option value="">选择导入岗位</option>
                   {jobs.map((job) => (
                     <option key={job._id} value={job._id}>
@@ -841,6 +940,22 @@ function Admin() {
                     </option>
                   ))}
                 </select>
+                <div className="w-full rounded-lg border border-neutral-300 px-4 py-3">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    上传简历
+                  </label>
+                  <input
+                    type="file"
+                    className="w-full"
+                    onChange={(e) => {
+                      console.log("选择的文件:", e.target.files[0]);
+                      setCandidateForm({
+                        ...candidateForm,
+                        resume: e.target.files[0],
+                      });
+                    }}
+                  />
+                </div>
               </div>
             )}
 
@@ -853,8 +968,15 @@ function Admin() {
                 </select>
                 <select className="w-full rounded-lg border border-neutral-300 px-4 py-3">
                   <option>选择候选人</option>
-                  <option>李四</option>
-                  <option>王五</option>
+                  {isLoadingCandidates ? (
+                    <option>加载中...</option>
+                  ) : (
+                    candidates.map((candidate) => (
+                      <option key={candidate._id} value={candidate._id}>
+                        {candidate.name || candidate.studentId}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <select className="w-full rounded-lg border border-neutral-300 px-4 py-3">
                   <option>选择面试官</option>
@@ -880,28 +1002,61 @@ function Admin() {
               <button
                 onClick={async () => {
                   try {
-                    // 获取用户信息
-                    const userStr = localStorage.getItem("user");
-                    const user = userStr ? JSON.parse(userStr) : null;
-                    // 准备表单数据
-                    const formData = {
-                      ...jobForm,
-                      // 添加创建人信息
-                      createdBy: user?._id || "660a0b6c4f1a2b3c4d5e6f70", // 使用有效的默认ObjectId
-                      // 确保teamId有值且格式正确
-                      teamId: "660a0b6c4f1a2b3c4d5e6f71", // 固定使用有效的默认ObjectId
-                    };
-                    if (currentJobId) {
-                      // 编辑职位
-                      await positionApi.updatePosition(currentJobId, formData);
-                      window.message.success("职位更新成功");
+                    if (modal === "candidate") {
+                      // 导入候选人
+                      const formData = new FormData();
+                      formData.append("name", candidateForm.name);
+                      formData.append("phone", candidateForm.phone);
+                      formData.append("email", candidateForm.email);
+                      formData.append("grade", candidateForm.grade);
+                      formData.append("major", candidateForm.major);
+                      formData.append("positionId", candidateForm.positionId);
+                      if (candidateForm.resume) {
+                        formData.append("resume", candidateForm.resume);
+                      }
+
+                      console.log("发送的请求数据:", formData);
+                      await applicationApi.importCandidate(formData);
+                      window.message.success("候选人导入成功");
+                      // 重新获取候选人列表
+                      fetchCandidates();
+                      // 重置表单
+                      setCandidateForm({
+                        name: "",
+                        phone: "",
+                        email: "",
+                        grade: "",
+                        major: "",
+                        positionId: "",
+                        resume: null,
+                      });
                     } else {
-                      // 创建职位
-                      await positionApi.createPosition(formData);
-                      window.message.success("职位创建成功");
+                      // 获取用户信息
+                      const userStr = localStorage.getItem("user");
+                      const user = userStr ? JSON.parse(userStr) : null;
+                      // 准备表单数据
+                      const formData = {
+                        ...jobForm,
+                        // 添加创建人信息
+                        createdBy: user?._id || "660a0b6c4f1a2b3c4d5e6f70", // 使用有效的默认ObjectId
+                        // 确保teamId有值且格式正确
+                        teamId: "660a0b6c4f1a2b3c4d5e6f71", // 固定使用有效的默认ObjectId
+                      };
+                      if (currentJobId) {
+                        // 编辑职位
+                        await positionApi.updatePosition(
+                          currentJobId,
+                          formData,
+                        );
+                        window.message.success("职位更新成功");
+                      } else {
+                        // 创建职位
+                        await positionApi.createPosition(formData);
+                        window.message.success("职位创建成功");
+                      }
+                      // 重新获取职位列表
+                      fetchJobs();
                     }
-                    // 重新获取职位列表
-                    fetchJobs();
                     // 关闭模态框
                     setModal(null);
                   } catch (err: any) {
@@ -921,6 +1076,134 @@ function Admin() {
                 className="rounded-lg bg-primary-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-primary-600"
               >
                 确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 查看候选人弹窗 */}
+      {viewModal && currentCandidate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-neutral-900">
+                候选人详情
+              </h3>
+              <button
+                type="button"
+                className="text-neutral-500 hover:text-neutral-900"
+                onClick={() => setViewModal(false)}
+              >
+                &times;
+              </button>
+            </div>
+            <div className="mb-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  姓名
+                </label>
+                <div className="text-sm text-neutral-900">
+                  {currentCandidate.name || currentCandidate.studentId}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  手机号
+                </label>
+                <div className="text-sm text-neutral-900">
+                  {currentCandidate.phone || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  邮箱
+                </label>
+                <div className="text-sm text-neutral-900">
+                  {currentCandidate.email || currentCandidate.studentId}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  年级
+                </label>
+                <div className="text-sm text-neutral-900">
+                  {currentCandidate.grade || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  专业
+                </label>
+                <div className="text-sm text-neutral-900">
+                  {currentCandidate.major || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  应聘职位
+                </label>
+                <div className="text-sm text-neutral-900">
+                  {currentCandidate.positionName || currentCandidate.positionId}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  状态
+                </label>
+                <div className="text-sm">
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs font-semibold ${currentCandidate.status === "pending" ? "bg-yellow-100 text-yellow-800" : currentCandidate.status === "screening" ? "bg-blue-100 text-blue-800" : currentCandidate.status === "interview" ? "bg-purple-100 text-purple-800" : currentCandidate.status === "offer" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
+                  >
+                    {currentCandidate.status === "pending"
+                      ? "待处理"
+                      : currentCandidate.status === "screening"
+                        ? "简历筛选"
+                        : currentCandidate.status === "interview"
+                          ? "面试中"
+                          : currentCandidate.status === "offer"
+                            ? "已录用"
+                            : "已拒绝"}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  投递时间
+                </label>
+                <div className="text-sm text-neutral-900">
+                  {currentCandidate.appliedAt
+                    ? new Date(currentCandidate.appliedAt).toLocaleDateString()
+                    : "-"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  简历文件
+                </label>
+                <div className="text-sm text-neutral-900">
+                  {currentCandidate.resumeId ? (
+                    <a
+                      href={`http://localhost:3000/uploads/${currentCandidate.resumeId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary-600 hover:text-primary-900"
+                    >
+                      查看简历
+                    </a>
+                  ) : (
+                    "-"
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                onClick={() => setViewModal(false)}
+              >
+                关闭
               </button>
             </div>
           </div>

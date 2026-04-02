@@ -23,6 +23,10 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // 如果是FormData，不设置Content-Type，让浏览器自动处理
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
     return config;
   },
   (error) => {
@@ -146,12 +150,8 @@ export default {
   },
 
   // 导入候选人
-  importCandidate: async (formData: FormData): Promise<Application> => {
-    const response = await apiClient.post("/applications/import", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+  importCandidate: async (formData: any): Promise<Application> => {
+    const response = await apiClient.post("/applications/import", formData);
     return response.data.data;
   },
 };

@@ -47,11 +47,19 @@ class ApplicationModel {
         // 岗位ID
         positionId: new ObjectId(applicationData.positionId),
         // 学生ID
-        studentId: new ObjectId(applicationData.studentId),
+        studentId: applicationData.studentId,
         // 简历ID
-        resumeId: new ObjectId(applicationData.resumeId),
+        resumeId: applicationData.resumeId,
         // 状态
         status: applicationData.status || "pending",
+        // 年级
+        grade: applicationData.grade || "",
+        // 专业
+        major: applicationData.major || "",
+        // 姓名
+        name: applicationData.name || "",
+        // 邮箱
+        email: applicationData.email || "",
         // AI匹配度评分
         aiScore: applicationData.aiScore || null,
         // AI分析结果

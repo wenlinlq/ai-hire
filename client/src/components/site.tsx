@@ -72,7 +72,7 @@ export function SiteNav({ current }: SiteNavProps) {
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-white/10"
             >
-              <div className="h-8 w-8 rounded-full bg-accent-500 flex items-center justify-center">
+              <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center">
                 {user?.username.charAt(0).toUpperCase()}
               </div>
               <span className="hidden sm:inline">{user?.username}</span>
@@ -105,7 +105,7 @@ export function SiteNav({ current }: SiteNavProps) {
             </Link>
             <Link
               to="/login"
-              className="rounded-lg bg-accent-500 px-4 py-2 transition-colors hover:bg-accent-600"
+              className="rounded-lg bg-primary-500 px-4 py-2 transition-colors hover:bg-primary-600"
             >
               注册
             </Link>

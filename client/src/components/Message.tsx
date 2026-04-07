@@ -24,14 +24,14 @@ const Message: React.FC<MessageProps> = ({
   const getTypeClass = () => {
     switch (type) {
       case "success":
-        return "bg-green-50 border-green-400 text-green-800";
+        return "bg-green-50 border-[#4CAF50] text-green-800";
       case "error":
-        return "bg-red-50 border-red-400 text-red-800";
+        return "bg-red-50 border-[#F44336] text-red-800";
       case "warning":
-        return "bg-yellow-50 border-yellow-400 text-yellow-800";
+        return "bg-yellow-50 border-[#FF9800] text-yellow-800";
       case "info":
       default:
-        return "bg-blue-50 border-blue-400 text-blue-800";
+        return "bg-blue-50 border-primary-500 text-blue-800";
     }
   };
 

@@ -17,7 +17,7 @@ const dashboardStats = [
     label: "候选人",
     value: "156",
     delta: "+8%",
-    iconClass: "bg-accent-100 text-accent-600",
+    iconClass: "bg-primary-100 text-primary-600",
   },
   {
     label: "面试中",
@@ -735,7 +735,7 @@ function Admin() {
                           className="flex flex-1 flex-col items-center"
                         >
                           <div
-                            className="w-full rounded-t-md bg-accent-400"
+                            className="w-full rounded-t-md bg-primary-400"
                             style={{ height: `${value}%` }}
                           />
                           <span className="mt-2 text-xs text-neutral-500">

@@ -412,7 +412,7 @@ function Profile() {
                   <h2 className="text-2xl font-bold text-neutral-800">
                     历史模拟面试
                   </h2>
-                  <div className="rounded-full bg-accent-50 px-4 py-2 text-sm font-medium text-accent-600">
+                  <div className="rounded-full bg-primary-50 px-4 py-2 text-sm font-medium text-primary-600">
                     平均分 {averageScore}
                   </div>
                 </div>
@@ -430,7 +430,7 @@ function Profile() {
                           <p className="text-neutral-600">{record.time}</p>
                         </div>
                         <div className="text-center">
-                          <span className="text-3xl font-bold text-accent-500">
+                          <span className="text-3xl font-bold text-primary-500">
                             {record.score}
                           </span>
                           <p className="text-sm text-neutral-500">综合评分</p>

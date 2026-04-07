@@ -1,210 +1,247 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { SiteFooter, SiteNav } from '../../components/site'
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { SiteFooter, SiteNav } from "../../components/site";
 
 const slides = [
   {
-    title: 'AI驱动的智能招聘平台',
-    description: '让人才与机会精准匹配，开启职业新篇章',
-    buttonLabel: '立即体验',
+    title: "AI驱动的智能招聘平台",
+    description: "让人才与机会精准匹配，开启职业新篇章",
+    buttonLabel: "立即体验",
     image:
-      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&h=500&fit=crop',
-    alt: '团队协作',
-    overlayClass: 'bg-gradient-to-r from-primary-700/90 to-primary-600/80',
-    descriptionClass: 'text-primary-100',
-    buttonClass: 'bg-accent-500 hover:bg-accent-600',
+      "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&h=500&fit=crop",
+    alt: "团队协作",
+    overlayClass: "bg-gradient-to-r from-primary-700/90 to-primary-600/80",
+    descriptionClass: "text-primary-100",
+    buttonClass: "bg-primary-500 hover:bg-primary-600",
   },
   {
-    title: '智能简历解析',
-    description: 'AI深度分析，挖掘你的核心竞争力',
-    buttonLabel: '上传简历',
+    title: "智能简历解析",
+    description: "AI深度分析，挖掘你的核心竞争力",
+    buttonLabel: "上传简历",
     image:
-      'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=500&fit=crop',
-    alt: 'AI技术',
-    overlayClass: 'bg-gradient-to-r from-accent-600/90 to-accent-500/80',
-    descriptionClass: 'text-accent-100',
-    buttonClass: 'bg-primary-500 hover:bg-primary-600',
+      "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=500&fit=crop",
+    alt: "AI技术",
+    overlayClass: "bg-gradient-to-r from-primary-600/90 to-primary-500/80",
+    descriptionClass: "text-primary-100",
+    buttonClass: "bg-primary-500 hover:bg-primary-600",
   },
   {
-    title: 'AI模拟面试',
-    description: '真实场景演练，提升面试成功率',
-    buttonLabel: '开始练习',
+    title: "AI模拟面试",
+    description: "真实场景演练，提升面试成功率",
+    buttonLabel: "开始练习",
     image:
-      'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&h=500&fit=crop',
-    alt: '面试场景',
-    overlayClass: 'bg-gradient-to-r from-neutral-700/90 to-neutral-600/80',
-    descriptionClass: 'text-neutral-200',
-    buttonClass: 'bg-accent-500 hover:bg-accent-600',
+      "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&h=500&fit=crop",
+    alt: "面试场景",
+    overlayClass: "bg-gradient-to-r from-neutral-700/90 to-neutral-600/80",
+    descriptionClass: "text-neutral-200",
+    buttonClass: "bg-primary-500 hover:bg-primary-600",
   },
-] as const
+] as const;
 
 const features = [
   {
-    title: 'AI简历解析',
+    title: "AI简历解析",
     description:
-      '智能分析简历内容，提取关键信息，生成人才画像，帮助HR快速筛选合适候选人',
-    cardClass: 'bg-primary-50',
-    iconClass: 'bg-primary-500',
-    linkClass: 'text-primary-600 hover:text-primary-700',
-    path: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+      "智能分析简历内容，提取关键信息，生成人才画像，帮助HR快速筛选合适候选人",
+    cardClass: "bg-primary-50",
+    iconClass: "bg-primary-500",
+    linkClass: "text-primary-600 hover:text-primary-700",
+    path: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
   },
   {
-    title: 'AI模拟面试',
+    title: "AI模拟面试",
     description:
-      '基于真实面试场景的AI对话系统，提供即时反馈和改进建议，助你从容应对真实面试',
-    cardClass: 'bg-accent-50',
-    iconClass: 'bg-accent-500',
-    linkClass: 'text-accent-600 hover:text-accent-700',
-    path: 'M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z',
+      "基于真实面试场景的AI对话系统，提供即时反馈和改进建议，助你从容应对真实面试",
+    cardClass: "bg-primary-50",
+    iconClass: "bg-primary-500",
+    linkClass: "text-primary-600 hover:text-primary-700",
+    path: "M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z",
   },
   {
-    title: '简历优化',
+    title: "简历优化",
     description:
-      'AI智能诊断简历问题，提供个性化优化建议，让你的简历脱颖而出，提高面试邀约率',
-    cardClass: 'bg-neutral-100',
-    iconClass: 'bg-neutral-600',
-    linkClass: 'text-neutral-600 hover:text-neutral-700',
-    path: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+      "AI智能诊断简历问题，提供个性化优化建议，让你的简历脱颖而出，提高面试邀约率",
+    cardClass: "bg-neutral-100",
+    iconClass: "bg-neutral-600",
+    linkClass: "text-neutral-600 hover:text-neutral-700",
+    path: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
   },
-] as const
+] as const;
 
 const jobs = [
   {
-    title: '高级前端工程师',
-    companyInfo: '阿里巴巴 · 杭州 · 3-5年',
-    tags: ['React', 'TypeScript', 'Node.js'],
-    salary: '25k-40k',
-    badge: '热招',
-    badgeClass: 'bg-accent-100 text-accent-600',
+    title: "高级前端工程师",
+    companyInfo: "阿里巴巴 · 杭州 · 3-5年",
+    tags: ["React", "TypeScript", "Node.js"],
+    salary: "25k-40k",
+    badge: "热招",
+    badgeClass: "bg-primary-100 text-primary-600",
     favorited: true,
   },
   {
-    title: '产品经理',
-    companyInfo: '腾讯 · 深圳 · 3-5年',
-    tags: ['产品设计', '数据分析', '用户研究'],
-    salary: '30k-50k',
-    badge: '热招',
-    badgeClass: 'bg-accent-100 text-accent-600',
+    title: "产品经理",
+    companyInfo: "腾讯 · 深圳 · 3-5年",
+    tags: ["产品设计", "数据分析", "用户研究"],
+    salary: "30k-50k",
+    badge: "热招",
+    badgeClass: "bg-primary-100 text-primary-600",
     favorited: false,
   },
   {
-    title: '算法工程师',
-    companyInfo: '字节跳动 · 北京 · 1-3年',
-    tags: ['Python', '机器学习', '深度学习'],
-    salary: '35k-60k',
-    badge: '新上',
-    badgeClass: 'bg-neutral-100 text-neutral-600',
+    title: "算法工程师",
+    companyInfo: "字节跳动 · 北京 · 1-3年",
+    tags: ["Python", "机器学习", "深度学习"],
+    salary: "35k-60k",
+    badge: "新上",
+    badgeClass: "bg-neutral-100 text-neutral-600",
     favorited: true,
   },
   {
-    title: 'Java开发工程师',
-    companyInfo: '京东 · 北京 · 3-5年',
-    tags: ['Java', 'Spring', 'MySQL'],
-    salary: '25k-45k',
-    badge: '热招',
-    badgeClass: 'bg-accent-100 text-accent-600',
+    title: "Java开发工程师",
+    companyInfo: "京东 · 北京 · 3-5年",
+    tags: ["Java", "Spring", "MySQL"],
+    salary: "25k-45k",
+    badge: "热招",
+    badgeClass: "bg-primary-100 text-primary-600",
     favorited: false,
   },
   {
-    title: 'UI设计师',
-    companyInfo: '美团 · 上海 · 2-4年',
-    tags: ['Figma', 'Sketch', '动效设计'],
-    salary: '18k-30k',
-    badge: '新上',
-    badgeClass: 'bg-neutral-100 text-neutral-600',
+    title: "UI设计师",
+    companyInfo: "美团 · 上海 · 2-4年",
+    tags: ["Figma", "Sketch", "动效设计"],
+    salary: "18k-30k",
+    badge: "新上",
+    badgeClass: "bg-neutral-100 text-neutral-600",
     favorited: true,
   },
   {
-    title: '运营专员',
-    companyInfo: '小红书 · 上海 · 1-3年',
-    tags: ['内容运营', '数据分析', '社群运营'],
-    salary: '15k-25k',
-    badge: '热招',
-    badgeClass: 'bg-accent-100 text-accent-600',
+    title: "运营专员",
+    companyInfo: "小红书 · 上海 · 1-3年",
+    tags: ["内容运营", "数据分析", "社群运营"],
+    salary: "15k-25k",
+    badge: "热招",
+    badgeClass: "bg-primary-100 text-primary-600",
     favorited: false,
   },
-] as const
+] as const;
 
 const stats = [
   {
-    title: '招募团队',
+    title: "招募团队",
     target: 126,
-    delta: '+12% 较上月',
-    iconClass: 'bg-accent-500',
-    path: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z',
+    delta: "+12% 较上月",
+    iconClass: "bg-primary-500",
+    path: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z",
   },
   {
-    title: '开放职位',
+    title: "开放职位",
     target: 508,
-    delta: '+28% 较上月',
-    iconClass: 'bg-primary-400',
-    path: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
+    delta: "+28% 较上月",
+    iconClass: "bg-primary-400",
+    path: "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
   },
   {
-    title: '已投递人数',
+    title: "已投递人数",
     target: 51860,
-    delta: '+35% 较上月',
-    iconClass: 'bg-white/20',
-    path: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+    delta: "+35% 较上月",
+    iconClass: "bg-white/20",
+    path: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
   },
-] as const
+] as const;
 
 function useCountUp(target: number, duration = 2000) {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    let frameId = 0
-    let startTime: number | undefined
+    let frameId = 0;
+    let startTime: number | undefined;
 
     const tick = (timestamp: number) => {
       if (startTime === undefined) {
-        startTime = timestamp
+        startTime = timestamp;
       }
 
-      const progress = Math.min((timestamp - startTime) / duration, 1)
-      setCount(Math.floor(target * progress))
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      setCount(Math.floor(target * progress));
 
       if (progress < 1) {
-        frameId = window.requestAnimationFrame(tick)
+        frameId = window.requestAnimationFrame(tick);
       }
-    }
+    };
 
-    frameId = window.requestAnimationFrame(tick)
+    frameId = window.requestAnimationFrame(tick);
 
-    return () => window.cancelAnimationFrame(frameId)
-  }, [duration, target])
+    return () => window.cancelAnimationFrame(frameId);
+  }, [duration, target]);
 
-  return count.toLocaleString()
+  return count.toLocaleString();
 }
 
-function ArrowRightIcon({ className = 'ml-2 h-4 w-4' }: { className?: string }) {
+function ArrowRightIcon({
+  className = "ml-2 h-4 w-4",
+}: {
+  className?: string;
+}) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M9 5l7 7-7 7"
+      />
     </svg>
-  )
+  );
 }
 
 function ChevronLeftIcon() {
   return (
-    <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+    <svg
+      className="h-6 w-6 text-white"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M15 19l-7-7 7-7"
+      />
     </svg>
-  )
+  );
 }
 
 function ChevronRightIcon() {
   return (
-    <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+    <svg
+      className="h-6 w-6 text-white"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M9 5l7 7-7 7"
+      />
     </svg>
-  )
+  );
 }
 
 function FavoriteIcon({ filled }: { filled: boolean }) {
   return (
     <svg
-      className={`h-5 w-5 ${filled ? 'fill-primary-500 text-primary-500' : 'fill-none text-neutral-400'}`}
+      className={`h-5 w-5 ${filled ? "fill-primary-500 text-primary-500" : "fill-none text-neutral-400"}`}
       stroke="currentColor"
       viewBox="0 0 24 24"
       aria-hidden="true"
@@ -216,27 +253,27 @@ function FavoriteIcon({ filled }: { filled: boolean }) {
         d="M11.995 21.147l-1.465-1.333C5.4 15.153 2 12.066 2 8.275 2 5.188 4.42 2.75 7.5 2.75c1.74 0 3.41.808 4.495 2.082C13.09 3.558 14.76 2.75 16.5 2.75c3.08 0 5.5 2.438 5.5 5.525 0 3.791-3.4 6.878-8.53 11.539l-1.475 1.333Z"
       />
     </svg>
-  )
+  );
 }
 
 function Home() {
-  const [currentSlide, setCurrentSlide] = useState(0)
+  const [currentSlide, setCurrentSlide] = useState(0);
   const [favoriteJobs, setFavoriteJobs] = useState<Record<string, boolean>>(
     Object.fromEntries(jobs.map((job) => [job.title, job.favorited])),
-  )
-  const teamCount = useCountUp(126)
-  const jobCount = useCountUp(508)
-  const applyCount = useCountUp(51860)
+  );
+  const teamCount = useCountUp(126);
+  const jobCount = useCountUp(508);
+  const applyCount = useCountUp(51860);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      setCurrentSlide((previousSlide) => (previousSlide + 1) % slides.length)
-    }, 5000)
+      setCurrentSlide((previousSlide) => (previousSlide + 1) % slides.length);
+    }, 5000);
 
-    return () => window.clearInterval(intervalId)
-  }, [])
+    return () => window.clearInterval(intervalId);
+  }, []);
 
-  const statValues = [teamCount, jobCount, applyCount]
+  const statValues = [teamCount, jobCount, applyCount];
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-700">
@@ -246,40 +283,44 @@ function Home() {
         <div className="mx-auto h-full max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="relative h-full overflow-hidden rounded-2xl">
             {slides.map((slide, index) => {
-              const isActive = currentSlide === index
+              const isActive = currentSlide === index;
 
               return (
                 <div
                   key={slide.title}
-                  className={`absolute inset-0 transition-opacity duration-500 ${isActive ? 'opacity-100' : 'opacity-0'}`}
+                  className={`absolute inset-0 transition-opacity duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}
                 >
                   <div className={`absolute inset-0 ${slide.overlayClass}`} />
-                  <img src={slide.image} alt={slide.alt} className="h-full w-full object-cover" />
+                  <img
+                    src={slide.image}
+                    alt={slide.alt}
+                    className="h-full w-full object-cover"
+                  />
 
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="px-4 text-center text-white">
                       <h1
-                        className={`mb-4 text-4xl font-bold md:text-5xl ${isActive ? 'animate-fade-in-up' : ''}`}
+                        className={`mb-4 text-4xl font-bold md:text-5xl ${isActive ? "animate-fade-in-up" : ""}`}
                       >
                         {slide.title}
                       </h1>
                       <p
-                        className={`mb-8 text-lg md:text-xl ${slide.descriptionClass} ${isActive ? 'animate-fade-in-up' : ''}`}
-                        style={{ animationDelay: '0.2s' }}
+                        className={`mb-8 text-lg md:text-xl ${slide.descriptionClass} ${isActive ? "animate-fade-in-up" : ""}`}
+                        style={{ animationDelay: "0.2s" }}
                       >
                         {slide.description}
                       </p>
                       <button
                         type="button"
-                        className={`rounded-lg px-8 py-3 text-lg font-semibold transition-colors ${slide.buttonClass} ${isActive ? 'animate-fade-in-up' : ''}`}
-                        style={{ animationDelay: '0.4s' }}
+                        className={`rounded-lg px-8 py-3 text-lg font-semibold transition-colors ${slide.buttonClass} ${isActive ? "animate-fade-in-up" : ""}`}
+                        style={{ animationDelay: "0.4s" }}
                       >
                         {slide.buttonLabel}
                       </button>
                     </div>
                   </div>
                 </div>
-              )
+              );
             })}
 
             <button
@@ -287,7 +328,10 @@ function Home() {
               aria-label="上一张"
               className="absolute top-1/2 left-4 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm transition-all hover:bg-white/40"
               onClick={() =>
-                setCurrentSlide((previousSlide) => (previousSlide - 1 + slides.length) % slides.length)
+                setCurrentSlide(
+                  (previousSlide) =>
+                    (previousSlide - 1 + slides.length) % slides.length,
+                )
               }
             >
               <ChevronLeftIcon />
@@ -297,7 +341,11 @@ function Home() {
               type="button"
               aria-label="下一张"
               className="absolute top-1/2 right-4 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm transition-all hover:bg-white/40"
-              onClick={() => setCurrentSlide((previousSlide) => (previousSlide + 1) % slides.length)}
+              onClick={() =>
+                setCurrentSlide(
+                  (previousSlide) => (previousSlide + 1) % slides.length,
+                )
+              }
             >
               <ChevronRightIcon />
             </button>
@@ -311,7 +359,9 @@ function Home() {
                 aria-label={`切换到第${index + 1}张`}
                 aria-current={currentSlide === index}
                 className={`h-4 w-4 cursor-pointer rounded-full transition-all hover:scale-125 ${
-                  currentSlide === index ? 'bg-white' : 'bg-white/50 hover:bg-white'
+                  currentSlide === index
+                    ? "bg-white"
+                    : "bg-white/50 hover:bg-white"
                 }`}
                 onClick={() => setCurrentSlide(index)}
               />
@@ -323,8 +373,12 @@ function Home() {
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-neutral-800">AI增强功能</h2>
-            <p className="text-lg text-neutral-600">利用人工智能技术，让求职更高效、更智能</p>
+            <h2 className="mb-4 text-3xl font-bold text-neutral-800">
+              AI增强功能
+            </h2>
+            <p className="text-lg text-neutral-600">
+              利用人工智能技术，让求职更高效、更智能
+            </p>
           </div>
 
           <div className="grid gap-8 md:grid-cols-3">
@@ -336,13 +390,29 @@ function Home() {
                 <div
                   className={`mb-6 flex h-16 w-16 items-center justify-center rounded-xl text-white transition-transform group-hover:scale-110 ${feature.iconClass}`}
                 >
-                  <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={feature.path} />
+                  <svg
+                    className="h-8 w-8"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d={feature.path}
+                    />
                   </svg>
                 </div>
-                <h3 className="mb-3 text-xl font-bold text-neutral-800">{feature.title}</h3>
+                <h3 className="mb-3 text-xl font-bold text-neutral-800">
+                  {feature.title}
+                </h3>
                 <p className="mb-6 text-neutral-600">{feature.description}</p>
-                <Link to={feature.title === 'AI模拟面试' ? '/interview' : '/login'} className={`inline-flex items-center font-semibold ${feature.linkClass}`}>
+                <Link
+                  to={feature.title === "AI模拟面试" ? "/interview" : "/login"}
+                  className={`inline-flex items-center font-semibold ${feature.linkClass}`}
+                >
                   了解更多
                   <ArrowRightIcon />
                 </Link>
@@ -356,8 +426,12 @@ function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-12 flex items-end justify-between">
             <div>
-              <h2 className="mb-4 text-3xl font-bold text-neutral-800">热门职位</h2>
-              <p className="text-lg text-neutral-600">精选优质岗位，助你快速找到心仪工作</p>
+              <h2 className="mb-4 text-3xl font-bold text-neutral-800">
+                热门职位
+              </h2>
+              <p className="text-lg text-neutral-600">
+                精选优质岗位，助你快速找到心仪工作
+              </p>
             </div>
             <Link
               to="/hall"
@@ -377,7 +451,11 @@ function Home() {
                 <div className="mb-4 flex items-start justify-between">
                   <button
                     type="button"
-                    aria-label={favoriteJobs[job.title] ? `取消收藏${job.title}` : `收藏${job.title}`}
+                    aria-label={
+                      favoriteJobs[job.title]
+                        ? `取消收藏${job.title}`
+                        : `收藏${job.title}`
+                    }
                     className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 transition-colors hover:bg-primary-50"
                     onClick={() =>
                       setFavoriteJobs((current) => ({
@@ -388,19 +466,32 @@ function Home() {
                   >
                     <FavoriteIcon filled={favoriteJobs[job.title]} />
                   </button>
-                  <span className={`rounded-full px-3 py-1 text-sm ${job.badgeClass}`}>{job.badge}</span>
+                  <span
+                    className={`rounded-full px-3 py-1 text-sm ${job.badgeClass}`}
+                  >
+                    {job.badge}
+                  </span>
                 </div>
-                <h3 className="mb-2 text-lg font-bold text-neutral-800">{job.title}</h3>
-                <p className="mb-4 text-sm text-neutral-500">{job.companyInfo}</p>
+                <h3 className="mb-2 text-lg font-bold text-neutral-800">
+                  {job.title}
+                </h3>
+                <p className="mb-4 text-sm text-neutral-500">
+                  {job.companyInfo}
+                </p>
                 <div className="mb-4 flex flex-wrap gap-2">
                   {job.tags.map((tag) => (
-                    <span key={tag} className="rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600">
+                    <span
+                      key={tag}
+                      className="rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600"
+                    >
                       {tag}
                     </span>
                   ))}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-primary-600">{job.salary}</span>
+                  <span className="font-bold text-primary-600">
+                    {job.salary}
+                  </span>
                   <button
                     type="button"
                     className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
@@ -413,7 +504,10 @@ function Home() {
           </div>
 
           <div className="mt-8 text-center md:hidden">
-            <Link to="/hall" className="inline-flex items-center font-semibold text-primary-600 hover:text-primary-700">
+            <Link
+              to="/hall"
+              className="inline-flex items-center font-semibold text-primary-600 hover:text-primary-700"
+            >
               查看全部职位
               <ArrowRightIcon />
             </Link>
@@ -425,8 +519,12 @@ function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="rounded-lg bg-primary-700 p-6">
             <div className="mb-6 text-center">
-              <h2 className="mb-2 text-xl font-bold text-white">招新数据看板</h2>
-              <p className="text-sm text-primary-200">实时数据展示，洞察招聘动态</p>
+              <h2 className="mb-2 text-xl font-bold text-white">
+                招新数据看板
+              </h2>
+              <p className="text-sm text-primary-200">
+                实时数据展示，洞察招聘动态
+              </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
@@ -438,13 +536,28 @@ function Home() {
                   <div
                     className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${stat.iconClass}`}
                   >
-                    <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={stat.path} />
+                    <svg
+                      className="h-6 w-6 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d={stat.path}
+                      />
                     </svg>
                   </div>
-                  <div className="mb-1 text-3xl font-bold text-white">{statValues[index]}</div>
+                  <div className="mb-1 text-3xl font-bold text-white">
+                    {statValues[index]}
+                  </div>
                   <div className="text-sm text-primary-200">{stat.title}</div>
-                  <div className="mt-2 text-xs text-primary-300">{stat.delta}</div>
+                  <div className="mt-2 text-xs text-primary-300">
+                    {stat.delta}
+                  </div>
                 </div>
               ))}
             </div>
@@ -454,7 +567,7 @@ function Home() {
 
       <SiteFooter />
     </div>
-  )
+  );
 }
 
-export default Home
+export default Home;

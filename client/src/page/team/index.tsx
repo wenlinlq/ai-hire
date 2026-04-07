@@ -405,7 +405,7 @@ function Team() {
                       className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     />
                     <select className="rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                      {["全部角色", "管理员", "招聘专员", "面试官"].map(
+                      {["全部角色", "超级管理员", "团队管理员", "学生"].map(
                         (item) => (
                           <option key={item}>{item}</option>
                         ),
@@ -418,18 +418,13 @@ function Team() {
                   <table className="w-full">
                     <thead className="bg-neutral-50">
                       <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
-                        {[
-                          "用户",
-                          "邮箱",
-                          "角色",
-                          "所属团队",
-                          "状态",
-                          "操作",
-                        ].map((item) => (
-                          <th key={item} className="px-6 py-3">
-                            {item}
-                          </th>
-                        ))}
+                        {["用户", "邮箱", "所属团队", "状态", "操作"].map(
+                          (item) => (
+                            <th key={item} className="px-6 py-3">
+                              {item}
+                            </th>
+                          ),
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200 bg-white">
@@ -475,20 +470,17 @@ function Team() {
                                     {user.username}
                                   </div>
                                   <div className="text-sm text-neutral-500">
-                                    {user.role}
+                                    {user.role === "admin"
+                                      ? "超级管理员"
+                                      : user.role === "hr"
+                                        ? `团队管理员 (${typeof user.team === "object" && user.team.name ? user.team.name : user.team || "无所属团队"})`
+                                        : "学生"}
                                   </div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-sm text-neutral-900">
                               {user.email}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-neutral-700">
-                              {user.role === "admin"
-                                ? "超级管理员"
-                                : user.role === "hr"
-                                  ? "团队管理员"
-                                  : "普通用户"}
                             </td>
                             <td className="px-6 py-4 text-sm text-neutral-900">
                               {typeof user.team === "object" && user.team.name
@@ -810,7 +802,7 @@ function Team() {
                   }
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 >
-                  <option value="student">普通用户</option>
+                  <option value="student">学生</option>
                   <option value="hr">团队管理员</option>
                   <option value="admin">超级管理员</option>
                 </select>
@@ -910,9 +902,9 @@ function Team() {
                   placeholder="邮箱地址"
                 />
                 <select className="w-full rounded-lg border border-neutral-300 px-4 py-3">
-                  <option>管理员</option>
-                  <option>招聘专员</option>
-                  <option>面试官</option>
+                  <option>学生</option>
+                  <option>团队管理员</option>
+                  <option>超级管理员</option>
                 </select>
               </div>
             ) : (

@@ -526,9 +526,17 @@ function Admin() {
                                     type: job.type,
                                     department: job.department,
                                     quota: job.quota,
-                                    requirements: job.requirements,
-                                    responsibilities: job.responsibilities,
-                                    benefits: job.benefits,
+                                    requirements: {
+                                      ...job.requirements,
+                                      skills: Array.isArray(
+                                        job.requirements?.skills,
+                                      )
+                                        ? job.requirements.skills
+                                        : [],
+                                    },
+                                    responsibilities:
+                                      job.responsibilities || [],
+                                    benefits: job.benefits || [],
                                     status: job.status,
                                     deadline: new Date(job.deadline)
                                       .toISOString()
@@ -875,6 +883,23 @@ function Admin() {
                       requirements: {
                         ...jobForm.requirements,
                         description: e.target.value,
+                      },
+                    })
+                  }
+                />
+                <input
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  placeholder="技能标签（多个标签用逗号分隔）"
+                  value={jobForm.requirements.skills.join(",")}
+                  onChange={(e) =>
+                    setJobForm({
+                      ...jobForm,
+                      requirements: {
+                        ...jobForm.requirements,
+                        skills: e.target.value
+                          .split(/[,，]/)
+                          .map((s) => s.trim())
+                          .filter((s) => s),
                       },
                     })
                   }

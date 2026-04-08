@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { SiteFooter, SiteNav } from "../../components/site";
+import positionApi from "../../api/positionApi";
+import teamApi from "../../api/teamApi";
 
 const slides = [
   {
@@ -68,62 +70,30 @@ const features = [
   },
 ] as const;
 
-const jobs = [
-  {
-    title: "高级前端工程师",
-    companyInfo: "阿里巴巴 · 杭州 · 3-5年",
-    tags: ["React", "TypeScript", "Node.js"],
-    salary: "25k-40k",
-    badge: "热招",
-    badgeClass: "bg-primary-100 text-primary-600",
-    favorited: true,
-  },
-  {
-    title: "产品经理",
-    companyInfo: "腾讯 · 深圳 · 3-5年",
-    tags: ["产品设计", "数据分析", "用户研究"],
-    salary: "30k-50k",
-    badge: "热招",
-    badgeClass: "bg-primary-100 text-primary-600",
-    favorited: false,
-  },
-  {
-    title: "算法工程师",
-    companyInfo: "字节跳动 · 北京 · 1-3年",
-    tags: ["Python", "机器学习", "深度学习"],
-    salary: "35k-60k",
-    badge: "新上",
-    badgeClass: "bg-neutral-100 text-neutral-600",
-    favorited: true,
-  },
-  {
-    title: "Java开发工程师",
-    companyInfo: "京东 · 北京 · 3-5年",
-    tags: ["Java", "Spring", "MySQL"],
-    salary: "25k-45k",
-    badge: "热招",
-    badgeClass: "bg-primary-100 text-primary-600",
-    favorited: false,
-  },
-  {
-    title: "UI设计师",
-    companyInfo: "美团 · 上海 · 2-4年",
-    tags: ["Figma", "Sketch", "动效设计"],
-    salary: "18k-30k",
-    badge: "新上",
-    badgeClass: "bg-neutral-100 text-neutral-600",
-    favorited: true,
-  },
-  {
-    title: "运营专员",
-    companyInfo: "小红书 · 上海 · 1-3年",
-    tags: ["内容运营", "数据分析", "社群运营"],
-    salary: "15k-25k",
-    badge: "热招",
-    badgeClass: "bg-primary-100 text-primary-600",
-    favorited: false,
-  },
-] as const;
+interface Job {
+  _id: string;
+  title: string;
+  type: string;
+  department: string;
+  quota: number;
+  requirements: {
+    skills: string[];
+    experience: string;
+    education: string;
+    description: string;
+  };
+  responsibilities: string[];
+  benefits: string[];
+  status: string;
+  deadline: string;
+  viewCount: number;
+  applyCount: number;
+  createdBy: string;
+  teamId: string;
+  teamName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 const stats = [
   {
@@ -258,9 +228,9 @@ function FavoriteIcon({ filled }: { filled: boolean }) {
 
 function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [favoriteJobs, setFavoriteJobs] = useState<Record<string, boolean>>(
-    Object.fromEntries(jobs.map((job) => [job.title, job.favorited])),
-  );
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [favoriteJobs, setFavoriteJobs] = useState<Record<string, boolean>>({});
   const teamCount = useCountUp(126);
   const jobCount = useCountUp(508);
   const applyCount = useCountUp(51860);
@@ -271,6 +241,46 @@ function Home() {
     }, 5000);
 
     return () => window.clearInterval(intervalId);
+  }, []);
+
+  // 加载职位数据
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setLoading(true);
+        console.log("开始获取职位数据");
+        const response = await positionApi.getPositions();
+        console.log("获取职位数据成功:", response);
+
+        // 获取所有团队数据
+        const teams = await teamApi.getTeams();
+        console.log("获取团队数据成功:", teams);
+
+        // 为每个职位添加团队名称，并获取前6个职位作为热门职位
+        const jobsWithTeamName = response
+          .map((job) => ({
+            ...job,
+            teamName:
+              teams.find((team) => team._id === job.teamId)?.name || "未知团队",
+          }))
+          .slice(0, 6);
+
+        // 初始化收藏状态
+        const initialFavorites: Record<string, boolean> = {};
+        jobsWithTeamName.forEach((job) => {
+          initialFavorites[job._id] = false;
+        });
+
+        setJobs(jobsWithTeamName);
+        setFavoriteJobs(initialFavorites);
+      } catch (error) {
+        console.error("获取职位数据失败:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobs();
   }, []);
 
   const statValues = [teamCount, jobCount, applyCount];
@@ -443,64 +453,70 @@ function Home() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {jobs.map((job) => (
-              <div
-                key={`${job.title}-${job.companyInfo}`}
-                className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-lg"
-              >
-                <div className="mb-4 flex items-start justify-between">
-                  <button
-                    type="button"
-                    aria-label={
-                      favoriteJobs[job.title]
-                        ? `取消收藏${job.title}`
-                        : `收藏${job.title}`
-                    }
-                    className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 transition-colors hover:bg-primary-50"
-                    onClick={() =>
-                      setFavoriteJobs((current) => ({
-                        ...current,
-                        [job.title]: !current[job.title],
-                      }))
-                    }
-                  >
-                    <FavoriteIcon filled={favoriteJobs[job.title]} />
-                  </button>
-                  <span
-                    className={`rounded-full px-3 py-1 text-sm ${job.badgeClass}`}
-                  >
-                    {job.badge}
-                  </span>
-                </div>
-                <h3 className="mb-2 text-lg font-bold text-neutral-800">
-                  {job.title}
-                </h3>
-                <p className="mb-4 text-sm text-neutral-500">
-                  {job.companyInfo}
-                </p>
-                <div className="mb-4 flex flex-wrap gap-2">
-                  {job.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-primary-600">
-                    {job.salary}
-                  </span>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
-                  >
-                    立即投递
-                  </button>
-                </div>
+            {loading ? (
+              <div className="col-span-3 flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
               </div>
-            ))}
+            ) : jobs.length === 0 ? (
+              <div className="col-span-3 text-center py-12">
+                <p className="text-neutral-500">暂无职位</p>
+              </div>
+            ) : (
+              jobs.map((job) => (
+                <div
+                  key={job._id}
+                  className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-lg"
+                >
+                  <div className="mb-4 flex items-start justify-between">
+                    <button
+                      type="button"
+                      aria-label={
+                        favoriteJobs[job._id]
+                          ? `取消收藏${job.title}`
+                          : `收藏${job.title}`
+                      }
+                      className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 transition-colors hover:bg-primary-50"
+                      onClick={() =>
+                        setFavoriteJobs((current) => ({
+                          ...current,
+                          [job._id]: !current[job._id],
+                        }))
+                      }
+                    >
+                      <FavoriteIcon filled={favoriteJobs[job._id] || false} />
+                    </button>
+                    <span className="rounded-full px-3 py-1 text-sm bg-primary-100 text-primary-600">
+                      热招
+                    </span>
+                  </div>
+                  <h3 className="mb-2 text-lg font-bold text-neutral-800">
+                    {job.title}
+                  </h3>
+                  <p className="mb-4 text-sm text-neutral-500">
+                    {job.teamName} · {job.department}
+                  </p>
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {job.requirements.skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-primary-600">面议</span>
+                    <button
+                      type="button"
+                      className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
+                    >
+                      立即投递
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="mt-8 text-center md:hidden">

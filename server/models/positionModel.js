@@ -57,6 +57,10 @@ class PositionModel {
         department: positionData.department,
         // 招聘人数
         quota: positionData.quota,
+        // 薪资
+        salary: positionData.salary || "",
+        // 面试方式
+        interviewType: positionData.interviewType || "online",
         // 岗位要求
         requirements: {
           skills: positionData.requirements?.skills || [],

@@ -1,4 +1,6 @@
-import { ChangeEvent, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useMemo, useRef, useState, useEffect } from "react";
+import userApi from "../../api/userApi";
+import type { User } from "../../api/userApi";
 
 type ProfileTab = "profile" | "resume" | "favorites" | "interviews";
 
@@ -6,8 +8,9 @@ type ProfileForm = {
   name: string;
   phone: string;
   email: string;
-  city: string;
+  grade: string;
   intro: string;
+  _id: string;
 };
 
 type ResumeItem = {
@@ -20,21 +23,21 @@ const favoriteJobs = [
   {
     title: "高级前端工程师",
     company: "阿里巴巴 · 杭州 · 3-5年",
-    salary: "25k-40k",
+    interviewType: "online",
     tags: ["React", "TypeScript", "Node.js"],
     savedAt: "2024-01-14",
   },
   {
     title: "产品经理",
     company: "腾讯 · 深圳 · 3-5年",
-    salary: "30k-50k",
+    interviewType: "offline",
     tags: ["产品设计", "数据分析", "项目管理"],
     savedAt: "2024-01-13",
   },
   {
     title: "UI设计师",
     company: "字节跳动 · 北京 · 1-3年",
-    salary: "20k-35k",
+    interviewType: "online",
     tags: ["Figma", "Sketch", "动效设计"],
     savedAt: "2024-01-12",
   },
@@ -74,13 +77,18 @@ const interviewHistory = [
 ] as const;
 
 function Profile() {
-  const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
+  // 从localStorage读取初始tab状态
+  const [activeTab, setActiveTab] = useState<ProfileTab>(() => {
+    const savedTab = localStorage.getItem("profileActiveTab");
+    return (savedTab as ProfileTab) || "profile";
+  });
   const [profileForm, setProfileForm] = useState<ProfileForm>({
-    name: "张三",
-    phone: "138****8888",
-    email: "zhangsan@example.com",
-    city: "北京",
+    name: "",
+    phone: "",
+    email: "",
+    grade: "",
     intro: "",
+    _id: "",
   });
   const [resumes, setResumes] = useState<ResumeItem[]>([
     {
@@ -89,6 +97,10 @@ function Profile() {
       type: "PDF",
     },
   ]);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [newPhone, setNewPhone] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [countdown, setCountdown] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const averageScore = useMemo(
@@ -99,6 +111,33 @@ function Profile() {
       ),
     [],
   );
+
+  // 获取用户信息
+  useEffect(() => {
+    const user = userApi.getCurrentUser();
+    if (user) {
+      // 处理手机号，4-7位用*隐藏
+      let maskedPhone = user.phone || "";
+      if (maskedPhone.length === 11) {
+        maskedPhone =
+          maskedPhone.substring(0, 3) + "****" + maskedPhone.substring(7);
+      }
+
+      setProfileForm({
+        name: user.username || "",
+        phone: maskedPhone,
+        email: user.email || "",
+        grade: "", // 年级信息需要让用户填写
+        intro: "",
+        _id: user._id,
+      });
+    }
+  }, []);
+
+  // 保存activeTab到localStorage
+  useEffect(() => {
+    localStorage.setItem("profileActiveTab", activeTab);
+  }, [activeTab]);
 
   const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -123,12 +162,50 @@ function Profile() {
     event.target.value = "";
   };
 
+  const handleChangePhone = () => {
+    setNewPhone("");
+    setVerificationCode("");
+    setCountdown(0);
+    setShowPhoneModal(true);
+  };
+
+  const handleConfirmChangePhone = () => {
+    // 这里可以添加手机号和验证码验证逻辑
+    if (newPhone && verificationCode) {
+      // 模拟修改手机号，实际项目中应该调用API
+      setProfileForm((current) => ({
+        ...current,
+        phone: newPhone,
+      }));
+      setShowPhoneModal(false);
+    }
+  };
+
+  const sendVerificationCode = () => {
+    // 这里可以添加手机号验证逻辑
+    if (newPhone) {
+      // 模拟发送验证码，实际项目中应该调用API
+      console.log("发送验证码到:", newPhone);
+      // 开始倒计时
+      setCountdown(60);
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-700 flex items-center justify-center">
-      <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen bg-neutral-50 text-neutral-700">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid gap-8 lg:grid-cols-4">
           <div className="lg:col-span-1">
-            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm h-[calc(100vh-150px)]">
               <div className="mb-6 text-center">
                 <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary-500">
                   <svg
@@ -146,8 +223,12 @@ function Profile() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-lg font-bold text-neutral-800">张三</h3>
-                <p className="text-sm text-neutral-500">zhangsan@example.com</p>
+                <h3 className="text-lg font-bold text-neutral-800">
+                  {profileForm.name || "用户"}
+                </h3>
+                <p className="text-sm text-neutral-500">
+                  {profileForm.email || "未设置邮箱"}
+                </p>
               </div>
 
               <nav className="space-y-2">
@@ -176,7 +257,7 @@ function Profile() {
 
           <div className="lg:col-span-3">
             {activeTab === "profile" && (
-              <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
+              <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm h-[calc(100vh-150px)] overflow-y-auto">
                 <h2 className="mb-6 text-2xl font-bold text-neutral-800">
                   个人信息
                 </h2>
@@ -190,45 +271,56 @@ function Profile() {
                       ["手机号", "phone", "tel"],
                       ["邮箱", "email", "email"],
                     ].map(([label, key, type]) => (
-                      <div key={key}>
+                      <div key={key} className="flex flex-col">
                         <label className="mb-2 block text-sm font-medium text-neutral-700">
                           {label}
                         </label>
-                        <input
-                          type={type}
-                          value={
-                            profileForm[key as keyof ProfileForm] as string
-                          }
-                          onChange={(event) =>
-                            setProfileForm((current) => ({
-                              ...current,
-                              [key]: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                        />
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type={type}
+                            value={
+                              profileForm[key as keyof ProfileForm] as string
+                            }
+                            onChange={(event) =>
+                              setProfileForm((current) => ({
+                                ...current,
+                                [key]: event.target.value,
+                              }))
+                            }
+                            disabled={key === "phone"}
+                            className="flex-1 rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                          />
+                          {key === "phone" && (
+                            <button
+                              type="button"
+                              className="rounded-lg bg-primary-500 px-3 py-3 text-sm text-white transition-colors hover:bg-primary-600"
+                              onClick={handleChangePhone}
+                            >
+                              更换手机号
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
 
                     <div>
                       <label className="mb-2 block text-sm font-medium text-neutral-700">
-                        所在城市
+                        年级
                       </label>
                       <select
-                        value={profileForm.city}
+                        value={profileForm.grade}
                         onChange={(event) =>
                           setProfileForm((current) => ({
                             ...current,
-                            city: event.target.value,
+                            grade: event.target.value,
                           }))
                         }
                         className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                       >
-                        {["北京", "上海", "广州", "深圳", "杭州"].map(
-                          (item) => (
-                            <option key={item}>{item}</option>
-                          ),
-                        )}
+                        <option value="">请选择年级</option>
+                        {["大一", "大二", "大三", "大四"].map((item) => (
+                          <option key={item}>{item}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -264,7 +356,7 @@ function Profile() {
             )}
 
             {activeTab === "resume" && (
-              <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
+              <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm h-[calc(100vh-150px)] overflow-y-auto">
                 <h2 className="mb-6 text-2xl font-bold text-neutral-800">
                   我的简历
                 </h2>
@@ -358,7 +450,7 @@ function Profile() {
             )}
 
             {activeTab === "favorites" && (
-              <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
+              <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm h-[calc(100vh-150px)] overflow-y-auto">
                 <div className="mb-6 flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-neutral-800">
                     收藏岗位
@@ -384,7 +476,9 @@ function Profile() {
                           <p className="text-neutral-600">{job.company}</p>
                         </div>
                         <span className="text-lg font-bold text-primary-600">
-                          {job.salary}
+                          {job.interviewType === "online"
+                            ? "线上面试"
+                            : "线下面试"}
                         </span>
                       </div>
                       <div className="mb-4 flex flex-wrap gap-2">
@@ -407,7 +501,7 @@ function Profile() {
             )}
 
             {activeTab === "interviews" && (
-              <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
+              <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm h-[calc(100vh-150px)] overflow-y-auto">
                 <div className="mb-6 flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-neutral-800">
                     历史模拟面试
@@ -467,6 +561,71 @@ function Profile() {
           </div>
         </div>
       </div>
+
+      {/* 更换手机号弹窗 */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-auto w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+            <h3 className="mb-4 text-xl font-bold text-neutral-800">
+              更换手机号
+            </h3>
+            <div className="mb-6">
+              <label className="mb-2 block text-sm font-medium text-neutral-700">
+                新手机号
+              </label>
+              <input
+                type="tel"
+                value={newPhone}
+                onChange={(event) => setNewPhone(event.target.value)}
+                placeholder="请输入新手机号"
+                className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+              />
+            </div>
+            <div className="mb-6">
+              <label className="mb-2 block text-sm font-medium text-neutral-700">
+                验证码
+              </label>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="text"
+                  value={verificationCode}
+                  onChange={(event) => setVerificationCode(event.target.value)}
+                  placeholder="请输入验证码"
+                  className="flex-1 rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  className={`rounded-lg px-3 py-3 text-sm transition-colors ${
+                    countdown > 0
+                      ? "bg-neutral-300 text-neutral-600 cursor-not-allowed"
+                      : "bg-primary-500 text-white hover:bg-primary-600"
+                  }`}
+                  onClick={sendVerificationCode}
+                  disabled={countdown > 0}
+                >
+                  {countdown > 0 ? `${countdown}秒后重发` : "发送验证码"}
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                className="rounded-lg border border-neutral-300 px-4 py-2 text-neutral-700 transition-colors hover:bg-neutral-50"
+                onClick={() => setShowPhoneModal(false)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
+                onClick={handleConfirmChangePhone}
+              >
+                确定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

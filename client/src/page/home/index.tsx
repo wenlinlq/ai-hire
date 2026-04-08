@@ -76,6 +76,8 @@ interface Job {
   type: string;
   department: string;
   quota: number;
+  salary: string;
+  interviewType: string;
   requirements: {
     skills: string[];
     experience: string;
@@ -506,7 +508,9 @@ function Home() {
                     ))}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-primary-600">面议</span>
+                    <span className="font-bold text-primary-600">
+                      {job.interviewType === "online" ? "线上面试" : "线下面试"}
+                    </span>
                     <button
                       type="button"
                       className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"

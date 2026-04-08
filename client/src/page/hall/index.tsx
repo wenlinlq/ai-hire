@@ -27,6 +27,8 @@ interface Job {
   type: string;
   department: string;
   quota: number;
+  salary: string;
+  interviewType: string;
   requirements: {
     skills: string[];
     experience: string;
@@ -336,7 +338,9 @@ function Hall() {
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-bold text-primary-600">
-                          面议
+                          {job.interviewType === "online"
+                            ? "线上面试"
+                            : "线下面试"}
                         </div>
                         <div className="mt-1 text-xs text-neutral-400">
                           招聘 {job.quota} 人

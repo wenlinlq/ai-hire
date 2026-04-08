@@ -75,6 +75,7 @@ interface JobFormState {
   type: string;
   department: string;
   quota: number;
+  salary: string;
   requirements: {
     skills: string[];
     experience: string;
@@ -86,6 +87,7 @@ interface JobFormState {
   status: string;
   deadline: string;
   teamId: string;
+  interviewType: string;
 }
 
 const interviewPrograms = [
@@ -128,6 +130,7 @@ function Admin() {
     type: "full-time",
     department: "",
     quota: 1,
+    salary: "",
     requirements: {
       skills: [],
       experience: "",
@@ -139,6 +142,7 @@ function Admin() {
     status: "open",
     deadline: "",
     teamId: "",
+    interviewType: "online",
   });
   // 当前编辑的职位ID
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -409,6 +413,7 @@ function Admin() {
                       type: "full-time",
                       department: "",
                       quota: 1,
+                      salary: "",
                       requirements: {
                         skills: [],
                         experience: "",
@@ -420,6 +425,7 @@ function Admin() {
                       status: "open",
                       deadline: "",
                       teamId: currentUser?.team || "",
+                      interviewType: "online",
                     });
                     openModal("job");
                   }}
@@ -526,6 +532,7 @@ function Admin() {
                                     type: job.type,
                                     department: job.department,
                                     quota: job.quota,
+                                    salary: job.salary || "",
                                     requirements: {
                                       ...job.requirements,
                                       skills: Array.isArray(
@@ -542,6 +549,8 @@ function Admin() {
                                       .toISOString()
                                       .split("T")[0],
                                     teamId: job.teamId,
+                                    interviewType:
+                                      job.interviewType || "online",
                                   });
                                   setModal("job");
                                 }}
@@ -872,6 +881,14 @@ function Admin() {
                     })
                   }
                 />
+                <input
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  placeholder="薪资（如：10k-20k）"
+                  value={jobForm.salary}
+                  onChange={(e) =>
+                    setJobForm({ ...jobForm, salary: e.target.value })
+                  }
+                />
                 <textarea
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
                   rows={3}
@@ -936,6 +953,16 @@ function Admin() {
                 >
                   <option value="open">招聘中</option>
                   <option value="closed">已关闭</option>
+                </select>
+                <select
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  value={jobForm.interviewType}
+                  onChange={(e) =>
+                    setJobForm({ ...jobForm, interviewType: e.target.value })
+                  }
+                >
+                  <option value="online">线上面试</option>
+                  <option value="offline">线下面试</option>
                 </select>
               </div>
             )}

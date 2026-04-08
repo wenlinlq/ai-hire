@@ -30,6 +30,9 @@ export function LogoMark({ className = "h-8 w-8" }: { className?: string }) {
 
 export function SiteNav({ current }: SiteNavProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dropdownTimer, setDropdownTimer] = useState<NodeJS.Timeout | null>(
+    null,
+  );
   const navigate = useNavigate();
   const user = userApi.getCurrentUser();
   const isLoggedIn = userApi.isLoggedIn();
@@ -38,6 +41,25 @@ export function SiteNav({ current }: SiteNavProps) {
     userApi.logout();
     setIsDropdownOpen(false);
     navigate("/");
+  };
+
+  const handleMouseEnter = () => {
+    // 清除之前的定时器
+    if (dropdownTimer) {
+      clearTimeout(dropdownTimer);
+      setDropdownTimer(null);
+    }
+    // 立即显示下拉菜单
+    setIsDropdownOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    // 设置300ms延时后隐藏下拉菜单
+    const timer = setTimeout(() => {
+      setIsDropdownOpen(false);
+      setDropdownTimer(null);
+    }, 300);
+    setDropdownTimer(timer);
   };
 
   return (
@@ -67,22 +89,26 @@ export function SiteNav({ current }: SiteNavProps) {
         </div>
 
         {isLoggedIn ? (
-          <div className="relative">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-white/10"
-            >
+          <div
+            className="relative"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <button className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-white/10">
               <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center">
                 {user?.username.charAt(0).toUpperCase()}
               </div>
               <span className="hidden sm:inline">{user?.username}</span>
             </button>
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white shadow-lg text-neutral-800 py-2 z-10">
+              <div
+                className="absolute right-0 mt-2 w-48 rounded-lg bg-white shadow-lg text-neutral-800 py-2 z-10"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+              >
                 <Link
                   to="/profile"
                   className="block px-4 py-2 hover:bg-neutral-100 transition-colors"
-                  onClick={() => setIsDropdownOpen(false)}
                 >
                   个人中心
                 </Link>

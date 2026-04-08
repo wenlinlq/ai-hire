@@ -35,6 +35,8 @@ interface Position {
   type: string;
   department: string;
   quota: number;
+  salary: string;
+  interviewType: string;
   requirements: {
     skills: string[];
     experience: string;
@@ -58,6 +60,8 @@ interface PositionCreate {
   type: string;
   department: string;
   quota: number;
+  salary: string;
+  interviewType: string;
   requirements: {
     skills: string[];
     experience: string;
@@ -76,6 +80,8 @@ interface PositionUpdate {
   type?: string;
   department?: string;
   quota?: number;
+  salary?: string;
+  interviewType?: string;
   requirements?: {
     skills?: string[];
     experience?: string;

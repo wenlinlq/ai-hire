@@ -58,8 +58,8 @@ class UserModel {
         phone: userData.phone || "",
         // 用户角色（如：admin, user, manager 等）
         role: userData.role,
-        // 所属团队ID，如果没有提供则默认为空字符串
-        team: userData.team || "",
+        // 所属团队ID，如果没有提供则默认为null
+        team: userData.team ? new ObjectId(userData.team) : null,
         // 头像 URL，如果没有提供则默认为空字符串
         avatar: userData.avatar || "",
         // 用户状态（active：激活，inactive：未激活，banned：封禁）
@@ -155,6 +155,11 @@ class UserModel {
       if (updateData.password) {
         // 需要重新加密新密码
         updateData.password = await bcrypt.hash(updateData.password, 10);
+      }
+
+      // 处理team字段，转换为ObjectId
+      if (updateData.team) {
+        updateData.team = new ObjectId(updateData.team);
       }
 
       // 执行更新操作

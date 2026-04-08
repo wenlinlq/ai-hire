@@ -112,10 +112,10 @@ function Team() {
         const members = userList.filter((user) => {
           if (!user.team) return false;
           // 处理team字段可能是对象或字符串的情况
-          if (typeof user.team === "object" && user.team.name) {
-            return user.team.name === team.name;
+          if (typeof user.team === "object" && user.team._id) {
+            return user.team._id === team._id;
           } else {
-            return user.team === team.name;
+            return user.team === team._id;
           }
         });
         return {
@@ -187,18 +187,20 @@ function Team() {
     setIsLoading(true);
     setError(null);
     try {
-      await userApi.updateUser(currentUserId, {
+      const result = await userApi.updateUser(currentUserId, {
         username: userForm.username,
         email: userForm.email,
         role: userForm.role,
         team: userForm.team,
         status: userForm.status,
       });
-      setUserModal(null);
-      setUserForm(initialUserForm);
-      setCurrentUserId(null);
-      fetchUsers(); // 重新获取用户列表
-      fetchTeams(); // 重新获取团队列表，更新团队人数
+      if (result.success) {
+        setUserModal(null);
+        setUserForm(initialUserForm);
+        setCurrentUserId(null);
+        fetchUsers(); // 重新获取用户列表
+        fetchTeams(); // 重新获取团队列表，更新团队人数
+      }
     } catch (err: any) {
       setError(err.message || "更新用户失败");
     } finally {
@@ -308,12 +310,12 @@ function Team() {
   // 打开编辑用户模态框
   const openEditModal = async (user: User) => {
     setCurrentUserId(user._id);
-    // 处理team字段，确保它是字符串
+    // 处理team字段，确保它是字符串（团队ID）
     let teamValue = "";
     if (user.team) {
       teamValue =
-        typeof user.team === "object" && user.team.name
-          ? user.team.name
+        typeof user.team === "object" && user.team._id
+          ? user.team._id
           : user.team;
     }
     setUserForm({
@@ -473,7 +475,14 @@ function Team() {
                                     {user.role === "admin"
                                       ? "超级管理员"
                                       : user.role === "hr"
-                                        ? `团队管理员 (${typeof user.team === "object" && user.team.name ? user.team.name : user.team || "无所属团队"})`
+                                        ? (() => {
+                                            const team = teams.find(
+                                              (t) => t._id === user.team,
+                                            );
+                                            return team
+                                              ? `团队管理员 (${team.name})`
+                                              : "团队管理员 (无所属团队)";
+                                          })()
                                         : "学生"}
                                   </div>
                                 </div>
@@ -483,9 +492,12 @@ function Team() {
                               {user.email}
                             </td>
                             <td className="px-6 py-4 text-sm text-neutral-900">
-                              {typeof user.team === "object" && user.team.name
-                                ? user.team.name
-                                : user.team || "无"}
+                              {(() => {
+                                const team = teams.find(
+                                  (t) => t._id === user.team,
+                                );
+                                return team ? team.name : "无";
+                              })()}
                             </td>
                             <td className="px-6 py-4 text-sm">
                               <span
@@ -820,7 +832,7 @@ function Team() {
                 >
                   <option value="">无</option>
                   {teams.map((team) => (
-                    <option key={team._id} value={team.name}>
+                    <option key={team._id} value={team._id}>
                       {team.name}
                     </option>
                   ))}

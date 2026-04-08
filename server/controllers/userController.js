@@ -89,6 +89,28 @@ class UserController {
         });
       }
 
+      // 处理旧数据：如果team字段是字符串（团队名称），则转换为团队ID
+      if (user.team && typeof user.team === "string") {
+        const teamModel = require("../models/teamModel");
+        const team = await teamModel.findTeamByName(user.team);
+        if (team) {
+          // 更新用户的team字段为团队ID
+          await userModel.updateUser(user._id.toString(), {
+            team: team._id.toString(),
+          });
+          user.team = team._id.toString();
+        } else {
+          // 如果团队不存在，清空team字段
+          await userModel.updateUser(user._id.toString(), { team: null });
+          user.team = null;
+        }
+      }
+
+      // 确保team字段是字符串格式
+      if (user.team && typeof user.team === "object") {
+        user.team = user.team.toString();
+      }
+
       // 移除密码字段，保护用户隐私
       const { password: _, ...userWithoutPassword } = user;
 
@@ -236,10 +258,33 @@ class UserController {
     try {
       // 调用模型获取所有用户
       const users = await userModel.findAllUsers();
+      const teamModel = require("../models/teamModel");
 
-      // 使用map方法为每个用户移除密码字段
-      // 对象解构：{ password, ...user } 表示提取password字段，剩余字段放到user对象中
-      const usersWithoutPassword = users.map(({ password, ...user }) => user);
+      // 处理每个用户的数据
+      const usersWithoutPassword = await Promise.all(
+        users.map(async ({ password, ...user }) => {
+          // 处理旧数据：如果team字段是字符串（团队名称），则转换为团队ID
+          if (user.team && typeof user.team === "string") {
+            const team = await teamModel.findTeamByName(user.team);
+            if (team) {
+              // 更新用户的team字段为团队ID
+              await userModel.updateUser(user._id.toString(), {
+                team: team._id.toString(),
+              });
+              user.team = team._id.toString();
+            } else {
+              // 如果团队不存在，清空team字段
+              await userModel.updateUser(user._id.toString(), { team: null });
+              user.team = null;
+            }
+          }
+          // 确保team字段是字符串格式
+          if (user.team && typeof user.team === "object") {
+            user.team = user.team.toString();
+          }
+          return user;
+        }),
+      );
 
       // 返回200 OK和用户列表
       res.status(200).json({
@@ -280,10 +325,32 @@ class UserController {
         limit,
         filter,
       );
+      const teamModel = require("../models/teamModel");
 
-      // 为返回的用户列表移除密码字段
-      const usersWithoutPassword = result.users.map(
-        ({ password, ...user }) => user,
+      // 处理每个用户的数据
+      const usersWithoutPassword = await Promise.all(
+        result.users.map(async ({ password, ...user }) => {
+          // 处理旧数据：如果team字段是字符串（团队名称），则转换为团队ID
+          if (user.team && typeof user.team === "string") {
+            const team = await teamModel.findTeamByName(user.team);
+            if (team) {
+              // 更新用户的team字段为团队ID
+              await userModel.updateUser(user._id.toString(), {
+                team: team._id.toString(),
+              });
+              user.team = team._id.toString();
+            } else {
+              // 如果团队不存在，清空team字段
+              await userModel.updateUser(user._id.toString(), { team: null });
+              user.team = null;
+            }
+          }
+          // 确保team字段是字符串格式
+          if (user.team && typeof user.team === "object") {
+            user.team = user.team.toString();
+          }
+          return user;
+        }),
       );
 
       // 返回200 OK和分页数据
@@ -361,6 +428,23 @@ class UserController {
         });
       }
 
+      // 处理旧数据：如果team字段是字符串（团队名称），则转换为团队ID
+      if (user.team && typeof user.team === "string") {
+        const teamModel = require("../models/teamModel");
+        const team = await teamModel.findTeamByName(user.team);
+        if (team) {
+          // 更新用户的team字段为团队ID
+          await userModel.updateUser(user._id.toString(), {
+            team: team._id.toString(),
+          });
+          user.team = team._id.toString();
+        } else {
+          // 如果团队不存在，清空team字段
+          await userModel.updateUser(user._id.toString(), { team: null });
+          user.team = null;
+        }
+      }
+
       // 检查用户账号状态
       if (user.status !== "active") {
         // 账号被禁用，返回403 Forbidden
@@ -386,8 +470,18 @@ class UserController {
       // 移除密码字段，避免返回敏感信息
       const { password: _, ...userWithoutPassword } = user;
 
+      // 确保team字段是字符串格式
+      if (
+        userWithoutPassword.team &&
+        typeof userWithoutPassword.team === "object"
+      ) {
+        userWithoutPassword.team = userWithoutPassword.team.toString();
+      }
+
       // 生成token
       const token = generateToken(user);
+
+      console.log("登录返回的用户信息:", userWithoutPassword);
 
       // 返回200 OK、用户信息和token
       res.status(200).json({

@@ -93,7 +93,13 @@ export default {
   // 获取所有报名记录
   getApplications: async (): Promise<Application[]> => {
     const response = await apiClient.get("/applications");
-    return response.data.data;
+    return response.data.data || [];
+  },
+
+  // 根据团队ID获取报名记录
+  getApplicationsByTeam: async (teamId: string): Promise<Application[]> => {
+    const response = await apiClient.get(`/applications/team/${teamId}`);
+    return response.data.data || [];
   },
 
   // 获取单个报名记录

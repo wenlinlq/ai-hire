@@ -189,9 +189,18 @@ class PositionModel {
   async findPositionsByTeam(teamId) {
     try {
       const collection = this.getCollection();
+      // 验证teamId是否是有效的ObjectId
+      let objectId;
+      try {
+        objectId = new ObjectId(teamId);
+      } catch (error) {
+        // 如果teamId不是有效的ObjectId，返回空数组
+        console.warn(`Invalid teamId: ${teamId}`);
+        return [];
+      }
       // 使用 find 方法查询所有具有指定团队的岗位
       // toArray() 将查询结果转换为数组
-      return await collection.find({ teamId: new ObjectId(teamId) }).toArray();
+      return await collection.find({ teamId: objectId }).toArray();
     } catch (error) {
       // 查询失败时输出错误信息
       console.error("Error finding positions by team:", error);

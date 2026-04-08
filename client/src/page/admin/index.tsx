@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { LogoMark } from "../../components/site";
 import positionApi from "../../api/positionApi";
 import applicationApi from "../../api/applicationApi";
+import userApi from "../../api/userApi";
 
 type AdminTab = "dashboard" | "jobs" | "candidates" | "interviews";
 type AdminModal = "job" | "candidate" | "interview" | null;
@@ -158,6 +159,7 @@ function Admin() {
     grade: "",
     major: "",
     positionId: "",
+    teamId: "",
     resume: null,
   });
 
@@ -166,15 +168,37 @@ function Admin() {
   // 当前查看的候选人信息
   const [currentCandidate, setCurrentCandidate] = useState<any>(null);
 
+  // 当前用户信息
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // 获取当前用户信息
+  useEffect(() => {
+    const user = userApi.getCurrentUser();
+    setCurrentUser(user);
+  }, []);
+
   // 获取职位列表
   const fetchJobs = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const jobList = await positionApi.getPositions();
+      let jobList;
+      // 如果当前用户有团队ID，则获取该团队的职位；否则获取所有职位
+      console.log("当前用户信息:", currentUser);
+      console.log("当前用户team字段:", currentUser?.team);
+      console.log("team字段类型:", typeof currentUser?.team);
+
+      if (currentUser?.team) {
+        jobList = await positionApi.getPositionsByTeam(currentUser.team);
+        console.log("根据团队获取的职位列表:", jobList);
+      } else {
+        jobList = await positionApi.getPositions();
+        console.log("获取的所有职位列表:", jobList);
+      }
       // 确保jobList是一个数组
       setJobs(Array.isArray(jobList) ? jobList : []);
     } catch (err: any) {
+      console.error("获取职位列表错误:", err);
       setError(err.message || "获取职位列表失败");
       // 发生错误时，确保jobs是一个空数组
       setJobs([]);
@@ -188,7 +212,15 @@ function Admin() {
     setIsLoadingCandidates(true);
     setErrorCandidates(null);
     try {
-      const candidateList = await applicationApi.getApplications();
+      let candidateList;
+      // 如果当前用户有团队ID，则获取该团队的候选人；否则获取所有候选人
+      if (currentUser?.team) {
+        candidateList = await applicationApi.getApplicationsByTeam(
+          currentUser.team,
+        );
+      } else {
+        candidateList = await applicationApi.getApplications();
+      }
       // 确保candidateList是一个数组
       setCandidates(Array.isArray(candidateList) ? candidateList : []);
     } catch (err: any) {
@@ -203,12 +235,14 @@ function Admin() {
   // 组件挂载时获取数据
   useEffect(() => {
     // 无论当前标签页是什么，都获取职位列表，因为导入候选人弹窗需要使用
-    fetchJobs();
+    if (currentUser) {
+      fetchJobs();
 
-    if (activeTab === "candidates") {
-      fetchCandidates();
+      if (activeTab === "candidates") {
+        fetchCandidates();
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, currentUser]);
 
   return (
     <div className="flex min-h-screen bg-neutral-50 text-neutral-700">
@@ -381,7 +415,7 @@ function Admin() {
                       benefits: [],
                       status: "open",
                       deadline: "",
-                      teamId: "",
+                      teamId: currentUser?.team || "",
                     });
                     openModal("job");
                   }}
@@ -557,7 +591,20 @@ function Admin() {
                 <button
                   type="button"
                   className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => openModal("candidate")}
+                  onClick={() => {
+                    // 重置表单，设置团队ID为当前用户的团队ID
+                    setCandidateForm({
+                      name: "",
+                      phone: "",
+                      email: "",
+                      grade: "",
+                      major: "",
+                      positionId: "",
+                      teamId: currentUser?.team || "",
+                      resume: null,
+                    });
+                    openModal("candidate");
+                  }}
                 >
                   导入候选人
                 </button>
@@ -926,12 +973,19 @@ function Admin() {
                 <select
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
                   value={candidateForm.positionId}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const selectedJobId = e.target.value;
+                    // 查找所选职位的信息
+                    const selectedJob = jobs.find(
+                      (job) => job._id === selectedJobId,
+                    );
                     setCandidateForm({
                       ...candidateForm,
-                      positionId: e.target.value,
-                    })
-                  }
+                      positionId: selectedJobId,
+                      // 自动设置teamId为所选职位的teamId
+                      teamId: selectedJob?.teamId || currentUser?.team || "",
+                    });
+                  }}
                 >
                   <option value="">选择导入岗位</option>
                   {jobs.map((job) => (
@@ -1011,6 +1065,7 @@ function Admin() {
                       formData.append("grade", candidateForm.grade);
                       formData.append("major", candidateForm.major);
                       formData.append("positionId", candidateForm.positionId);
+                      formData.append("teamId", candidateForm.teamId);
                       if (candidateForm.resume) {
                         formData.append("resume", candidateForm.resume);
                       }
@@ -1028,6 +1083,7 @@ function Admin() {
                         grade: "",
                         major: "",
                         positionId: "",
+                        teamId: "",
                         resume: null,
                       });
                     } else {
@@ -1040,7 +1096,7 @@ function Admin() {
                         // 添加创建人信息
                         createdBy: user?._id || "660a0b6c4f1a2b3c4d5e6f70", // 使用有效的默认ObjectId
                         // 确保teamId有值且格式正确
-                        teamId: "660a0b6c4f1a2b3c4d5e6f71", // 固定使用有效的默认ObjectId
+                        teamId: currentUser?.team || "", // 使用当前用户的team，不使用硬编码的默认值
                       };
                       if (currentJobId) {
                         // 编辑职位

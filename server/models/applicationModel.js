@@ -31,6 +31,9 @@ class ApplicationModel {
       // 创建 aiScore 普通索引
       await collection.createIndex({ aiScore: 1 }, { name: "idx_ai_score" });
 
+      // 创建 teamId 普通索引
+      await collection.createIndex({ teamId: 1 }, { name: "idx_team_id" });
+
       console.log("Application indexes initialized successfully");
     } catch (error) {
       console.error("Error initializing application indexes:", error);
@@ -50,6 +53,10 @@ class ApplicationModel {
         studentId: applicationData.studentId,
         // 简历ID
         resumeId: applicationData.resumeId,
+        // 团队ID
+        teamId: applicationData.teamId
+          ? new ObjectId(applicationData.teamId)
+          : null,
         // 状态
         status: applicationData.status || "pending",
         // 年级
@@ -169,6 +176,9 @@ class ApplicationModel {
       if (updateData.resumeId) {
         update.$set.resumeId = new ObjectId(updateData.resumeId);
       }
+      if (updateData.teamId) {
+        update.$set.teamId = new ObjectId(updateData.teamId);
+      }
       if (updateData.interviewId) {
         update.$set.interviewId = new ObjectId(updateData.interviewId);
       }
@@ -247,6 +257,32 @@ class ApplicationModel {
       return applications;
     } catch (error) {
       console.error("Error finding all applications:", error);
+      throw error;
+    }
+  }
+
+  // 根据团队ID查找报名记录
+  async findApplicationsByTeamId(teamId) {
+    try {
+      const collection = this.getCollection();
+      // 验证teamId是否是有效的ObjectId
+      let objectId;
+      try {
+        objectId = new ObjectId(teamId);
+      } catch (error) {
+        // 如果teamId不是有效的ObjectId，返回空数组
+        console.warn(`Invalid teamId: ${teamId}`);
+        return [];
+      }
+      // 根据 teamId 查找报名记录
+      const applications = await collection
+        .find({
+          teamId: objectId,
+        })
+        .toArray();
+      return applications;
+    } catch (error) {
+      console.error("Error finding applications by team id:", error);
       throw error;
     }
   }

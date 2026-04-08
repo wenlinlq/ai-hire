@@ -119,10 +119,18 @@ const userApi = {
   },
 
   // 更新用户信息
-  updateUser: async (id: string, data: Partial<User>): Promise<boolean> => {
+  updateUser: async (id: string, data: Partial<User>): Promise<{ success: boolean; user: User }> => {
     try {
       const response = await api.put(`/users/${id}`, data);
-      return response.success;
+      // 如果更新的是当前登录用户，更新localStorage中的用户信息
+      const currentUser = userApi.getCurrentUser();
+      if (currentUser && currentUser._id === id) {
+        localStorage.setItem("user", JSON.stringify(response.data));
+      }
+      return {
+        success: response.success,
+        user: response.data
+      };
     } catch (error: any) {
       throw new Error(error.response?.data?.message || "更新用户失败");
     }

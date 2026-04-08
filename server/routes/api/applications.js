@@ -68,4 +68,11 @@ router.post(
   applicationController.importCandidate,
 );
 
+// 根据团队ID获取报名记录
+router.get(
+  "/team/:teamId",
+  verifyToken,
+  applicationController.getApplicationsByTeam,
+);
+
 module.exports = router;

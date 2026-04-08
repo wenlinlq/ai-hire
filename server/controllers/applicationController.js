@@ -275,7 +275,7 @@ const applicationController = {
     try {
       console.log("收到的请求数据:", req.body);
       console.log("收到的文件:", req.file);
-      const { name, phone, email, grade, major, positionId } = req.body;
+      const { name, phone, email, grade, major, positionId, teamId } = req.body;
 
       // 验证必要参数
       if (!name || !phone || !email || !positionId) {
@@ -291,6 +291,7 @@ const applicationController = {
         positionId,
         studentId: email, // 使用邮箱作为学生ID
         resumeId: req.file ? req.file.filename : "", // 保存上传的简历文件名
+        teamId: teamId || null, // 添加团队ID
         status: "pending",
         grade,
         major,
@@ -320,6 +321,42 @@ const applicationController = {
       res.status(500).json({
         success: false,
         message: "导入候选人失败",
+        error: error.message,
+      });
+    }
+  },
+
+  // 根据团队ID获取报名记录
+  async getApplicationsByTeam(req, res) {
+    try {
+      const { teamId } = req.params;
+      const applications =
+        await applicationModel.findApplicationsByTeamId(teamId);
+
+      // 从数据库获取职位信息
+      const jobs = await positionModel.findAllPositions();
+      const jobMap = new Map();
+      jobs.forEach((job) => {
+        jobMap.set(job._id.toString(), job.title);
+      });
+
+      // 为每个报名记录添加职位名称
+      const applicationsWithJobTitle = applications.map((application) => ({
+        ...application,
+        positionName:
+          jobMap.get(application.positionId.toString()) ||
+          application.positionId,
+      }));
+
+      res.status(200).json({
+        success: true,
+        data: applicationsWithJobTitle,
+      });
+    } catch (error) {
+      console.error("Error getting applications by team:", error);
+      res.status(500).json({
+        success: false,
+        message: "获取报名记录失败",
         error: error.message,
       });
     }

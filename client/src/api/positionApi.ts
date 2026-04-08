@@ -92,7 +92,14 @@ interface PositionUpdate {
 const positionApi = {
   // 获取职位列表
   getPositions: async (): Promise<Position[]> => {
-    const response = await apiClient.get('/positions');
+    const response = await apiClient.get("/positions");
+    // 服务器返回的是 { success: boolean, message: string, data: Position[] }
+    return response.data.data || [];
+  },
+
+  // 根据团队ID获取职位列表
+  getPositionsByTeam: async (teamId: string): Promise<Position[]> => {
+    const response = await apiClient.get(`/positions/team/${teamId}`);
     // 服务器返回的是 { success: boolean, message: string, data: Position[] }
     return response.data.data || [];
   },
@@ -106,13 +113,16 @@ const positionApi = {
 
   // 创建职位
   createPosition: async (position: PositionCreate): Promise<Position> => {
-    const response = await apiClient.post('/positions', position);
+    const response = await apiClient.post("/positions", position);
     // 服务器返回的是 { success: boolean, message: string, data: Position }
     return response.data.data;
   },
 
   // 更新职位
-  updatePosition: async (id: string, position: PositionUpdate): Promise<Position> => {
+  updatePosition: async (
+    id: string,
+    position: PositionUpdate,
+  ): Promise<Position> => {
     const response = await apiClient.put(`/positions/${id}`, position);
     // 服务器返回的是 { success: boolean, message: string, data: Position }
     return response.data.data;

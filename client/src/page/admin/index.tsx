@@ -288,9 +288,13 @@ function Admin() {
           <h1 className="text-xl font-bold text-neutral-800">管理后台</h1>
           <div className="flex items-center space-x-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
-              <span className="font-semibold text-primary-600">张</span>
+              <span className="font-semibold text-primary-600">
+                {currentUser?.username?.charAt(0)?.toUpperCase() || "U"}
+              </span>
             </div>
-            <span className="text-sm font-medium text-neutral-700">张经理</span>
+            <span className="text-sm font-medium text-neutral-700">
+              {currentUser?.username || "用户"}
+            </span>
           </div>
         </header>
 

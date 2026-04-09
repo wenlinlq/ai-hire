@@ -2,24 +2,11 @@ import { useState, useEffect } from "react";
 import { SiteFooter, SiteNav } from "../../components/site";
 import positionApi from "../../api/positionApi";
 import teamApi from "../../api/teamApi";
+import favoriteApi from "../../api/favoriteApi";
+import userApi from "../../api/userApi";
 
-const hotKeywords = [
-  "前端开发",
-  "Java工程师",
-  "产品经理",
-  "UI设计师",
-  "算法工程师",
-  "数据分析师",
-];
-const experienceFilters = [
-  "不限",
-  "应届生",
-  "1-3年",
-  "3-5年",
-  "5-10年",
-  "10年以上",
-];
-const educationFilters = ["不限", "大专", "本科", "硕士", "博士"];
+const hotKeywords = ["学生会", "协会", "社团", "工作室", "项目班"];
+const gradeFilters = ["不限", "大一", "大二", "大三", "大四"];
 
 interface Job {
   _id: string;
@@ -68,17 +55,14 @@ function FavoriteIcon({ filled }: { filled: boolean }) {
 
 function Hall() {
   const [keyword, setKeyword] = useState("");
-  const [city, setCity] = useState("全部城市");
   const [jobType, setJobType] = useState("全部类型");
-  const [salary, setSalary] = useState("全部薪资");
-  const [experience, setExperience] = useState("不限");
-  const [education, setEducation] = useState("不限");
+  const [grade, setGrade] = useState("不限");
   const [sort, setSort] = useState("推荐排序");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [favoriteJobs, setFavoriteJobs] = useState<Record<string, boolean>>({});
 
-  // 加载职位数据
+  // 加载职位数据和收藏状态
   useEffect(() => {
     const fetchJobs = async () => {
       try {
@@ -99,11 +83,28 @@ function Hall() {
         }));
 
         setJobs(jobsWithTeamName);
+
         // 初始化收藏状态
         const initialFavorites: Record<string, boolean> = {};
         jobsWithTeamName.forEach((job) => {
           initialFavorites[job._id] = false;
         });
+
+        // 获取用户收藏状态
+        const currentUser = userApi.getCurrentUser();
+        if (currentUser) {
+          try {
+            const favoriteIds = await favoriteApi.getUserFavorites(
+              currentUser._id,
+            );
+            favoriteIds.forEach((id) => {
+              initialFavorites[id] = true;
+            });
+          } catch (error) {
+            console.error("获取收藏状态失败:", error);
+          }
+        }
+
         setFavoriteJobs(initialFavorites);
       } catch (error) {
         console.error("获取职位数据失败:", error);
@@ -121,9 +122,7 @@ function Hall() {
       `${job.title}${job.department}${job.requirements.skills.join("")}${job.requirements.description}`.includes(
         keyword.trim(),
       );
-    // 简化城市匹配，因为API返回的数据中没有城市信息
-    const cityMatched = city === "全部城市";
-    return keywordMatched && cityMatched;
+    return keywordMatched;
   });
 
   return (
@@ -164,29 +163,10 @@ function Hall() {
 
             {[
               [
-                "工作地点",
-                city,
-                setCity,
-                ["全部城市", "北京", "上海", "广州", "深圳", "杭州", "成都"],
-              ],
-              [
                 "职位类型",
                 jobType,
                 setJobType,
                 ["全部类型", "全职", "兼职", "实习", "远程"],
-              ],
-              [
-                "薪资范围",
-                salary,
-                setSalary,
-                [
-                  "全部薪资",
-                  "10k以下",
-                  "10k-20k",
-                  "20k-30k",
-                  "30k-50k",
-                  "50k以上",
-                ],
               ],
             ].map(([label, value, setter, options]) => (
               <div key={label as string} className="md:w-48">
@@ -234,33 +214,32 @@ function Hall() {
 
         <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center gap-6">
-            {[
-              ["工作经验：", experience, setExperience, experienceFilters],
-              ["学历要求：", education, setEducation, educationFilters],
-            ].map(([label, value, setter, options]) => (
-              <div
-                key={label as string}
-                className="flex flex-wrap items-center gap-2"
-              >
-                <span className="text-sm font-medium text-neutral-600">
-                  {label as string}
-                </span>
-                {(options as string[]).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                      value === item
-                        ? "bg-primary-500 text-white"
-                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                    }`}
-                    onClick={() => (setter as (value: string) => void)(item)}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            ))}
+            {[["年级要求：", grade, setGrade, gradeFilters]].map(
+              ([label, value, setter, options]) => (
+                <div
+                  key={label as string}
+                  className="flex flex-wrap items-center gap-2"
+                >
+                  <span className="text-sm font-medium text-neutral-600">
+                    {label as string}
+                  </span>
+                  {(options as string[]).map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                        value === item
+                          ? "bg-primary-500 text-white"
+                          : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                      }`}
+                      onClick={() => (setter as (value: string) => void)(item)}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              ),
+            )}
           </div>
         </div>
 
@@ -316,12 +295,40 @@ function Hall() {
                         : `收藏${job.title}`
                     }
                     className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-neutral-100 transition-colors hover:bg-primary-50"
-                    onClick={() =>
-                      setFavoriteJobs((current) => ({
-                        ...current,
-                        [job._id]: !current[job._id],
-                      }))
-                    }
+                    onClick={async () => {
+                      const currentUser = userApi.getCurrentUser();
+                      if (!currentUser) {
+                        alert("请先登录");
+                        return;
+                      }
+
+                      try {
+                        if (favoriteJobs[job._id]) {
+                          // 取消收藏
+                          await favoriteApi.removeFavorite(
+                            currentUser._id,
+                            job._id,
+                          );
+                          setFavoriteJobs((current) => ({
+                            ...current,
+                            [job._id]: false,
+                          }));
+                        } else {
+                          // 添加收藏
+                          await favoriteApi.addFavorite(
+                            currentUser._id,
+                            job._id,
+                          );
+                          setFavoriteJobs((current) => ({
+                            ...current,
+                            [job._id]: true,
+                          }));
+                        }
+                      } catch (error) {
+                        console.error("操作收藏失败:", error);
+                        alert("操作收藏失败，请重试");
+                      }
+                    }}
                   >
                     <FavoriteIcon filled={favoriteJobs[job._id] || false} />
                   </button>

@@ -13,12 +13,18 @@ const teamModel = require("./models/teamModel");
 const positionModel = require("./models/positionModel");
 // 导入报名模型
 const applicationModel = require("./models/applicationModel");
+// 导入收藏模型
+const favoriteModel = require("./models/favoriteModel");
+// 导入简历模型
+const resumeModel = require("./models/resumeModel");
 
 var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/api/users");
 var teamsRouter = require("./routes/api/teams");
 var positionsRouter = require("./routes/api/positions");
 var applicationsRouter = require("./routes/api/applications");
+var favoritesRouter = require("./routes/api/favorites");
+var resumesRouter = require("./routes/api/resumes");
 
 var app = express();
 
@@ -41,13 +47,15 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 // 提供上传文件的静态文件服务
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/", indexRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/teams", teamsRouter);
 app.use("/api/positions", positionsRouter);
 app.use("/api/applications", applicationsRouter);
+app.use("/api/favorites", favoritesRouter);
+app.use("/api/resumes", resumesRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -74,6 +82,10 @@ async function initIndexes() {
     // await teamModel.initIndexes();
     // 初始化岗位模型索引
     // await positionModel.initIndexes();
+    // 初始化收藏模型索引
+    await favoriteModel.initIndexes();
+    // 初始化简历模型索引
+    await resumeModel.initIndexes();
     console.log("Database indexes initialized successfully");
   } catch (error) {
     console.error("Error initializing database indexes:", error);

@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { SiteFooter, SiteNav } from "../../components/site";
 import positionApi from "../../api/positionApi";
 import teamApi from "../../api/teamApi";
+import favoriteApi from "../../api/favoriteApi";
+import userApi from "../../api/userApi";
 
 const slides = [
   {
@@ -273,6 +275,21 @@ function Home() {
           initialFavorites[job._id] = false;
         });
 
+        // 获取用户收藏状态
+        const currentUser = userApi.getCurrentUser();
+        if (currentUser) {
+          try {
+            const favoriteIds = await favoriteApi.getUserFavorites(
+              currentUser._id,
+            );
+            favoriteIds.forEach((id) => {
+              initialFavorites[id] = true;
+            });
+          } catch (error) {
+            console.error("获取收藏状态失败:", error);
+          }
+        }
+
         setJobs(jobsWithTeamName);
         setFavoriteJobs(initialFavorites);
       } catch (error) {
@@ -478,12 +495,40 @@ function Home() {
                           : `收藏${job.title}`
                       }
                       className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 transition-colors hover:bg-primary-50"
-                      onClick={() =>
-                        setFavoriteJobs((current) => ({
-                          ...current,
-                          [job._id]: !current[job._id],
-                        }))
-                      }
+                      onClick={async () => {
+                        const currentUser = userApi.getCurrentUser();
+                        if (!currentUser) {
+                          alert("请先登录");
+                          return;
+                        }
+
+                        try {
+                          if (favoriteJobs[job._id]) {
+                            // 取消收藏
+                            await favoriteApi.removeFavorite(
+                              currentUser._id,
+                              job._id,
+                            );
+                            setFavoriteJobs((current) => ({
+                              ...current,
+                              [job._id]: false,
+                            }));
+                          } else {
+                            // 添加收藏
+                            await favoriteApi.addFavorite(
+                              currentUser._id,
+                              job._id,
+                            );
+                            setFavoriteJobs((current) => ({
+                              ...current,
+                              [job._id]: true,
+                            }));
+                          }
+                        } catch (error) {
+                          console.error("操作收藏失败:", error);
+                          alert("操作收藏失败，请重试");
+                        }
+                      }}
                     >
                       <FavoriteIcon filled={favoriteJobs[job._id] || false} />
                     </button>

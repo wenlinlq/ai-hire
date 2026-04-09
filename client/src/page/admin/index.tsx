@@ -1296,7 +1296,7 @@ function Admin() {
                 <div className="text-sm text-neutral-900">
                   {currentCandidate.resumeId ? (
                     <a
-                      href={`http://localhost:3000/uploads/${currentCandidate.resumeId}`}
+                      href={`http://localhost:3000/uploads/${encodeURIComponent(currentCandidate.resumeId)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary-600 hover:text-primary-900"

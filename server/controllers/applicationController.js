@@ -2,6 +2,7 @@ const applicationModel = require("../models/applicationModel");
 const positionModel = require("../models/positionModel");
 const multer = require("multer");
 const path = require("path");
+const iconv = require("iconv-lite");
 
 // 配置multer
 const storage = multer.diskStorage({
@@ -9,7 +10,18 @@ const storage = multer.diskStorage({
     cb(null, path.join(__dirname, "../uploads"));
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
+    // 处理中文文件名编码
+    try {
+      // 尝试将文件名从UTF-8转换为GBK，再转换回UTF-8，确保正确处理
+      const decodedName = iconv.decode(
+        Buffer.from(file.originalname, "binary"),
+        "utf8",
+      );
+      cb(null, decodedName);
+    } catch (error) {
+      // 如果转换失败，使用原始文件名
+      cb(null, file.originalname);
+    }
   },
 });
 

@@ -1,6 +1,11 @@
 import { ChangeEvent, useMemo, useRef, useState, useEffect } from "react";
 import userApi from "../../api/userApi";
 import type { User } from "../../api/userApi";
+import favoriteApi from "../../api/favoriteApi";
+import positionApi from "../../api/positionApi";
+import type { Position } from "../../api/positionApi";
+import resumeApi from "../../api/resumeApi";
+import type { Resume } from "../../api/resumeApi";
 
 type ProfileTab = "profile" | "resume" | "favorites" | "interviews";
 
@@ -16,32 +21,14 @@ type ProfileForm = {
 type ResumeItem = {
   name: string;
   uploadedAt: string;
-  type: "PDF" | "DOC" | "DOCX";
+  type: "PDF" | "DOC" | "DOCX" | "JPG" | "PNG";
+  _id: string;
+  isActive: boolean;
 };
 
-const favoriteJobs = [
-  {
-    title: "高级前端工程师",
-    company: "阿里巴巴 · 杭州 · 3-5年",
-    interviewType: "online",
-    tags: ["React", "TypeScript", "Node.js"],
-    savedAt: "2024-01-14",
-  },
-  {
-    title: "产品经理",
-    company: "腾讯 · 深圳 · 3-5年",
-    interviewType: "offline",
-    tags: ["产品设计", "数据分析", "项目管理"],
-    savedAt: "2024-01-13",
-  },
-  {
-    title: "UI设计师",
-    company: "字节跳动 · 北京 · 1-3年",
-    interviewType: "online",
-    tags: ["Figma", "Sketch", "动效设计"],
-    savedAt: "2024-01-12",
-  },
-] as const;
+type FavoriteJob = Position & {
+  savedAt: string;
+};
 
 const interviewHistory = [
   {
@@ -90,13 +77,10 @@ function Profile() {
     intro: "",
     _id: "",
   });
-  const [resumes, setResumes] = useState<ResumeItem[]>([
-    {
-      name: "张三_前端工程师.pdf",
-      uploadedAt: "2024-01-15 14:30",
-      type: "PDF",
-    },
-  ]);
+  const [resumes, setResumes] = useState<ResumeItem[]>([]);
+  const [favoriteJobs, setFavoriteJobs] = useState<FavoriteJob[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [resumeLoading, setResumeLoading] = useState(false);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [newPhone, setNewPhone] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -134,32 +118,124 @@ function Profile() {
     }
   }, []);
 
+  // 获取收藏职位数据
+  useEffect(() => {
+    const fetchFavoriteJobs = async () => {
+      const user = userApi.getCurrentUser();
+      if (!user) {
+        return;
+      }
+
+      try {
+        setLoading(true);
+        // 获取用户收藏的职位ID列表
+        const favoriteIds = await favoriteApi.getUserFavorites(user._id);
+
+        if (favoriteIds.length === 0) {
+          setFavoriteJobs([]);
+          return;
+        }
+
+        // 获取所有职位数据
+        const allPositions = await positionApi.getPositions();
+
+        // 过滤出用户收藏的职位
+        const favoriteJobsData = allPositions
+          .filter((position) => favoriteIds.includes(position._id))
+          .map((position) => ({
+            ...position,
+            savedAt: new Date().toISOString().split("T")[0], // 这里应该从收藏记录中获取实际的收藏时间
+          }));
+
+        setFavoriteJobs(favoriteJobsData);
+      } catch (error) {
+        console.error("获取收藏职位失败:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFavoriteJobs();
+  }, []);
+
+  // 获取简历数据
+  useEffect(() => {
+    const fetchResumes = async () => {
+      const user = userApi.getCurrentUser();
+      if (!user) {
+        return;
+      }
+
+      try {
+        setResumeLoading(true);
+        // 获取用户的所有简历
+        const resumeData = await resumeApi.getStudentResumes();
+
+        // 转换为前端需要的格式
+        const formattedResumes: ResumeItem[] = resumeData.map((resume) => ({
+          _id: resume._id,
+          name: resume.fileUrl.split("/").pop() || "resume",
+          uploadedAt: new Date(resume.createdAt).toLocaleString("zh-CN"),
+          type: resume.fileType.toUpperCase() as
+            | "PDF"
+            | "DOC"
+            | "DOCX"
+            | "JPG"
+            | "PNG",
+          isActive: resume.isActive,
+        }));
+
+        setResumes(formattedResumes);
+      } catch (error) {
+        console.error("获取简历数据失败:", error);
+      } finally {
+        setResumeLoading(false);
+      }
+    };
+
+    fetchResumes();
+  }, []);
+
   // 保存activeTab到localStorage
   useEffect(() => {
     localStorage.setItem("profileActiveTab", activeTab);
   }, [activeTab]);
 
-  const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
     }
 
-    const extension = file.name.split(".").pop()?.toUpperCase();
-    const type =
-      extension === "DOC" || extension === "DOCX" ? extension : "PDF";
-    const now = new Date();
-
-    setResumes((current) => [
-      {
-        name: file.name,
-        uploadedAt: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
-        type,
-      },
-      ...current,
-    ]);
-
-    event.target.value = "";
+    try {
+      setResumeLoading(true);
+      // 调用API上传简历
+      await resumeApi.uploadResume(file);
+      // 重新获取简历列表
+      const user = userApi.getCurrentUser();
+      if (user) {
+        const resumeData = await resumeApi.getStudentResumes();
+        const formattedResumes: ResumeItem[] = resumeData.map((resume) => ({
+          _id: resume._id,
+          name: resume.fileUrl.split("/").pop() || "resume",
+          uploadedAt: new Date(resume.createdAt).toLocaleString("zh-CN"),
+          type: resume.fileType.toUpperCase() as
+            | "PDF"
+            | "DOC"
+            | "DOCX"
+            | "JPG"
+            | "PNG",
+          isActive: resume.isActive,
+        }));
+        setResumes(formattedResumes);
+      }
+    } catch (error) {
+      console.error("上传简历失败:", error);
+      alert("上传简历失败，请重试");
+    } finally {
+      setResumeLoading(false);
+      event.target.value = "";
+    }
   };
 
   const handleChangePhone = () => {
@@ -383,14 +459,14 @@ function Profile() {
                     点击或拖拽上传简历
                   </p>
                   <p className="text-sm text-neutral-500">
-                    支持 PDF、DOC、DOCX 格式，文件大小不超过 10MB
+                    支持 PDF、DOC、DOCX、JPG、PNG 格式，文件大小不超过 10MB
                   </p>
                 </button>
                 <input
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
-                  accept=".pdf,.doc,.docx"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   onChange={handleUpload}
                 />
 
@@ -398,53 +474,163 @@ function Profile() {
                   <h3 className="mb-4 text-lg font-semibold text-neutral-800">
                     已上传简历
                   </h3>
-                  <div className="space-y-4">
-                    {resumes.map((resume) => (
-                      <div
-                        key={`${resume.name}-${resume.uploadedAt}`}
-                        className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 p-4"
+                  {resumeLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                    </div>
+                  ) : resumes.length === 0 ? (
+                    <div className="text-center py-12">
+                      <svg
+                        className="mx-auto h-16 w-16 text-neutral-300"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
                       >
-                        <div className="flex items-center space-x-4">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100">
-                            <span className="font-bold text-red-600">
-                              {resume.type}
-                            </span>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      <p className="mt-4 text-lg text-neutral-500">
+                        暂无上传的简历
+                      </p>
+                      <p className="mt-2 text-sm text-neutral-400">
+                        点击上方按钮上传您的简历
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {resumes.map((resume) => (
+                        <div
+                          key={resume._id}
+                          className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 p-4"
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100">
+                              <span className="font-bold text-red-600">
+                                {resume.type}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <p className="font-medium text-neutral-800">
+                                  {resume.name}
+                                </p>
+                                {resume.isActive && (
+                                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                                    当前简历
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-neutral-500">
+                                上传时间：{resume.uploadedAt}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-neutral-800">
-                              {resume.name}
-                            </p>
-                            <p className="text-sm text-neutral-500">
-                              上传时间：{resume.uploadedAt}
-                            </p>
+                          <div className="flex space-x-2">
+                            <button
+                              type="button"
+                              className="rounded-lg px-4 py-2 text-primary-600 transition-colors hover:bg-primary-50"
+                              onClick={() => {
+                                // 查看简历
+                                window.open(
+                                  `http://localhost:3000/uploads/${encodeURIComponent(resume.name)}`,
+                                  "_blank",
+                                );
+                              }}
+                            >
+                              查看
+                            </button>
+                            {!resume.isActive && (
+                              <button
+                                type="button"
+                                className="rounded-lg px-4 py-2 text-blue-600 transition-colors hover:bg-blue-50"
+                                onClick={async () => {
+                                  try {
+                                    await resumeApi.setCurrentResume(
+                                      resume._id,
+                                    );
+                                    // 重新获取简历列表
+                                    const user = userApi.getCurrentUser();
+                                    if (user) {
+                                      const resumeData =
+                                        await resumeApi.getStudentResumes();
+                                      const formattedResumes: ResumeItem[] =
+                                        resumeData.map((r) => ({
+                                          _id: r._id,
+                                          name:
+                                            r.fileUrl.split("/").pop() ||
+                                            "resume",
+                                          uploadedAt: new Date(
+                                            r.createdAt,
+                                          ).toLocaleString("zh-CN"),
+                                          type: r.fileType.toUpperCase() as
+                                            | "PDF"
+                                            | "DOC"
+                                            | "DOCX"
+                                            | "JPG"
+                                            | "PNG",
+                                          isActive: r.isActive,
+                                        }));
+                                      setResumes(formattedResumes);
+                                    }
+                                  } catch (error) {
+                                    console.error("设置当前简历失败:", error);
+                                    alert("设置当前简历失败，请重试");
+                                  }
+                                }}
+                              >
+                                设为当前
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="rounded-lg px-4 py-2 text-red-600 transition-colors hover:bg-red-50"
+                              onClick={async () => {
+                                if (window.confirm("确定要删除这份简历吗？")) {
+                                  try {
+                                    await resumeApi.deleteResume(resume._id);
+                                    // 重新获取简历列表
+                                    const user = userApi.getCurrentUser();
+                                    if (user) {
+                                      const resumeData =
+                                        await resumeApi.getStudentResumes();
+                                      const formattedResumes: ResumeItem[] =
+                                        resumeData.map((r) => ({
+                                          _id: r._id,
+                                          name:
+                                            r.fileUrl.split("/").pop() ||
+                                            "resume",
+                                          uploadedAt: new Date(
+                                            r.createdAt,
+                                          ).toLocaleString("zh-CN"),
+                                          type: r.fileType.toUpperCase() as
+                                            | "PDF"
+                                            | "DOC"
+                                            | "DOCX"
+                                            | "JPG"
+                                            | "PNG",
+                                          isActive: r.isActive,
+                                        }));
+                                      setResumes(formattedResumes);
+                                    }
+                                  } catch (error) {
+                                    console.error("删除简历失败:", error);
+                                    alert("删除简历失败，请重试");
+                                  }
+                                }
+                              }}
+                            >
+                              删除
+                            </button>
                           </div>
                         </div>
-                        <div className="flex space-x-2">
-                          <button
-                            type="button"
-                            className="rounded-lg px-4 py-2 text-primary-600 transition-colors hover:bg-primary-50"
-                          >
-                            查看
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-lg px-4 py-2 text-red-600 transition-colors hover:bg-red-50"
-                            onClick={() =>
-                              setResumes((current) =>
-                                current.filter(
-                                  (item) =>
-                                    item.name !== resume.name ||
-                                    item.uploadedAt !== resume.uploadedAt,
-                                ),
-                              )
-                            }
-                          >
-                            删除
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -462,41 +648,70 @@ function Profile() {
                     一键投递
                   </button>
                 </div>
-                <div className="space-y-4">
-                  {favoriteJobs.map((job) => (
-                    <div
-                      key={job.title}
-                      className="rounded-xl border border-neutral-200 p-6 transition-shadow hover:shadow-md"
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                  </div>
+                ) : favoriteJobs.length === 0 ? (
+                  <div className="text-center py-12">
+                    <svg
+                      className="mx-auto h-16 w-16 text-neutral-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
                     >
-                      <div className="mb-4 flex items-start justify-between">
-                        <div>
-                          <h3 className="mb-2 text-xl font-bold text-neutral-800">
-                            {job.title}
-                          </h3>
-                          <p className="text-neutral-600">{job.company}</p>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
+                    <p className="mt-4 text-lg text-neutral-500">
+                      暂无收藏岗位
+                    </p>
+                    <p className="mt-2 text-sm text-neutral-400">
+                      去招新大厅浏览职位吧
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {favoriteJobs.map((job) => (
+                      <div
+                        key={job._id}
+                        className="rounded-xl border border-neutral-200 p-6 transition-shadow hover:shadow-md"
+                      >
+                        <div className="mb-4 flex items-start justify-between">
+                          <div>
+                            <h3 className="mb-2 text-xl font-bold text-neutral-800">
+                              {job.title}
+                            </h3>
+                            <p className="text-neutral-600">{job.department}</p>
+                          </div>
+                          <span className="text-lg font-bold text-primary-600">
+                            {job.interviewType === "online"
+                              ? "线上面试"
+                              : "线下面试"}
+                          </span>
                         </div>
-                        <span className="text-lg font-bold text-primary-600">
-                          {job.interviewType === "online"
-                            ? "线上面试"
-                            : "线下面试"}
+                        <div className="mb-4 flex flex-wrap gap-2">
+                          {job.requirements?.skills?.map((skill) => (
+                            <span
+                              key={skill}
+                              className="rounded-full bg-neutral-100 px-3 py-1 text-sm text-neutral-600"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                        <span className="text-sm text-neutral-500">
+                          收藏时间：{job.savedAt}
                         </span>
                       </div>
-                      <div className="mb-4 flex flex-wrap gap-2">
-                        {job.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full bg-neutral-100 px-3 py-1 text-sm text-neutral-600"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="text-sm text-neutral-500">
-                        收藏时间：{job.savedAt}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

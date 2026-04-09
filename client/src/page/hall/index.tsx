@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { SiteFooter, SiteNav } from "../../components/site";
 import positionApi from "../../api/positionApi";
 import teamApi from "../../api/teamApi";
@@ -282,9 +283,10 @@ function Hall() {
             </div>
           ) : (
             filteredJobs.map((job) => (
-              <div
+              <Link
                 key={job._id}
-                className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                to={`/hall/${job._id}`}
+                className="block rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start">
                   <button
@@ -295,7 +297,8 @@ function Hall() {
                         : `收藏${job.title}`
                     }
                     className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-neutral-100 transition-colors hover:bg-primary-50"
-                    onClick={async () => {
+                    onClick={async (e) => {
+                      e.preventDefault();
                       const currentUser = userApi.getCurrentUser();
                       if (!currentUser) {
                         alert("请先登录");
@@ -336,7 +339,7 @@ function Hall() {
                   <div className="flex-1">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <h3 className="cursor-pointer text-lg font-bold text-neutral-800 hover:text-primary-600">
+                        <h3 className="text-lg font-bold text-neutral-800">
                           {job.title}
                         </h3>
                         <p className="mt-1 text-sm text-neutral-500">
@@ -385,18 +388,20 @@ function Hall() {
                               ? "border-primary-500 bg-primary-50 text-primary-600"
                               : "border-primary-500 text-primary-600 hover:bg-primary-50"
                           }`}
-                          onClick={() =>
+                          onClick={(e) => {
+                            e.preventDefault();
                             setFavoriteJobs((current) => ({
                               ...current,
                               [job._id]: !current[job._id],
-                            }))
-                          }
+                            }));
+                          }}
                         >
                           {favoriteJobs[job._id] ? "已收藏" : "收藏"}
                         </button>
                         <button
                           type="button"
                           className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
+                          onClick={(e) => e.preventDefault()}
                         >
                           立即投递
                         </button>
@@ -404,7 +409,7 @@ function Hall() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))
           )}
         </div>

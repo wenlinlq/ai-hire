@@ -5,11 +5,15 @@ import ProtectedRoute from "../components/ProtectedRoute";
 
 const Admin = lazy(() => import("../page/admin"));
 const Hall = lazy(() => import("../page/hall"));
+const JobDetail = lazy(() => import("../page/hall/detail"));
 const Home = lazy(() => import("../page/home"));
 const Interview = lazy(() => import("../page/interview"));
 const Login = lazy(() => import("../page/login"));
+const Notifications = lazy(() => import("../page/notifications"));
+const NotificationDetail = lazy(() => import("../page/notifications/detail"));
 const Profile = lazy(() => import("../page/profile"));
 const Team = lazy(() => import("../page/team"));
+const ResumeAnalyze = lazy(() => import("../page/resume"));
 
 const router = createBrowserRouter([
   {
@@ -39,6 +43,16 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/hall/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={null}>
+          <JobDetail />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/interview",
     element: (
       <ProtectedRoute>
@@ -48,6 +62,38 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/resume",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={null}>
+          <ResumeAnalyze />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/notifications",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={null}>
+          <Notifications />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/notifications/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={null}>
+          <NotificationDetail />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
   {
     path: "/profile",
     element: (

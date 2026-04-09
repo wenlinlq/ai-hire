@@ -138,6 +138,11 @@ const positionApi = {
   deletePosition: async (id: string): Promise<void> => {
     await apiClient.delete(`/positions/${id}`);
   },
+
+  // 申请职位
+  applyPosition: async (id: string): Promise<void> => {
+    await apiClient.post(`/positions/${id}/apply`);
+  },
 };
 
 export default positionApi;

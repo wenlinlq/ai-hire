@@ -439,7 +439,7 @@ function Home() {
                 </h3>
                 <p className="mb-6 text-neutral-600">{feature.description}</p>
                 <Link
-                  to={feature.title === "AI模拟面试" ? "/interview" : "/login"}
+                  to={feature.title === "AI模拟面试" ? "/interview" : "/resume"}
                   className={`inline-flex items-center font-semibold ${feature.linkClass}`}
                 >
                   了解更多

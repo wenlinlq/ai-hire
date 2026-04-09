@@ -3,12 +3,13 @@ import { useState } from "react";
 import userApi from "../api/userApi";
 
 type SiteNavProps = {
-  current?: "home" | "hall" | "interview" | "profile";
+  current?: "home" | "hall" | "resume" | "interview" | "profile";
 };
 
 const navItems = [
   { key: "home", label: "首页", to: "/" },
   { key: "hall", label: "招新大厅", to: "/hall" },
+  { key: "resume", label: "AI简历", to: "/resume" },
   { key: "interview", label: "AI模拟面试", to: "/interview" },
 ] as const;
 
@@ -33,6 +34,7 @@ export function SiteNav({ current }: SiteNavProps) {
   const [dropdownTimer, setDropdownTimer] = useState<NodeJS.Timeout | null>(
     null,
   );
+  const [unreadCount, setUnreadCount] = useState(3);
   const navigate = useNavigate();
   const user = userApi.getCurrentUser();
   const isLoggedIn = userApi.isLoggedIn();
@@ -95,8 +97,13 @@ export function SiteNav({ current }: SiteNavProps) {
             onMouseLeave={handleMouseLeave}
           >
             <button className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-white/10">
-              <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center">
+              <div className="relative h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center">
                 {user?.username.charAt(0).toUpperCase()}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -left-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-medium text-white">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
               </div>
               <span className="hidden sm:inline">{user?.username}</span>
             </button>
@@ -106,6 +113,19 @@ export function SiteNav({ current }: SiteNavProps) {
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
               >
+                <Link
+                  to="/notifications"
+                  className="block px-4 py-2 hover:bg-neutral-100 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <span>消息通知</span>
+                    {unreadCount > 0 && (
+                      <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </Link>
                 <Link
                   to="/profile"
                   className="block px-4 py-2 hover:bg-neutral-100 transition-colors"

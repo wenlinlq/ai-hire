@@ -4,8 +4,13 @@ import positionApi from "../../api/positionApi";
 import applicationApi from "../../api/applicationApi";
 import userApi from "../../api/userApi";
 
-type AdminTab = "dashboard" | "jobs" | "candidates" | "interviews";
-type AdminModal = "job" | "candidate" | "interview" | null;
+type AdminTab =
+  | "dashboard"
+  | "jobs"
+  | "candidates"
+  | "interviews"
+  | "questions";
+type AdminModal = "job" | "candidate" | "interview" | "questionBank" | null;
 
 const dashboardStats = [
   {
@@ -147,6 +152,42 @@ function Admin() {
   // 当前编辑的职位ID
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
 
+  // 题目类型
+  interface Question {
+    id: string;
+    content: string;
+  }
+
+  // 题库表单状态
+  interface QuestionBankFormState {
+    name: string;
+    description: string;
+    category: string;
+    questionCount: number;
+    createdAt: string;
+    questions: Question[];
+  }
+
+  // 当前编辑的题库ID
+  const [currentQuestionBankId, setCurrentQuestionBankId] = useState<
+    string | null
+  >(null);
+  // 题库表单状态
+  const [questionBankForm, setQuestionBankForm] =
+    useState<QuestionBankFormState>({
+      name: "",
+      description: "",
+      category: "",
+      questionCount: 0,
+      createdAt: new Date().toISOString().split("T")[0],
+      questions: [],
+    });
+
+  // 题目表单状态
+  const [questionForm, setQuestionForm] = useState({
+    content: "",
+  });
+
   // 候选人列表状态
   const [candidates, setCandidates] = useState<any[]>([]);
   // 候选人加载状态
@@ -268,6 +309,7 @@ function Admin() {
               ["jobs", "职位管理"],
               ["candidates", "候选人管理"],
               ["interviews", "AI面试中心"],
+              ["questions", "面试题库"],
             ].map(([key, label]) => (
               <li key={key}>
                 <button
@@ -817,6 +859,173 @@ function Admin() {
               </div>
             </section>
           )}
+
+          {activeTab === "questions" && (
+            <section>
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-neutral-800">
+                  面试题库
+                </h2>
+                <button
+                  type="button"
+                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
+                  onClick={() => {
+                    // 重置表单
+                    setCurrentQuestionBankId(null);
+                    setQuestionBankForm({
+                      name: "",
+                      description: "",
+                      category: "",
+                      questionCount: 0,
+                      createdAt: new Date().toISOString().split("T")[0],
+                      questions: [],
+                    });
+                    openModal("questionBank");
+                  }}
+                >
+                  添加题库
+                </button>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+                <div className="border-b border-neutral-200 p-4">
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="text"
+                      placeholder="搜索题库"
+                      className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    />
+                    <select className="rounded-lg border border-neutral-300 px-4 py-2">
+                      <option>全部分类</option>
+                      <option>技术类</option>
+                      <option>行为类</option>
+                      <option>专业知识</option>
+                      <option>项目经验</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-neutral-50">
+                      <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
+                        {[
+                          "题库名称",
+                          "描述",
+                          "分类",
+                          "题目数量",
+                          "创建时间",
+                          "操作",
+                        ].map((item) => (
+                          <th key={item} className="px-6 py-3">
+                            {item}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-200">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <tr key={i}>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-neutral-900">
+                              {i === 1
+                                ? "前端技术题库"
+                                : i === 2
+                                  ? "后端技术题库"
+                                  : i === 3
+                                    ? "产品经理题库"
+                                    : i === 4
+                                      ? "UI设计题库"
+                                      : "数据分析师题库"}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-neutral-500">
+                            {i === 1
+                              ? "前端开发相关技术题目"
+                              : i === 2
+                                ? "后端开发相关技术题目"
+                                : i === 3
+                                  ? "产品经理相关题目"
+                                  : i === 4
+                                    ? "UI设计相关题目"
+                                    : "数据分析师相关题目"}
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
+                              {i === 1
+                                ? "技术类"
+                                : i === 2
+                                  ? "技术类"
+                                  : i === 3
+                                    ? "专业知识"
+                                    : i === 4
+                                      ? "专业知识"
+                                      : "专业知识"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm">{i * 10}</td>
+                          <td className="px-6 py-4 text-sm">2026-04-10</td>
+                          <td className="px-6 py-4 text-sm">
+                            <button
+                              type="button"
+                              className="mr-3 text-primary-600 hover:text-primary-900"
+                              onClick={() => {
+                                // 填充表单
+                                setCurrentQuestionBankId(`bank-${i}`);
+                                setQuestionBankForm({
+                                  name:
+                                    i === 1
+                                      ? "前端技术题库"
+                                      : i === 2
+                                        ? "后端技术题库"
+                                        : i === 3
+                                          ? "产品经理题库"
+                                          : i === 4
+                                            ? "UI设计题库"
+                                            : "数据分析师题库",
+                                  description:
+                                    i === 1
+                                      ? "前端开发相关技术题目"
+                                      : i === 2
+                                        ? "后端开发相关技术题目"
+                                        : i === 3
+                                          ? "产品经理相关题目"
+                                          : i === 4
+                                            ? "UI设计相关题目"
+                                            : "数据分析师相关题目",
+                                  category:
+                                    i === 1
+                                      ? "技术类"
+                                      : i === 2
+                                        ? "技术类"
+                                        : i === 3
+                                          ? "专业知识"
+                                          : i === 4
+                                            ? "专业知识"
+                                            : "专业知识",
+                                  questionCount: i * 10,
+                                  createdAt: "2026-04-10",
+                                  questions: [],
+                                });
+                                openModal("questionBank");
+                              }}
+                            >
+                              编辑
+                            </button>
+                            <button
+                              type="button"
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              删除
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          )}
         </main>
       </div>
 
@@ -829,7 +1038,9 @@ function Admin() {
                   ? "发布新职位"
                   : modal === "candidate"
                     ? "导入候选人"
-                    : "创建面试"}
+                    : modal === "interview"
+                      ? "创建面试"
+                      : "添加题库"}
               </h3>
               <button
                 type="button"
@@ -1030,41 +1241,168 @@ function Admin() {
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
                   value={candidateForm.positionId}
                   onChange={(e) => {
-                    const selectedJobId = e.target.value;
-                    // 查找所选职位的信息
-                    const selectedJob = jobs.find(
-                      (job) => job._id === selectedJobId,
-                    );
                     setCandidateForm({
                       ...candidateForm,
-                      positionId: selectedJobId,
-                      // 自动设置teamId为所选职位的teamId
-                      teamId: selectedJob?.teamId || currentUser?.team || "",
+                      positionId: e.target.value,
                     });
                   }}
                 >
-                  <option value="">选择导入岗位</option>
+                  <option value="">选择职位</option>
                   {jobs.map((job) => (
                     <option key={job._id} value={job._id}>
                       {job.title}
                     </option>
                   ))}
                 </select>
-                <div className="w-full rounded-lg border border-neutral-300 px-4 py-3">
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    上传简历
-                  </label>
-                  <input
-                    type="file"
-                    className="w-full"
-                    onChange={(e) => {
-                      console.log("选择的文件:", e.target.files[0]);
-                      setCandidateForm({
-                        ...candidateForm,
-                        resume: e.target.files[0],
-                      });
-                    }}
-                  />
+              </div>
+            )}
+
+            {modal === "questionBank" && (
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  placeholder="题库名称"
+                  value={questionBankForm.name}
+                  onChange={(e) =>
+                    setQuestionBankForm({
+                      ...questionBankForm,
+                      name: e.target.value,
+                    })
+                  }
+                />
+                <textarea
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  rows={3}
+                  placeholder="题库描述"
+                  value={questionBankForm.description}
+                  onChange={(e) =>
+                    setQuestionBankForm({
+                      ...questionBankForm,
+                      description: e.target.value,
+                    })
+                  }
+                />
+                <select
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  value={questionBankForm.category}
+                  onChange={(e) =>
+                    setQuestionBankForm({
+                      ...questionBankForm,
+                      category: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">选择分类</option>
+                  <option value="技术类">技术类</option>
+                  <option value="行为类">行为类</option>
+                  <option value="专业知识">专业知识</option>
+                  <option value="项目经验">项目经验</option>
+                </select>
+
+                <input
+                  type="date"
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  value={questionBankForm.createdAt}
+                  onChange={(e) =>
+                    setQuestionBankForm({
+                      ...questionBankForm,
+                      createdAt: e.target.value,
+                    })
+                  }
+                />
+
+                {/* 面试题目管理 */}
+                <div>
+                  <div className="mb-4 flex items-center justify-between">
+                    <h4 className="text-lg font-semibold text-neutral-800">
+                      面试题目
+                    </h4>
+                  </div>
+                  <div className="mb-4 space-y-2">
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      placeholder="输入题目内容"
+                      value={questionForm.content}
+                      onChange={(e) =>
+                        setQuestionForm({
+                          ...questionForm,
+                          content: e.target.value,
+                        })
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="w-full rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
+                      onClick={() => {
+                        if (questionForm.content.trim()) {
+                          // 添加题目
+                          const newQuestion = {
+                            id: `q-${Date.now()}`,
+                            content: questionForm.content,
+                          };
+                          setQuestionBankForm({
+                            ...questionBankForm,
+                            questions: [
+                              ...questionBankForm.questions,
+                              newQuestion,
+                            ],
+                          });
+                          // 重置题目表单
+                          setQuestionForm({
+                            content: "",
+                          });
+                        }
+                      }}
+                    >
+                      添加题目
+                    </button>
+                  </div>
+                  <div className="rounded-lg border border-neutral-200">
+                    {questionBankForm.questions.length === 0 ? (
+                      <div className="p-4 text-center text-neutral-500">
+                        暂无题目，输入题目内容后点击添加题目按钮
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-neutral-200">
+                        {questionBankForm.questions.map((question, index) => (
+                          <div key={question.id} className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="text-sm font-medium text-neutral-900">
+                                  {index + 1}. {question.content}
+                                </div>
+                              </div>
+                              <div className="flex space-x-2">
+                                <button
+                                  type="button"
+                                  className="text-primary-600 hover:text-primary-900"
+                                >
+                                  编辑
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-red-600 hover:text-red-900"
+                                  onClick={() => {
+                                    setQuestionBankForm({
+                                      ...questionBankForm,
+                                      questions:
+                                        questionBankForm.questions.filter(
+                                          (q) => q.id !== question.id,
+                                        ),
+                                    });
+                                  }}
+                                >
+                                  删除
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -1142,6 +1480,18 @@ function Admin() {
                         teamId: "",
                         resume: null,
                       });
+                    } else if (modal === "questionBank") {
+                      // 保存题库
+                      // 更新题目数量为实际添加的题目数量
+                      const updatedForm = {
+                        ...questionBankForm,
+                        questionCount: questionBankForm.questions.length,
+                      };
+                      console.log("保存题库:", updatedForm);
+                      // 这里可以添加实际的API调用
+                      window.message.success("题库保存成功");
+                      // 关闭模态框
+                      setModal(null);
                     } else {
                       // 获取用户信息
                       const userStr = localStorage.getItem("user");

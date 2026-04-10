@@ -3,6 +3,7 @@ import { LogoMark } from "../../components/site";
 import positionApi from "../../api/positionApi";
 import applicationApi from "../../api/applicationApi";
 import userApi from "../../api/userApi";
+import * as questionBankApi from "../../api/questionBankApi";
 
 type AdminTab =
   | "dashboard"
@@ -160,7 +161,7 @@ function Admin() {
 
   // 题库表单状态
   interface QuestionBankFormState {
-    name: string;
+    title: string;
     description: string;
     category: string;
     questionCount: number;
@@ -175,7 +176,7 @@ function Admin() {
   // 题库表单状态
   const [questionBankForm, setQuestionBankForm] =
     useState<QuestionBankFormState>({
-      name: "",
+      title: "",
       description: "",
       category: "",
       questionCount: 0,
@@ -187,6 +188,18 @@ function Admin() {
   const [questionForm, setQuestionForm] = useState({
     content: "",
   });
+
+  // 面试题库列表状态
+  const [questionBanks, setQuestionBanks] = useState<
+    questionBankApi.QuestionBank[]
+  >([]);
+  // 面试题库加载状态
+  const [isLoadingQuestionBanks, setIsLoadingQuestionBanks] =
+    useState<boolean>(false);
+  // 面试题库错误状态
+  const [errorQuestionBanks, setErrorQuestionBanks] = useState<string | null>(
+    null,
+  );
 
   // 候选人列表状态
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -221,6 +234,35 @@ function Admin() {
     const user = userApi.getCurrentUser();
     setCurrentUser(user);
   }, []);
+
+  // 获取面试题库列表
+  const fetchQuestionBanks = async () => {
+    setIsLoadingQuestionBanks(true);
+    setErrorQuestionBanks(null);
+    try {
+      const response = await questionBankApi.getAllQuestionBanks();
+      let questionBanks = response.data || [];
+      // 根据用户的teamId过滤题库
+      if (currentUser?.team) {
+        questionBanks = questionBanks.filter(
+          (bank) => bank.teamId === currentUser.team,
+        );
+      }
+      setQuestionBanks(questionBanks);
+    } catch (err: any) {
+      console.error("获取面试题库列表错误:", err);
+      setErrorQuestionBanks(err.message || "获取面试题库列表失败");
+    } finally {
+      setIsLoadingQuestionBanks(false);
+    }
+  };
+
+  // 当切换到面试题库标签或用户信息变化时，获取面试题库列表
+  useEffect(() => {
+    if (activeTab === "questions") {
+      fetchQuestionBanks();
+    }
+  }, [activeTab, currentUser]);
 
   // 获取职位列表
   const fetchJobs = async () => {
@@ -873,7 +915,7 @@ function Admin() {
                     // 重置表单
                     setCurrentQuestionBankId(null);
                     setQuestionBankForm({
-                      name: "",
+                      title: "",
                       description: "",
                       category: "",
                       questionCount: 0,
@@ -923,103 +965,114 @@ function Admin() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <tr key={i}>
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-medium text-neutral-900">
-                              {i === 1
-                                ? "前端技术题库"
-                                : i === 2
-                                  ? "后端技术题库"
-                                  : i === 3
-                                    ? "产品经理题库"
-                                    : i === 4
-                                      ? "UI设计题库"
-                                      : "数据分析师题库"}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-neutral-500">
-                            {i === 1
-                              ? "前端开发相关技术题目"
-                              : i === 2
-                                ? "后端开发相关技术题目"
-                                : i === 3
-                                  ? "产品经理相关题目"
-                                  : i === 4
-                                    ? "UI设计相关题目"
-                                    : "数据分析师相关题目"}
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
-                              {i === 1
-                                ? "技术类"
-                                : i === 2
-                                  ? "技术类"
-                                  : i === 3
-                                    ? "专业知识"
-                                    : i === 4
-                                      ? "专业知识"
-                                      : "专业知识"}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm">{i * 10}</td>
-                          <td className="px-6 py-4 text-sm">2026-04-10</td>
-                          <td className="px-6 py-4 text-sm">
-                            <button
-                              type="button"
-                              className="mr-3 text-primary-600 hover:text-primary-900"
-                              onClick={() => {
-                                // 填充表单
-                                setCurrentQuestionBankId(`bank-${i}`);
-                                setQuestionBankForm({
-                                  name:
-                                    i === 1
-                                      ? "前端技术题库"
-                                      : i === 2
-                                        ? "后端技术题库"
-                                        : i === 3
-                                          ? "产品经理题库"
-                                          : i === 4
-                                            ? "UI设计题库"
-                                            : "数据分析师题库",
-                                  description:
-                                    i === 1
-                                      ? "前端开发相关技术题目"
-                                      : i === 2
-                                        ? "后端开发相关技术题目"
-                                        : i === 3
-                                          ? "产品经理相关题目"
-                                          : i === 4
-                                            ? "UI设计相关题目"
-                                            : "数据分析师相关题目",
-                                  category:
-                                    i === 1
-                                      ? "技术类"
-                                      : i === 2
-                                        ? "技术类"
-                                        : i === 3
-                                          ? "专业知识"
-                                          : i === 4
-                                            ? "专业知识"
-                                            : "专业知识",
-                                  questionCount: i * 10,
-                                  createdAt: "2026-04-10",
-                                  questions: [],
-                                });
-                                openModal("questionBank");
-                              }}
-                            >
-                              编辑
-                            </button>
-                            <button
-                              type="button"
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              删除
-                            </button>
+                      {isLoadingQuestionBanks ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="px-6 py-10 text-center text-neutral-500"
+                          >
+                            加载中...
                           </td>
                         </tr>
-                      ))}
+                      ) : errorQuestionBanks ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="px-6 py-10 text-center text-red-500"
+                          >
+                            {errorQuestionBanks}
+                          </td>
+                        </tr>
+                      ) : questionBanks.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="px-6 py-10 text-center text-neutral-500"
+                          >
+                            暂无面试题库
+                          </td>
+                        </tr>
+                      ) : (
+                        questionBanks.map((bank) => (
+                          <tr key={bank._id}>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-neutral-900">
+                                {bank.title}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-neutral-500">
+                              {bank.type || "无类型"}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
+                                {bank.category}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {bank.questions.length}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {
+                                new Date(bank.createdAt)
+                                  .toISOString()
+                                  .split("T")[0]
+                              }
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              <button
+                                type="button"
+                                className="mr-3 text-primary-600 hover:text-primary-900"
+                                onClick={() => {
+                                  // 填充表单
+                                  setCurrentQuestionBankId(bank._id);
+                                  setQuestionBankForm({
+                                    title: bank.title,
+                                    description: bank.description || "",
+                                    category: bank.category,
+                                    questionCount: bank.questions.length,
+                                    createdAt: new Date(bank.createdAt)
+                                      .toISOString()
+                                      .split("T")[0],
+                                    questions: bank.questions.map(
+                                      (q, index) => ({
+                                        id: `q-${index}`,
+                                        content: q,
+                                      }),
+                                    ),
+                                  });
+                                  openModal("questionBank");
+                                }}
+                              >
+                                编辑
+                              </button>
+                              <button
+                                type="button"
+                                className="text-red-600 hover:text-red-900"
+                                onClick={async () => {
+                                  if (
+                                    window.confirm("确定要删除这个题库吗？")
+                                  ) {
+                                    try {
+                                      await questionBankApi.deleteQuestionBank(
+                                        bank._id,
+                                      );
+                                      window.message.success("题库删除成功");
+                                      fetchQuestionBanks();
+                                    } catch (err: any) {
+                                      console.error("删除题库错误:", err);
+                                      window.message.error(
+                                        err.message || "删除题库失败",
+                                      );
+                                    }
+                                  }
+                                }}
+                              >
+                                删除
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1263,11 +1316,11 @@ function Admin() {
                   type="text"
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
                   placeholder="题库名称"
-                  value={questionBankForm.name}
+                  value={questionBankForm.title}
                   onChange={(e) =>
                     setQuestionBankForm({
                       ...questionBankForm,
-                      name: e.target.value,
+                      title: e.target.value,
                     })
                   }
                 />
@@ -1482,16 +1535,33 @@ function Admin() {
                       });
                     } else if (modal === "questionBank") {
                       // 保存题库
-                      // 更新题目数量为实际添加的题目数量
-                      const updatedForm = {
-                        ...questionBankForm,
-                        questionCount: questionBankForm.questions.length,
+                      // 获取用户信息
+                      const userStr = localStorage.getItem("user");
+                      const user = userStr ? JSON.parse(userStr) : null;
+                      // 准备表单数据
+                      const formData = {
+                        title: questionBankForm.title,
+                        type: "essay", // 默认为简答题
+                        category: questionBankForm.category,
+                        teamId: currentUser?.team || user?._id || "", // 使用当前用户的team或用户ID
+                        questions: questionBankForm.questions.map(
+                          (q) => q.content,
+                        ), // 转换为字符串数组
                       };
-                      console.log("保存题库:", updatedForm);
-                      // 这里可以添加实际的API调用
-                      window.message.success("题库保存成功");
-                      // 关闭模态框
-                      setModal(null);
+                      if (currentQuestionBankId) {
+                        // 编辑题库
+                        await questionBankApi.updateQuestionBank(
+                          currentQuestionBankId,
+                          formData,
+                        );
+                        window.message.success("题库更新成功");
+                      } else {
+                        // 创建题库
+                        await questionBankApi.createQuestionBank(formData);
+                        window.message.success("题库创建成功");
+                      }
+                      // 重新获取面试题库列表
+                      fetchQuestionBanks();
                     } else {
                       // 获取用户信息
                       const userStr = localStorage.getItem("user");

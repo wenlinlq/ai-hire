@@ -305,6 +305,27 @@
 
 ---
 
+### 2.11 面试题库表 (questionBanks)
+
+| 字段名    | 类型     | 必填 | 说明                         |
+| :-------- | :------- | :--- | :--------------------------- |
+| id        | ObjectId | 是   | 主键                         |
+| title     | String   | 是   | 题库名称                     |
+| type      | String   | 是   | 题型：essay（简答题）        |
+| category  | String   | 是   | 分类（如前端、后端、产品等） |
+| teamId    | ObjectId | 是   | 所属团队ID，关联teams        |
+| questions | [String] | 是   | 题目列表                     |
+| createdAt | Date     | 是   | 创建时间，默认Date.now       |
+| updatedAt | Date     | 是   | 更新时间，自动更新           |
+
+**索引设计**：
+
+- `teamId` 普通索引
+- `category` 普通索引
+- `title` 全文索引（支持搜索）
+
+---
+
 ## 三、ER关系图（文字版）
 
 ```
@@ -317,6 +338,7 @@ users (用户)
 
 teams (团队)
   ├── positions (岗位)        1:N
+  ├── questionBanks (面试题库) 1:N
   └── users (负责人)          1:1
 
 positions (岗位)

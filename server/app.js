@@ -17,6 +17,8 @@ const applicationModel = require("./models/applicationModel");
 const favoriteModel = require("./models/favoriteModel");
 // 导入简历模型
 const resumeModel = require("./models/resumeModel");
+// 导入面试题库模型
+const questionBankModel = require("./models/questionBankModel");
 
 var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/api/users");
@@ -25,6 +27,7 @@ var positionsRouter = require("./routes/api/positions");
 var applicationsRouter = require("./routes/api/applications");
 var favoritesRouter = require("./routes/api/favorites");
 var resumesRouter = require("./routes/api/resumes");
+var questionBanksRouter = require("./routes/api/questionBanks");
 
 var app = express();
 
@@ -56,6 +59,7 @@ app.use("/api/positions", positionsRouter);
 app.use("/api/applications", applicationsRouter);
 app.use("/api/favorites", favoritesRouter);
 app.use("/api/resumes", resumesRouter);
+app.use("/api/questionBanks", questionBanksRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -86,6 +90,8 @@ async function initIndexes() {
     await favoriteModel.initIndexes();
     // 初始化简历模型索引
     await resumeModel.initIndexes();
+    // 初始化面试题库模型索引
+    await questionBankModel.initIndexes();
     console.log("Database indexes initialized successfully");
   } catch (error) {
     console.error("Error initializing database indexes:", error);

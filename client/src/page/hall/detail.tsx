@@ -96,6 +96,7 @@ function JobDetail() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
+      case "open":
         return (
           <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
             招聘中
@@ -182,11 +183,11 @@ function JobDetail() {
           返回职位列表
         </button>
 
-        <div className="space-y-6">
-          <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-8">
+          <div className="rounded-xl border border-neutral-200 bg-white shadow-md p-8">
+            <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
               <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-3 mb-3">
+                <div className="flex flex-wrap items-center gap-4 mb-4">
                   <h1 className="text-3xl font-bold text-neutral-800">
                     {job.title}
                   </h1>
@@ -265,7 +266,7 @@ function JobDetail() {
                   </span>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex flex-col items-end gap-3">
                 <div className="text-3xl font-bold text-primary-600">
                   {job.salary}
                 </div>
@@ -313,10 +314,10 @@ function JobDetail() {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-6">
-                <h2 className="mb-4 text-xl font-bold text-neutral-800">
+          <div className="grid gap-8 lg:grid-cols-3 lg:items-end">
+            <div className="lg:col-span-2 space-y-8">
+              <div className="rounded-xl border border-neutral-200 bg-white shadow-md p-8">
+                <h2 className="mb-6 text-xl font-bold text-neutral-800">
                   职位描述
                 </h2>
                 <div className="prose max-w-none text-neutral-700 leading-relaxed whitespace-pre-line">
@@ -324,11 +325,11 @@ function JobDetail() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-6">
-                <h2 className="mb-4 text-xl font-bold text-neutral-800">
+              <div className="rounded-xl border border-neutral-200 bg-white shadow-md p-8">
+                <h2 className="mb-6 text-xl font-bold text-neutral-800">
                   岗位职责
                 </h2>
-                <ul className="space-y-3">
+                <ul className="space-y-4">
                   {job.responsibilities.map((item, index) => (
                     <li key={index} className="flex items-start gap-3">
                       <svg
@@ -350,55 +351,37 @@ function JobDetail() {
                 </ul>
               </div>
 
-              <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-6">
-                <h2 className="mb-4 text-xl font-bold text-neutral-800">
+              <div className="rounded-xl border border-neutral-200 bg-white shadow-md p-8">
+                <h2 className="mb-6 text-xl font-bold text-neutral-800">
                   任职要求
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div>
-                    <h3 className="mb-2 font-semibold text-neutral-800">
+                    <h3 className="mb-3 font-semibold text-neutral-800">
                       技能要求
                     </h3>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-3">
                       {job.requirements.skills.map((skill, index) => (
                         <span
                           key={index}
-                          className="rounded-full bg-primary-50 px-3 py-1 text-sm font-medium text-primary-700"
+                          className="rounded-full bg-primary-50 px-4 py-2 text-sm font-medium text-primary-700"
                         >
                           {skill}
                         </span>
                       ))}
                     </div>
                   </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <h3 className="mb-2 font-semibold text-neutral-800">
-                        工作经验
-                      </h3>
-                      <p className="text-neutral-700">
-                        {job.requirements.experience}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="mb-2 font-semibold text-neutral-800">
-                        学历要求
-                      </h3>
-                      <p className="text-neutral-700">
-                        {job.requirements.education}
-                      </p>
-                    </div>
-                  </div>
                 </div>
               </div>
 
               {job.benefits.length > 0 && (
-                <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-6">
-                  <h2 className="mb-4 text-xl font-bold text-neutral-800">
+                <div className="rounded-xl border border-neutral-200 bg-white shadow-md p-8">
+                  <h2 className="mb-6 text-xl font-bold text-neutral-800">
                     福利待遇
                   </h2>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     {job.benefits.map((benefit, index) => (
-                      <div key={index} className="flex items-center gap-2">
+                      <div key={index} className="flex items-center gap-3">
                         <svg
                           className="h-5 w-5 text-primary-500"
                           fill="none"
@@ -420,9 +403,9 @@ function JobDetail() {
               )}
             </div>
 
-            <div className="space-y-6">
-              <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-6">
-                <h2 className="mb-4 text-lg font-bold text-neutral-800">
+            <div className="space-y-8">
+              <div className="rounded-xl border border-neutral-200 bg-white shadow-md p-8">
+                <h2 className="mb-6 text-lg font-bold text-neutral-800">
                   职位信息
                 </h2>
                 <div className="space-y-4">
@@ -435,7 +418,7 @@ function JobDetail() {
                   <div>
                     <div className="text-sm text-neutral-500">面试类型</div>
                     <div className="font-semibold text-neutral-800">
-                      {job.interviewType}
+                      {job.interviewType === "online" ? "线上面试" : "线下面试"}
                     </div>
                   </div>
                   <div>
@@ -453,34 +436,28 @@ function JobDetail() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-6">
-                <h2 className="mb-4 text-lg font-bold text-neutral-800">
+              <div className="rounded-xl border border-neutral-200 bg-white shadow-md p-8">
+                <h2 className="mb-6 text-lg font-bold text-neutral-800">
                   快速操作
                 </h2>
-                <div className="space-y-3">
-                  <button
-                    onClick={handleToggleFavorite}
-                    className={`w-full rounded-lg border px-4 py-3 font-medium transition-colors ${
-                      isFavorite
-                        ? "border-primary-500 bg-primary-50 text-primary-600"
-                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-                    }`}
-                  >
-                    {isFavorite ? "已收藏" : "收藏职位"}
-                  </button>
+                <div className="space-y-4">
                   <button
                     onClick={handleApply}
-                    disabled={applying || job.status !== "active"}
-                    className={`w-full rounded-lg px-4 py-3 font-medium text-white transition-colors ${
-                      applying || job.status !== "active"
+                    disabled={
+                      applying ||
+                      (job.status !== "active" && job.status !== "open")
+                    }
+                    className={`w-full rounded-lg px-6 py-4 font-medium text-white transition-colors ${
+                      applying ||
+                      (job.status !== "active" && job.status !== "open")
                         ? "bg-neutral-400 cursor-not-allowed"
                         : "bg-primary-500 hover:bg-primary-600"
                     }`}
                   >
                     {applying
                       ? "投递中..."
-                      : job.status === "active"
-                        ? "立即投递"
+                      : job.status === "active" || job.status === "open"
+                        ? "投递简历"
                         : "已关闭"}
                   </button>
                 </div>

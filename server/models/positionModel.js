@@ -61,6 +61,8 @@ class PositionModel {
         salary: positionData.salary || "",
         // 面试方式
         interviewType: positionData.interviewType || "online",
+        // AI试题
+        aiQuestionBankId: positionData.aiQuestionBankId ? this.getValidObjectId(positionData.aiQuestionBankId) : null,
         // 岗位要求
         requirements: {
           skills: positionData.requirements?.skills || [],

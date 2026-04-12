@@ -7,7 +7,12 @@ import type { Position } from "../../api/positionApi";
 import resumeApi from "../../api/resumeApi";
 import type { Resume } from "../../api/resumeApi";
 
-type ProfileTab = "profile" | "resume" | "favorites" | "interviews";
+type ProfileTab =
+  | "profile"
+  | "resume"
+  | "myInterviews"
+  | "favorites"
+  | "interviews";
 
 type ProfileForm = {
   name: string;
@@ -69,6 +74,11 @@ function Profile() {
     const savedTab = localStorage.getItem("profileActiveTab");
     return (savedTab as ProfileTab) || "profile";
   });
+
+  // 面试数量状态
+  const [interviewCount, setInterviewCount] = useState(3);
+  // 总通知数量状态
+  const [notificationCount, setNotificationCount] = useState(5);
   const [profileForm, setProfileForm] = useState<ProfileForm>({
     name: "",
     phone: "",
@@ -311,6 +321,7 @@ function Profile() {
                 {[
                   ["profile", "个人信息"],
                   ["resume", "我的简历"],
+                  ["myInterviews", "我的面试"],
                   ["favorites", "收藏岗位"],
                   ["interviews", "历史模拟面试"],
                 ].map(([key, label]) => (
@@ -324,7 +335,14 @@ function Profile() {
                     }`}
                     onClick={() => setActiveTab(key as ProfileTab)}
                   >
-                    {label}
+                    <div className="flex items-center justify-between">
+                      {label}
+                      {key === "myInterviews" && (
+                        <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white">
+                          {interviewCount}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 ))}
               </nav>
@@ -334,9 +352,34 @@ function Profile() {
           <div className="lg:col-span-3">
             {activeTab === "profile" && (
               <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm h-[calc(100vh-150px)] overflow-y-auto">
-                <h2 className="mb-6 text-2xl font-bold text-neutral-800">
-                  个人信息
-                </h2>
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-neutral-800">
+                    个人信息
+                  </h2>
+                  <div className="relative">
+                    <button className="p-2 rounded-full hover:bg-neutral-100 transition-colors">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6 text-neutral-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                        />
+                      </svg>
+                      {notificationCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-medium text-white">
+                          {notificationCount > 99 ? "99+" : notificationCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
                 <form
                   className="space-y-6"
                   onSubmit={(event) => event.preventDefault()}
@@ -433,9 +476,34 @@ function Profile() {
 
             {activeTab === "resume" && (
               <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm h-[calc(100vh-150px)] overflow-y-auto">
-                <h2 className="mb-6 text-2xl font-bold text-neutral-800">
-                  我的简历
-                </h2>
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-neutral-800">
+                    我的简历
+                  </h2>
+                  <div className="relative">
+                    <button className="p-2 rounded-full hover:bg-neutral-100 transition-colors">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6 text-neutral-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                        />
+                      </svg>
+                      {notificationCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-medium text-white">
+                          {notificationCount > 99 ? "99+" : notificationCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="button"
                   className="w-full rounded-xl border-2 border-dashed border-neutral-300 p-12 text-center transition-colors hover:border-primary-500"
@@ -635,18 +703,230 @@ function Profile() {
               </div>
             )}
 
+            {activeTab === "myInterviews" && (
+              <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm h-[calc(100vh-150px)] overflow-y-auto">
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-neutral-800">
+                    我的面试
+                  </h2>
+                  <div className="relative">
+                    <button className="p-2 rounded-full hover:bg-neutral-100 transition-colors">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6 text-neutral-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                        />
+                      </svg>
+                      {notificationCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-medium text-white">
+                          {notificationCount > 99 ? "99+" : notificationCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="mb-4 text-lg font-semibold text-neutral-700">
+                      团队面试邀请
+                    </h3>
+                    <div className="space-y-4">
+                      {/* 线上面试 */}
+                      <div className="rounded-lg border border-neutral-200 p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="text-md font-semibold text-neutral-800">
+                              前端工程师 - 字节跳动
+                            </h4>
+                            <p className="mt-1 text-sm text-neutral-600">
+                              邀请你参加线上面试
+                            </p>
+                            <div className="mt-3 space-y-2">
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-500 mb-1">
+                                  选择面试时间
+                                </label>
+                                <select className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm">
+                                  <option>2026-04-20 14:00</option>
+                                  <option>2026-04-21 10:00</option>
+                                  <option>2026-04-22 16:00</option>
+                                </select>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-neutral-500">
+                                  联系方式：
+                                </span>
+                                <span className="text-sm text-neutral-700">
+                                  HR李 - 13800138000
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-neutral-500">
+                                  面试链接：
+                                </span>
+                                <a
+                                  href="#"
+                                  className="text-sm text-primary-600 hover:underline"
+                                >
+                                  https://interview.bytedance.com/abc123
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <button className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600">
+                              接受
+                            </button>
+                            <button className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-50">
+                              拒绝
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 线下面试 */}
+                      <div className="rounded-lg border border-neutral-200 p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="text-md font-semibold text-neutral-800">
+                              产品经理 - 腾讯
+                            </h4>
+                            <p className="mt-1 text-sm text-neutral-600">
+                              邀请你参加线下面试
+                            </p>
+                            <div className="mt-3 space-y-2">
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-500 mb-1">
+                                  选择面试时间
+                                </label>
+                                <select className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm">
+                                  <option>2026-04-25 14:00</option>
+                                  <option>2026-04-26 10:00</option>
+                                  <option>2026-04-27 16:00</option>
+                                </select>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-neutral-500">
+                                  联系方式：
+                                </span>
+                                <span className="text-sm text-neutral-700">
+                                  HR王 - 13900139000
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-neutral-500">
+                                  面试地点：
+                                </span>
+                                <span className="text-sm text-neutral-700">
+                                  深圳市南山区腾讯大厦 15楼会议室A
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <button className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600">
+                              接受
+                            </button>
+                            <button className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-50">
+                              拒绝
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="mb-4 text-lg font-semibold text-neutral-700">
+                      AI预面试
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-neutral-200 p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="text-md font-semibold text-neutral-800">
+                              产品经理 - 腾讯
+                            </h4>
+                            <p className="mt-1 text-sm text-neutral-600">
+                              AI预面试邀请
+                            </p>
+                            <p className="mt-2 text-sm text-neutral-500">
+                              投递时间：2026-04-15 10:30
+                            </p>
+                          </div>
+                          <button className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600">
+                            开始面试
+                          </button>
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-neutral-200 p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="text-md font-semibold text-neutral-800">
+                              数据分析师 - 阿里巴巴
+                            </h4>
+                            <p className="mt-1 text-sm text-neutral-600">
+                              AI预面试邀请
+                            </p>
+                            <p className="mt-2 text-sm text-neutral-500">
+                              投递时间：2026-04-10 09:15
+                            </p>
+                          </div>
+                          <button className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600">
+                            开始面试
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === "favorites" && (
               <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm h-[calc(100vh-150px)] overflow-y-auto">
                 <div className="mb-6 flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-neutral-800">
                     收藏岗位
                   </h2>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-primary-500 px-6 py-2 text-white transition-colors hover:bg-primary-600"
-                  >
-                    一键投递
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      className="rounded-lg bg-primary-500 px-6 py-2 text-white transition-colors hover:bg-primary-600"
+                    >
+                      一键投递
+                    </button>
+                    <div className="relative">
+                      <button className="p-2 rounded-full hover:bg-neutral-100 transition-colors">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-6 text-neutral-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                          />
+                        </svg>
+                        {notificationCount > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-medium text-white">
+                            {notificationCount > 99 ? "99+" : notificationCount}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
@@ -721,8 +1001,33 @@ function Profile() {
                   <h2 className="text-2xl font-bold text-neutral-800">
                     历史模拟面试
                   </h2>
-                  <div className="rounded-full bg-primary-50 px-4 py-2 text-sm font-medium text-primary-600">
-                    平均分 {averageScore}
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-primary-50 px-4 py-2 text-sm font-medium text-primary-600">
+                      平均分 {averageScore}
+                    </div>
+                    <div className="relative">
+                      <button className="p-2 rounded-full hover:bg-neutral-100 transition-colors">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-6 text-neutral-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                          />
+                        </svg>
+                        {notificationCount > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-medium text-white">
+                            {notificationCount > 99 ? "99+" : notificationCount}
+                          </span>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-4">

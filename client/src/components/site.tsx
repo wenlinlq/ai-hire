@@ -34,7 +34,12 @@ export function SiteNav({ current }: SiteNavProps) {
   const [dropdownTimer, setDropdownTimer] = useState<NodeJS.Timeout | null>(
     null,
   );
-  const [unreadCount, setUnreadCount] = useState(3);
+  // 消息通知数量
+  const [messageCount, setMessageCount] = useState(2);
+  // 个人中心通知数量
+  const [profileCount, setProfileCount] = useState(3);
+  // 总通知数量
+  const totalCount = messageCount + profileCount;
   const navigate = useNavigate();
   const user = userApi.getCurrentUser();
   const isLoggedIn = userApi.isLoggedIn();
@@ -99,9 +104,9 @@ export function SiteNav({ current }: SiteNavProps) {
             <button className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-white/10">
               <div className="relative h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center">
                 {user?.username.charAt(0).toUpperCase()}
-                {unreadCount > 0 && (
+                {totalCount > 0 && (
                   <span className="absolute -top-1 -left-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-medium text-white">
-                    {unreadCount > 99 ? "99+" : unreadCount}
+                    {totalCount > 99 ? "99+" : totalCount}
                   </span>
                 )}
               </div>
@@ -119,9 +124,9 @@ export function SiteNav({ current }: SiteNavProps) {
                 >
                   <div className="flex items-center justify-between">
                     <span>消息通知</span>
-                    {unreadCount > 0 && (
+                    {messageCount > 0 && (
                       <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
-                        {unreadCount > 99 ? "99+" : unreadCount}
+                        {messageCount > 99 ? "99+" : messageCount}
                       </span>
                     )}
                   </div>
@@ -130,7 +135,14 @@ export function SiteNav({ current }: SiteNavProps) {
                   to="/profile"
                   className="block px-4 py-2 hover:bg-neutral-100 transition-colors"
                 >
-                  个人中心
+                  <div className="flex items-center justify-between">
+                    <span>个人中心</span>
+                    {profileCount > 0 && (
+                      <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
+                        {profileCount > 99 ? "99+" : profileCount}
+                      </span>
+                    )}
+                  </div>
                 </Link>
                 <button
                   onClick={handleLogout}

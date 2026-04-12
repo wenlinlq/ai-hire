@@ -73,6 +73,8 @@ interface Job {
   createdAt: string;
   updatedAt: string;
   teamId: string;
+  aiQuestionBankId?: string;
+  aiQuestionBankName?: string;
 }
 
 // 职位表单状态类型
@@ -94,6 +96,7 @@ interface JobFormState {
   deadline: string;
   teamId: string;
   interviewType: string;
+  aiQuestionBankId: string;
 }
 
 const interviewPrograms = [
@@ -149,6 +152,7 @@ function Admin() {
     deadline: "",
     teamId: "",
     interviewType: "online",
+    aiQuestionBankId: "",
   });
   // 当前编辑的职位ID
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -257,12 +261,12 @@ function Admin() {
     }
   };
 
-  // 当切换到面试题库标签或用户信息变化时，获取面试题库列表
+  // 当用户信息变化时，获取面试题库列表
   useEffect(() => {
-    if (activeTab === "questions") {
+    if (currentUser) {
       fetchQuestionBanks();
     }
-  }, [activeTab, currentUser]);
+  }, [currentUser]);
 
   // 获取职位列表
   const fetchJobs = async () => {
@@ -283,7 +287,24 @@ function Admin() {
         console.log("获取的所有职位列表:", jobList);
       }
       // 确保jobList是一个数组
-      setJobs(Array.isArray(jobList) ? jobList : []);
+      if (Array.isArray(jobList)) {
+        // 为每个职位添加AI试题名称
+        const jobsWithQuestionBankNames = jobList.map((job) => {
+          if (job.aiQuestionBankId) {
+            const questionBank = questionBanks.find(
+              (bank) => bank._id === job.aiQuestionBankId,
+            );
+            return {
+              ...job,
+              aiQuestionBankName: questionBank?.title || "已设置",
+            };
+          }
+          return job;
+        });
+        setJobs(jobsWithQuestionBankNames);
+      } else {
+        setJobs([]);
+      }
     } catch (err: any) {
       console.error("获取职位列表错误:", err);
       setError(err.message || "获取职位列表失败");
@@ -330,6 +351,13 @@ function Admin() {
       }
     }
   }, [activeTab, currentUser]);
+
+  // 当面试题库列表更新时，重新获取职位列表以更新AI试题名称
+  useEffect(() => {
+    if (currentUser && activeTab === "jobs") {
+      fetchJobs();
+    }
+  }, [questionBanks, currentUser, activeTab]);
 
   return (
     <div className="flex min-h-screen bg-neutral-50 text-neutral-700">
@@ -510,6 +538,7 @@ function Admin() {
                       deadline: "",
                       teamId: currentUser?.team || "",
                       interviewType: "online",
+                      aiQuestionBankId: "",
                     });
                     openModal("job");
                   }}
@@ -543,6 +572,7 @@ function Admin() {
                           "招聘人数",
                           "截止时间",
                           "状态",
+                          "AI试题",
                           "操作",
                         ].map((item) => (
                           <th key={item} className="px-6 py-3">
@@ -555,7 +585,7 @@ function Admin() {
                       {isLoading ? (
                         <tr>
                           <td
-                            colSpan={6}
+                            colSpan={7}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             加载中...
@@ -564,7 +594,7 @@ function Admin() {
                       ) : error ? (
                         <tr>
                           <td
-                            colSpan={6}
+                            colSpan={7}
                             className="px-6 py-8 text-center text-red-500"
                           >
                             {error}
@@ -573,7 +603,7 @@ function Admin() {
                       ) : jobs.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={6}
+                            colSpan={7}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             暂无职位
@@ -603,6 +633,10 @@ function Admin() {
                               >
                                 {job.status === "open" ? "招聘中" : "已关闭"}
                               </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {job.aiQuestionBankName ||
+                                (job.aiQuestionBankId ? "已设置" : "未设置")}
                             </td>
                             <td className="px-6 py-4 text-sm">
                               <button
@@ -635,6 +669,8 @@ function Admin() {
                                     teamId: job.teamId,
                                     interviewType:
                                       job.interviewType || "online",
+                                    aiQuestionBankId:
+                                      job.aiQuestionBankId || "",
                                   });
                                   setModal("job");
                                 }}
@@ -1105,7 +1141,7 @@ function Admin() {
             </div>
 
             {modal === "job" && (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
                 <input
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
                   placeholder="职位名称"
@@ -1228,11 +1264,25 @@ function Admin() {
                   <option value="online">线上面试</option>
                   <option value="offline">线下面试</option>
                 </select>
+                <select
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  value={jobForm.aiQuestionBankId}
+                  onChange={(e) =>
+                    setJobForm({ ...jobForm, aiQuestionBankId: e.target.value })
+                  }
+                >
+                  <option value="">选择AI试题</option>
+                  {questionBanks.map((bank) => (
+                    <option key={bank._id} value={bank._id}>
+                      {bank.title}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
 
             {modal === "candidate" && (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
                 <input
                   type="text"
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
@@ -1311,7 +1361,7 @@ function Admin() {
             )}
 
             {modal === "questionBank" && (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
                 <input
                   type="text"
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
@@ -1461,7 +1511,7 @@ function Admin() {
             )}
 
             {modal === "interview" && (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
                 <select className="w-full rounded-lg border border-neutral-300 px-4 py-3">
                   <option>技术面试</option>
                   <option>产品面试</option>

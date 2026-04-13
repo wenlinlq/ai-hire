@@ -63,6 +63,8 @@ class PositionModel {
         interviewType: positionData.interviewType || "online",
         // AI试题
         aiQuestionBankId: positionData.aiQuestionBankId ? this.getValidObjectId(positionData.aiQuestionBankId) : null,
+        // AI预面试
+        aiPreInterview: positionData.aiPreInterview || false,
         // 岗位要求
         requirements: {
           skills: positionData.requirements?.skills || [],
@@ -234,8 +236,8 @@ class PositionModel {
   async findAllPositions() {
     try {
       const collection = this.getCollection();
-      // 使用 find 方法查询所有岗位，toArray() 转换为数组
-      return await collection.find().toArray();
+      // 使用 find 方法查询所有岗位，按浏览量降序排序，toArray() 转换为数组
+      return await collection.find().sort({ viewCount: -1 }).toArray();
     } catch (error) {
       // 查询失败时输出错误信息
       console.error("Error finding all positions:", error);

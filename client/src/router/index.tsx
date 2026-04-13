@@ -8,6 +8,7 @@ const Hall = lazy(() => import("../page/hall"));
 const JobDetail = lazy(() => import("../page/hall/detail"));
 const Home = lazy(() => import("../page/home"));
 const Interview = lazy(() => import("../page/interview"));
+const AIInterview = lazy(() => import("../page/interview/ai-interview"));
 const Login = lazy(() => import("../page/login"));
 const Notifications = lazy(() => import("../page/notifications"));
 const NotificationDetail = lazy(() => import("../page/notifications/detail"));
@@ -58,6 +59,16 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <Suspense fallback={null}>
           <Interview />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ai-interview",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={null}>
+          <AIInterview />
         </Suspense>
       </ProtectedRoute>
     ),

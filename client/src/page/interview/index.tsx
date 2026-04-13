@@ -307,6 +307,21 @@ function Interview() {
                       <div className="text-sm text-neutral-600">{label}</div>
                     </div>
                   ))}
+                  {[
+                    [
+                      "应变能力",
+                      score > 0 ? score.toString() : "85",
+                      "bg-blue-50 text-blue-600",
+                    ],
+                  ].map(([label, value, classes]) => (
+                    <div
+                      key={label}
+                      className={`rounded-xl p-4 text-center ${classes}`}
+                    >
+                      <div className="mb-2 text-3xl font-bold">{value}</div>
+                      <div className="text-sm text-neutral-600">{label}</div>
+                    </div>
+                  ))}
                 </div>
 
                 <div className="space-y-6">

@@ -53,6 +53,7 @@ interface Position {
   createdAt: string;
   updatedAt: string;
   teamId: string;
+  aiPreInterview?: boolean;
 }
 
 interface PositionCreate {
@@ -73,6 +74,7 @@ interface PositionCreate {
   status: string;
   deadline: string;
   teamId: string;
+  aiPreInterview?: boolean;
 }
 
 interface PositionUpdate {
@@ -93,6 +95,7 @@ interface PositionUpdate {
   status?: string;
   deadline?: string;
   teamId?: string;
+  aiPreInterview?: boolean;
 }
 
 const positionApi = {

@@ -75,6 +75,7 @@ interface Job {
   teamId: string;
   aiQuestionBankId?: string;
   aiQuestionBankName?: string;
+  aiPreInterview?: boolean;
 }
 
 // 职位表单状态类型
@@ -97,6 +98,7 @@ interface JobFormState {
   teamId: string;
   interviewType: string;
   aiQuestionBankId: string;
+  aiPreInterview: boolean;
 }
 
 const interviewPrograms = [
@@ -153,6 +155,7 @@ function Admin() {
     teamId: "",
     interviewType: "online",
     aiQuestionBankId: "",
+    aiPreInterview: false,
   });
   // 当前编辑的职位ID
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -573,6 +576,7 @@ function Admin() {
                           "截止时间",
                           "状态",
                           "AI试题",
+                          "AI预面试",
                           "操作",
                         ].map((item) => (
                           <th key={item} className="px-6 py-3">
@@ -585,7 +589,7 @@ function Admin() {
                       {isLoading ? (
                         <tr>
                           <td
-                            colSpan={7}
+                            colSpan={8}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             加载中...
@@ -594,7 +598,7 @@ function Admin() {
                       ) : error ? (
                         <tr>
                           <td
-                            colSpan={7}
+                            colSpan={8}
                             className="px-6 py-8 text-center text-red-500"
                           >
                             {error}
@@ -603,7 +607,7 @@ function Admin() {
                       ) : jobs.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={7}
+                            colSpan={8}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             暂无职位
@@ -637,6 +641,13 @@ function Admin() {
                             <td className="px-6 py-4 text-sm">
                               {job.aiQuestionBankName ||
                                 (job.aiQuestionBankId ? "已设置" : "未设置")}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs font-semibold ${job.aiPreInterview ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
+                              >
+                                {job.aiPreInterview ? "是" : "否"}
+                              </span>
                             </td>
                             <td className="px-6 py-4 text-sm">
                               <button
@@ -796,7 +807,7 @@ function Admin() {
                       {isLoadingCandidates ? (
                         <tr>
                           <td
-                            colSpan={7}
+                            colSpan={8}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             加载中...
@@ -805,7 +816,7 @@ function Admin() {
                       ) : errorCandidates ? (
                         <tr>
                           <td
-                            colSpan={7}
+                            colSpan={8}
                             className="px-6 py-8 text-center text-red-500"
                           >
                             {errorCandidates}
@@ -814,7 +825,7 @@ function Admin() {
                       ) : candidates.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={7}
+                            colSpan={8}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             暂无候选人
@@ -1278,6 +1289,26 @@ function Admin() {
                     </option>
                   ))}
                 </select>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="aiPreInterview"
+                    className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    checked={jobForm.aiPreInterview}
+                    onChange={(e) =>
+                      setJobForm({
+                        ...jobForm,
+                        aiPreInterview: e.target.checked,
+                      })
+                    }
+                  />
+                  <label
+                    htmlFor="aiPreInterview"
+                    className="text-sm font-medium text-neutral-700"
+                  >
+                    启用AI预面试
+                  </label>
+                </div>
               </div>
             )}
 

@@ -42,6 +42,20 @@
   }
 }
 
+@keyframes progress {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+.animate-progress {
+  animation: progress 3s ease-in-out forwards;
+}
+
 body {
   margin: 0;
   background-color: var(--color-neutral-50);

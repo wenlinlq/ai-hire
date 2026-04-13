@@ -1,4 +1,5 @@
 import { ChangeEvent, useMemo, useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import userApi from "../../api/userApi";
 import type { User } from "../../api/userApi";
 import favoriteApi from "../../api/favoriteApi";
@@ -74,6 +75,8 @@ function Profile() {
     const savedTab = localStorage.getItem("profileActiveTab");
     return (savedTab as ProfileTab) || "profile";
   });
+
+  const navigate = useNavigate();
 
   // 面试数量状态
   const [interviewCount, setInterviewCount] = useState(3);
@@ -861,7 +864,10 @@ function Profile() {
                               投递时间：2026-04-15 10:30
                             </p>
                           </div>
-                          <button className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600">
+                          <button
+                            className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
+                            onClick={() => navigate("/ai-interview")}
+                          >
                             开始面试
                           </button>
                         </div>
@@ -879,7 +885,10 @@ function Profile() {
                               投递时间：2026-04-10 09:15
                             </p>
                           </div>
-                          <button className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600">
+                          <button
+                            className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
+                            onClick={() => navigate("/ai-interview")}
+                          >
                             开始面试
                           </button>
                         </div>

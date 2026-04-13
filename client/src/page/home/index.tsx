@@ -260,7 +260,7 @@ function Home() {
         const teams = await teamApi.getTeams();
         console.log("获取团队数据成功:", teams);
 
-        // 为每个职位添加团队名称，并获取前6个职位作为热门职位
+        // 为每个职位添加团队名称，获取前6个职位作为热门职位（服务器已按浏览量排序）
         const jobsWithTeamName = response
           .map((job) => ({
             ...job,
@@ -482,9 +482,10 @@ function Home() {
               </div>
             ) : (
               jobs.map((job) => (
-                <div
+                <Link
                   key={job._id}
-                  className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-lg"
+                  to={`/hall/${job._id}`}
+                  className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-lg block"
                 >
                   <div className="mb-4 flex items-start justify-between">
                     <button
@@ -495,7 +496,9 @@ function Home() {
                           : `收藏${job.title}`
                       }
                       className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 transition-colors hover:bg-primary-50"
-                      onClick={async () => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         const currentUser = userApi.getCurrentUser();
                         if (!currentUser) {
                           alert("请先登录");
@@ -505,7 +508,7 @@ function Home() {
                         try {
                           if (favoriteJobs[job._id]) {
                             // 取消收藏
-                            await favoriteApi.removeFavorite(
+                            favoriteApi.removeFavorite(
                               currentUser._id,
                               job._id,
                             );
@@ -515,10 +518,7 @@ function Home() {
                             }));
                           } else {
                             // 添加收藏
-                            await favoriteApi.addFavorite(
-                              currentUser._id,
-                              job._id,
-                            );
+                            favoriteApi.addFavorite(currentUser._id, job._id);
                             setFavoriteJobs((current) => ({
                               ...current,
                               [job._id]: true,
@@ -542,15 +542,21 @@ function Home() {
                   <p className="mb-4 text-sm text-neutral-500">
                     {job.teamName} · {job.department}
                   </p>
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    {job.requirements.skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600"
-                      >
-                        {skill}
+                  <div className="mb-4 flex flex-wrap gap-2 min-h-[24px]">
+                    {job.requirements.skills.length > 0 ? (
+                      job.requirements.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600"
+                        >
+                          {skill}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-neutral-400">
+                        暂无技能要求
                       </span>
-                    ))}
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-primary-600">
@@ -558,12 +564,17 @@ function Home() {
                     </span>
                     <button
                       type="button"
-                      className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
+                      className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600 whitespace-nowrap"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // 立即投递按钮的点击事件可以在这里处理
+                      }}
                     >
                       立即投递
                     </button>
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </div>

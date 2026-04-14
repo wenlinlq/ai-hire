@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { SiteNav } from "../../components/site";
+import userApi from "../../api/userApi";
+import { notificationApi } from "../../api/notificationApi";
 
 interface Notification {
   id: string;
@@ -9,77 +11,91 @@ interface Notification {
   type: "system" | "application" | "interview" | "offer";
   isRead: boolean;
   createdAt: string;
+  teamName?: string;
 }
 
 function Notifications() {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: "1",
-      title: "简历投递成功",
-      content: "您已成功投递前端开发工程师职位，请耐心等待面试通知。",
-      type: "application",
-      isRead: false,
-      createdAt: "2024-01-15 10:30",
-    },
-    {
-      id: "2",
-      title: "面试邀请",
-      content:
-        "ABC科技有限公司邀请您参加前端开发工程师职位的面试，时间：2024-01-20 14:00。",
-      type: "interview",
-      isRead: false,
-      createdAt: "2024-01-14 15:20",
-    },
-    {
-      id: "3",
-      title: "系统通知",
-      content: "您的简历已被查看，请保持手机畅通，可能会有HR联系您。",
-      type: "system",
-      isRead: true,
-      createdAt: "2024-01-13 09:15",
-    },
-    {
-      id: "4",
-      title: "录用通知",
-      content:
-        "恭喜您！XYZ科技公司决定录用您为前端开发工程师，请及时确认录用通知。",
-      type: "offer",
-      isRead: true,
-      createdAt: "2024-01-10 16:45",
-    },
-    {
-      id: "5",
-      title: "系统维护通知",
-      content:
-        "系统将于2024-01-18 02:00-04:00进行维护，期间部分功能可能无法使用。",
-      type: "system",
-      isRead: true,
-      createdAt: "2024-01-08 11:00",
-    },
-  ]);
-
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [loading, setLoading] = useState(false);
 
-  const handleMarkAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((notification) =>
-        notification.id === id
-          ? { ...notification, isRead: true }
-          : notification,
-      ),
-    );
+  // 获取通知数据
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      const user = userApi.getCurrentUser();
+      if (!user) return;
+
+      try {
+        setLoading(true);
+        // 获取用户的所有通知
+        const notificationData = await notificationApi.getUserNotifications(
+          user._id,
+        );
+        // 将_id字段重命名为id，确保每个通知对象都有唯一的id字段
+        const notificationsWithId = (notificationData.data || []).map(
+          (notification) => ({
+            ...notification,
+            id: notification._id,
+          }),
+        );
+        setNotifications(notificationsWithId);
+      } catch (error) {
+        console.error("获取通知数据失败:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, []);
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      // 调用API标记通知为已读
+      await notificationApi.markAsRead(id);
+      // 更新本地状态
+      setNotifications(
+        notifications.map((notification) =>
+          notification.id === id
+            ? { ...notification, isRead: true }
+            : notification,
+        ),
+      );
+    } catch (error) {
+      console.error("标记通知为已读失败:", error);
+    }
   };
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(
-      notifications.map((notification) => ({ ...notification, isRead: true })),
-    );
+  const handleMarkAllAsRead = async () => {
+    try {
+      const user = userApi.getCurrentUser();
+      if (!user) return;
+
+      // 调用API标记所有通知为已读
+      await notificationApi.markAllAsRead(user._id);
+      // 更新本地状态
+      setNotifications(
+        notifications.map((notification) => ({
+          ...notification,
+          isRead: true,
+        })),
+      );
+    } catch (error) {
+      console.error("标记所有通知为已读失败:", error);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setNotifications(
-      notifications.filter((notification) => notification.id !== id),
-    );
+  const handleDelete = async (id: string) => {
+    try {
+      // 调用API删除通知
+      await notificationApi.deleteNotification(id);
+      // 更新本地状态
+      setNotifications(
+        notifications.filter((notification) => notification.id !== id),
+      );
+    } catch (error) {
+      console.error("删除通知失败:", error);
+    }
   };
 
   const filteredNotifications =
@@ -238,7 +254,11 @@ function Notifications() {
         </div>
 
         <div className="space-y-4">
-          {filteredNotifications.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+            </div>
+          ) : filteredNotifications.length === 0 ? (
             <div className="rounded-lg bg-white p-12 text-center">
               <svg
                 className="mx-auto h-16 w-16 text-neutral-300"
@@ -286,6 +306,11 @@ function Notifications() {
                         {notification.content}
                       </p>
                       <div className="flex items-center gap-4 text-sm">
+                        {notification.teamName && (
+                          <span className="rounded-md bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700">
+                            来自: {notification.teamName}
+                          </span>
+                        )}
                         <span
                           className={`rounded-full px-3 py-1 text-xs font-medium ${getTypeClass(
                             notification.type,
@@ -294,7 +319,9 @@ function Notifications() {
                           {getTypeLabel(notification.type)}
                         </span>
                         <span className="text-neutral-500">
-                          {notification.createdAt}
+                          {new Date(notification.createdAt).toLocaleString(
+                            "zh-CN",
+                          )}
                         </span>
                       </div>
                     </div>

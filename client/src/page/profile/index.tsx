@@ -7,6 +7,10 @@ import positionApi from "../../api/positionApi";
 import type { Position } from "../../api/positionApi";
 import resumeApi from "../../api/resumeApi";
 import type { Resume } from "../../api/resumeApi";
+import { deliveryApi } from "../../api/deliveryApi";
+import { aiPreInterviewApi } from "../../api/aiPreInterviewApi";
+import { interviewInvitationApi } from "../../api/interviewInvitationApi";
+import { notificationApi } from "../../api/notificationApi";
 
 type ProfileTab =
   | "profile"
@@ -79,9 +83,9 @@ function Profile() {
   const navigate = useNavigate();
 
   // 面试数量状态
-  const [interviewCount, setInterviewCount] = useState(3);
+  const [interviewCount, setInterviewCount] = useState(0);
   // 总通知数量状态
-  const [notificationCount, setNotificationCount] = useState(5);
+  const [notificationCount, setNotificationCount] = useState(0);
   const [profileForm, setProfileForm] = useState<ProfileForm>({
     name: "",
     phone: "",
@@ -92,8 +96,14 @@ function Profile() {
   });
   const [resumes, setResumes] = useState<ResumeItem[]>([]);
   const [favoriteJobs, setFavoriteJobs] = useState<FavoriteJob[]>([]);
+  const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [aiPreInterviews, setAiPreInterviews] = useState<any[]>([]);
+  const [interviewInvitations, setInterviewInvitations] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
+  const [interviewLoading, setInterviewLoading] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [newPhone, setNewPhone] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -213,6 +223,77 @@ function Profile() {
   useEffect(() => {
     localStorage.setItem("profileActiveTab", activeTab);
   }, [activeTab]);
+
+  // 获取面试相关数据
+  useEffect(() => {
+    const fetchInterviewData = async () => {
+      const user = userApi.getCurrentUser();
+      if (!user) {
+        return;
+      }
+
+      try {
+        setInterviewLoading(true);
+
+        // 获取用户的投递记录
+        const deliveryData = await deliveryApi.getUserDeliveries(user._id);
+        setDeliveries(deliveryData.data || []);
+
+        // 获取用户的AI预面试记录
+        const aiPreInterviewData =
+          await aiPreInterviewApi.getUserAiPreInterviews(user._id);
+        setAiPreInterviews(aiPreInterviewData.data || []);
+
+        // 获取用户的面试邀请
+        const interviewInvitationData =
+          await interviewInvitationApi.getUserInterviewInvitations(user._id);
+        setInterviewInvitations(interviewInvitationData.data || []);
+
+        // 计算面试数量
+        const totalInterviews =
+          (aiPreInterviewData.data?.length || 0) +
+          (interviewInvitationData.data?.length || 0);
+        setInterviewCount(totalInterviews);
+      } catch (error) {
+        console.error("获取面试数据失败:", error);
+      } finally {
+        setInterviewLoading(false);
+      }
+    };
+
+    fetchInterviewData();
+  }, []);
+
+  // 获取通知数据
+  useEffect(() => {
+    const fetchNotificationData = async () => {
+      const user = userApi.getCurrentUser();
+      if (!user) {
+        return;
+      }
+
+      try {
+        setNotificationLoading(true);
+
+        // 获取用户的未读通知
+        const unreadNotificationData =
+          await notificationApi.getUnreadNotifications(user._id);
+        setNotificationCount(unreadNotificationData.data?.length || 0);
+
+        // 获取用户的所有通知
+        const allNotificationData = await notificationApi.getUserNotifications(
+          user._id,
+        );
+        setNotifications(allNotificationData.data || []);
+      } catch (error) {
+        console.error("获取通知数据失败:", error);
+      } finally {
+        setNotificationLoading(false);
+      }
+    };
+
+    fetchNotificationData();
+  }, []);
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -340,7 +421,7 @@ function Profile() {
                   >
                     <div className="flex items-center justify-between">
                       {label}
-                      {key === "myInterviews" && (
+                      {key === "myInterviews" && interviewCount > 0 && (
                         <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white">
                           {interviewCount}
                         </span>
@@ -712,190 +793,243 @@ function Profile() {
                   <h2 className="text-2xl font-bold text-neutral-800">
                     我的面试
                   </h2>
-                  <div className="relative">
-                    <button className="p-2 rounded-full hover:bg-neutral-100 transition-colors">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-6 w-6 text-neutral-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                        />
-                      </svg>
-                      {notificationCount > 0 && (
-                        <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-medium text-white">
-                          {notificationCount > 99 ? "99+" : notificationCount}
-                        </span>
+                </div>
+                {interviewLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="mb-4 text-lg font-semibold text-neutral-700">
+                        团队面试邀请
+                      </h3>
+                      {interviewInvitations.length === 0 ? (
+                        <div className="text-center py-12">
+                          <svg
+                            className="mx-auto h-16 w-16 text-neutral-300"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                            />
+                          </svg>
+                          <p className="mt-4 text-lg text-neutral-500">
+                            暂无面试邀请
+                          </p>
+                          <p className="mt-2 text-sm text-neutral-400">
+                            当有面试邀请时，会显示在这里
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {interviewInvitations.map((invitation: any) => (
+                            <div
+                              key={invitation._id}
+                              className="rounded-lg border border-neutral-200 p-4"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="text-md font-semibold text-neutral-800">
+                                    {invitation.type === "online"
+                                      ? "线上面试"
+                                      : "线下面试"}{" "}
+                                    - 职位名称
+                                  </h4>
+                                  <p className="mt-1 text-sm text-neutral-600">
+                                    邀请你参加
+                                    {invitation.type === "online"
+                                      ? "线上"
+                                      : "线下"}
+                                    面试
+                                  </p>
+                                  <div className="mt-3 space-y-2">
+                                    <div>
+                                      <label className="block text-xs font-medium text-neutral-500 mb-1">
+                                        面试时间
+                                      </label>
+                                      <p className="text-sm text-neutral-700">
+                                        {new Date(
+                                          invitation.scheduledTime,
+                                        ).toLocaleString("zh-CN")}
+                                      </p>
+                                    </div>
+                                    {invitation.type === "online" && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm text-neutral-500">
+                                          面试链接：
+                                        </span>
+                                        <a
+                                          href={invitation.meetingUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-sm text-primary-600 hover:underline"
+                                        >
+                                          {invitation.meetingUrl}
+                                        </a>
+                                      </div>
+                                    )}
+                                    {invitation.type === "offline" && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm text-neutral-500">
+                                          面试地点：
+                                        </span>
+                                        <span className="text-sm text-neutral-700">
+                                          {invitation.location}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex gap-2 ml-4">
+                                  <button
+                                    className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
+                                    onClick={async () => {
+                                      try {
+                                        await interviewInvitationApi.confirmInterviewInvitation(
+                                          invitation._id,
+                                          { userFeedback: "confirmed" },
+                                        );
+                                        // 重新获取面试数据
+                                        const user = userApi.getCurrentUser();
+                                        if (user) {
+                                          const interviewInvitationData =
+                                            await interviewInvitationApi.getUserInterviewInvitations(
+                                              user._id,
+                                            );
+                                          setInterviewInvitations(
+                                            interviewInvitationData.data || [],
+                                          );
+                                        }
+                                      } catch (error) {
+                                        console.error(
+                                          "接受面试邀请失败:",
+                                          error,
+                                        );
+                                        alert("接受面试邀请失败，请重试");
+                                      }
+                                    }}
+                                  >
+                                    接受
+                                  </button>
+                                  <button
+                                    className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-50"
+                                    onClick={async () => {
+                                      try {
+                                        await interviewInvitationApi.confirmInterviewInvitation(
+                                          invitation._id,
+                                          { userFeedback: "declined" },
+                                        );
+                                        // 重新获取面试数据
+                                        const user = userApi.getCurrentUser();
+                                        if (user) {
+                                          const interviewInvitationData =
+                                            await interviewInvitationApi.getUserInterviewInvitations(
+                                              user._id,
+                                            );
+                                          setInterviewInvitations(
+                                            interviewInvitationData.data || [],
+                                          );
+                                        }
+                                      } catch (error) {
+                                        console.error(
+                                          "拒绝面试邀请失败:",
+                                          error,
+                                        );
+                                        alert("拒绝面试邀请失败，请重试");
+                                      }
+                                    }}
+                                  >
+                                    拒绝
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="mb-4 text-lg font-semibold text-neutral-700">
-                      团队面试邀请
-                    </h3>
-                    <div className="space-y-4">
-                      {/* 线上面试 */}
-                      <div className="rounded-lg border border-neutral-200 p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="text-md font-semibold text-neutral-800">
-                              前端工程师 - 字节跳动
-                            </h4>
-                            <p className="mt-1 text-sm text-neutral-600">
-                              邀请你参加线上面试
-                            </p>
-                            <div className="mt-3 space-y-2">
-                              <div>
-                                <label className="block text-xs font-medium text-neutral-500 mb-1">
-                                  选择面试时间
-                                </label>
-                                <select className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm">
-                                  <option>2026-04-20 14:00</option>
-                                  <option>2026-04-21 10:00</option>
-                                  <option>2026-04-22 16:00</option>
-                                </select>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-neutral-500">
-                                  联系方式：
-                                </span>
-                                <span className="text-sm text-neutral-700">
-                                  HR李 - 13800138000
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-neutral-500">
-                                  面试链接：
-                                </span>
-                                <a
-                                  href="#"
-                                  className="text-sm text-primary-600 hover:underline"
-                                >
-                                  https://interview.bytedance.com/abc123
-                                </a>
+                    </div>
+                    <div>
+                      <h3 className="mb-4 text-lg font-semibold text-neutral-700">
+                        AI预面试
+                      </h3>
+                      {aiPreInterviews.length === 0 ? (
+                        <div className="text-center py-12">
+                          <svg
+                            className="mx-auto h-16 w-16 text-neutral-300"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                            />
+                          </svg>
+                          <p className="mt-4 text-lg text-neutral-500">
+                            暂无AI预面试邀请
+                          </p>
+                          <p className="mt-2 text-sm text-neutral-400">
+                            当有AI预面试邀请时，会显示在这里
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {aiPreInterviews.map((interview: any) => (
+                            <div
+                              key={interview._id}
+                              className="rounded-lg border border-neutral-200 p-4"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <h4 className="text-md font-semibold text-neutral-800">
+                                    AI预面试 - 职位名称
+                                  </h4>
+                                  <p className="mt-1 text-sm text-neutral-600">
+                                    AI预面试邀请
+                                  </p>
+                                  <p className="mt-2 text-sm text-neutral-500">
+                                    投递时间：
+                                    {new Date(
+                                      interview.createdAt,
+                                    ).toLocaleString("zh-CN")}
+                                  </p>
+                                  {interview.score !== null && (
+                                    <p className="mt-1 text-sm text-neutral-500">
+                                      面试得分：{interview.score}
+                                    </p>
+                                  )}
+                                </div>
+                                {interview.status === "pending" && (
+                                  <button
+                                    className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
+                                    onClick={() => navigate("/ai-interview")}
+                                  >
+                                    开始面试
+                                  </button>
+                                )}
+                                {interview.status === "completed" && (
+                                  <span className="rounded-lg bg-neutral-100 px-4 py-2 text-sm text-neutral-600">
+                                    已完成
+                                  </span>
+                                )}
                               </div>
                             </div>
-                          </div>
-                          <div className="flex gap-2 ml-4">
-                            <button className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600">
-                              接受
-                            </button>
-                            <button className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-50">
-                              拒绝
-                            </button>
-                          </div>
+                          ))}
                         </div>
-                      </div>
-
-                      {/* 线下面试 */}
-                      <div className="rounded-lg border border-neutral-200 p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="text-md font-semibold text-neutral-800">
-                              产品经理 - 腾讯
-                            </h4>
-                            <p className="mt-1 text-sm text-neutral-600">
-                              邀请你参加线下面试
-                            </p>
-                            <div className="mt-3 space-y-2">
-                              <div>
-                                <label className="block text-xs font-medium text-neutral-500 mb-1">
-                                  选择面试时间
-                                </label>
-                                <select className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm">
-                                  <option>2026-04-25 14:00</option>
-                                  <option>2026-04-26 10:00</option>
-                                  <option>2026-04-27 16:00</option>
-                                </select>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-neutral-500">
-                                  联系方式：
-                                </span>
-                                <span className="text-sm text-neutral-700">
-                                  HR王 - 13900139000
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-neutral-500">
-                                  面试地点：
-                                </span>
-                                <span className="text-sm text-neutral-700">
-                                  深圳市南山区腾讯大厦 15楼会议室A
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex gap-2 ml-4">
-                            <button className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600">
-                              接受
-                            </button>
-                            <button className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-50">
-                              拒绝
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
-                  <div>
-                    <h3 className="mb-4 text-lg font-semibold text-neutral-700">
-                      AI预面试
-                    </h3>
-                    <div className="space-y-4">
-                      <div className="rounded-lg border border-neutral-200 p-4">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="text-md font-semibold text-neutral-800">
-                              产品经理 - 腾讯
-                            </h4>
-                            <p className="mt-1 text-sm text-neutral-600">
-                              AI预面试邀请
-                            </p>
-                            <p className="mt-2 text-sm text-neutral-500">
-                              投递时间：2026-04-15 10:30
-                            </p>
-                          </div>
-                          <button
-                            className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
-                            onClick={() => navigate("/ai-interview")}
-                          >
-                            开始面试
-                          </button>
-                        </div>
-                      </div>
-                      <div className="rounded-lg border border-neutral-200 p-4">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="text-md font-semibold text-neutral-800">
-                              数据分析师 - 阿里巴巴
-                            </h4>
-                            <p className="mt-1 text-sm text-neutral-600">
-                              AI预面试邀请
-                            </p>
-                            <p className="mt-2 text-sm text-neutral-500">
-                              投递时间：2026-04-10 09:15
-                            </p>
-                          </div>
-                          <button
-                            className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
-                            onClick={() => navigate("/ai-interview")}
-                          >
-                            开始面试
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 

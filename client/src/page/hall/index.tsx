@@ -5,6 +5,7 @@ import positionApi from "../../api/positionApi";
 import teamApi from "../../api/teamApi";
 import favoriteApi from "../../api/favoriteApi";
 import userApi from "../../api/userApi";
+import { deliveryApi } from "../../api/deliveryApi";
 
 const hotKeywords = ["学生会", "协会", "社团", "工作室", "项目班"];
 const gradeFilters = ["不限", "大一", "大二", "大三", "大四"];
@@ -17,6 +18,7 @@ interface Job {
   quota: number;
   salary: string;
   interviewType: string;
+  aiPreInterview: boolean;
   requirements: {
     skills: string[];
     experience: string;
@@ -57,11 +59,14 @@ function FavoriteIcon({ filled }: { filled: boolean }) {
 function Hall() {
   const [keyword, setKeyword] = useState("");
   const [jobType, setJobType] = useState("全部类型");
-  const [grade, setGrade] = useState("不限");
+  const [grade, setGrade] = useState("全部年级");
   const [sort, setSort] = useState("推荐排序");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [favoriteJobs, setFavoriteJobs] = useState<Record<string, boolean>>({});
+  const [deliveredJobs, setDeliveredJobs] = useState<Record<string, boolean>>(
+    {},
+  );
 
   // 加载职位数据和收藏状态
   useEffect(() => {
@@ -91,18 +96,32 @@ function Hall() {
           initialFavorites[job._id] = false;
         });
 
-        // 获取用户收藏状态
+        // 获取用户收藏状态和投递记录
         const currentUser = userApi.getCurrentUser();
         if (currentUser) {
           try {
+            // 获取收藏状态
             const favoriteIds = await favoriteApi.getUserFavorites(
               currentUser._id,
             );
             favoriteIds.forEach((id) => {
               initialFavorites[id] = true;
             });
+
+            // 获取投递记录
+            const deliveries = await deliveryApi.getUserDeliveries(
+              currentUser._id,
+            );
+            const deliveredJobIds = deliveries.data.map(
+              (delivery: any) => delivery.jobId,
+            );
+            const initialDeliveredJobs: Record<string, boolean> = {};
+            deliveredJobIds.forEach((jobId: string) => {
+              initialDeliveredJobs[jobId] = true;
+            });
+            setDeliveredJobs(initialDeliveredJobs);
           } catch (error) {
-            console.error("获取收藏状态失败:", error);
+            console.error("获取用户状态失败:", error);
           }
         }
 
@@ -398,13 +417,72 @@ function Hall() {
                         >
                           {favoriteJobs[job._id] ? "已收藏" : "收藏"}
                         </button>
-                        <button
-                          type="button"
-                          className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
-                          onClick={(e) => e.preventDefault()}
-                        >
-                          立即投递
-                        </button>
+                        {deliveredJobs[job._id] ? (
+                          <span className="rounded-lg bg-neutral-100 px-4 py-2 text-sm text-neutral-600">
+                            等待结果
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              const currentUser = userApi.getCurrentUser();
+                              if (!currentUser) {
+                                alert("请先登录");
+                                return;
+                              }
+
+                              try {
+                                // 这里需要获取用户的默认简历ID
+                                // 假设用户已经上传了简历，并且有一个默认简历
+                                // 实际项目中，这里应该从用户的简历列表中获取默认简历
+                                const resumeId = "60d0fe4f5311236168a109ca"; // 示例简历ID
+
+                                // 检查职位是否需要AI预面试
+                                const hasAiPreInterview =
+                                  job.aiPreInterview || false;
+
+                                // 创建投递记录
+                                const response =
+                                  await deliveryApi.createDelivery({
+                                    userId: currentUser._id,
+                                    jobId: job._id,
+                                    resumeId,
+                                    hasAiPreInterview,
+                                  });
+
+                                // 更新已投递职位状态
+                                setDeliveredJobs((current) => ({
+                                  ...current,
+                                  [job._id]: true,
+                                }));
+
+                                // 更新已投递数
+                                setJobs((currentJobs) =>
+                                  currentJobs.map((currentJob) =>
+                                    currentJob._id === job._id
+                                      ? {
+                                          ...currentJob,
+                                          applyCount: currentJob.applyCount + 1,
+                                        }
+                                      : currentJob,
+                                  ),
+                                );
+
+                                alert("投递成功！");
+
+                                // 禁用链接跳转
+                                e.preventDefault();
+                              } catch (error) {
+                                console.error("投递失败:", error);
+                                alert("投递失败，请重试");
+                              }
+                            }}
+                          >
+                            立即投递
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

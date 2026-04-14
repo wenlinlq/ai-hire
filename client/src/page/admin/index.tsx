@@ -1795,7 +1795,16 @@ function Admin() {
                   简历文件
                 </label>
                 <div className="text-sm text-neutral-900">
-                  {currentCandidate.resumeId ? (
+                  {currentCandidate.resumeFileUrl ? (
+                    <a
+                      href={`http://localhost:3000${currentCandidate.resumeFileUrl}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary-600 hover:text-primary-900"
+                    >
+                      查看简历
+                    </a>
+                  ) : currentCandidate.resumeId ? (
                     <a
                       href={`http://localhost:3000/uploads/${encodeURIComponent(currentCandidate.resumeId)}`}
                       target="_blank"

@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { notificationApi } from "../../api/notificationApi";
+import userApi from "../../api/userApi";
 
 interface Notification {
   id: string;
   title: string;
   content: string;
-  type: "system" | "application" | "interview" | "offer";
+  type: string;
   isRead: boolean;
   createdAt: string;
-  sender: string;
+  sender?: string;
+  teamName?: string;
 }
 
 function NotificationDetail() {
@@ -18,62 +21,27 @@ function NotificationDetail() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const mockNotifications: Notification[] = [
-      {
-        id: "1",
-        title: "简历投递成功",
-        content:
-          "您已成功投递前端开发工程师职位，请耐心等待面试通知。我们会在收到您的简历后尽快进行筛选，并通过邮件或短信通知您面试安排。",
-        type: "application",
-        isRead: false,
-        createdAt: "2024-01-15 10:30",
-        sender: "系统",
-      },
-      {
-        id: "2",
-        title: "面试邀请",
-        content:
-          "ABC科技有限公司邀请您参加前端开发工程师职位的面试，时间：2024-01-20 14:00。面试地点：北京市朝阳区科技园区A座3楼会议室。请携带个人简历、身份证复印件及相关作品集。如有疑问请联系：hr@abctech.com",
-        type: "interview",
-        isRead: false,
-        createdAt: "2024-01-14 15:20",
-        sender: "ABC科技有限公司",
-      },
-      {
-        id: "3",
-        title: "系统通知",
-        content:
-          "您的简历已被查看，请保持手机畅通，可能会有HR联系您。建议您定期更新简历信息，以提高被录用的机会。",
-        type: "system",
-        isRead: true,
-        createdAt: "2024-01-13 09:15",
-        sender: "系统",
-      },
-      {
-        id: "4",
-        title: "录用通知",
-        content:
-          "恭喜您！XYZ科技公司决定录用您为前端开发工程师，请及时确认录用通知。入职时间：2024-02-01。请于收到本通知后3个工作日内确认是否接受录用，并准备相关入职材料。如有疑问请联系：recruit@xyztech.com",
-        type: "offer",
-        isRead: true,
-        createdAt: "2024-01-10 16:45",
-        sender: "XYZ科技公司",
-      },
-      {
-        id: "5",
-        title: "系统维护通知",
-        content:
-          "系统将于2024-01-18 02:00-04:00进行维护，期间部分功能可能无法使用。维护完成后，所有功能将恢复正常。给您带来的不便，敬请谅解。",
-        type: "system",
-        isRead: true,
-        createdAt: "2024-01-08 11:00",
-        sender: "系统",
-      },
-    ];
+    const fetchNotification = async () => {
+      try {
+        setLoading(true);
+        // 从API获取通知详情
+        const response = await notificationApi.getNotificationById(id!);
+        const notificationData = response.data;
+        // 将_id字段重命名为id
+        const notificationWithId = {
+          ...notificationData,
+          id: notificationData._id,
+        };
+        setNotification(notificationWithId);
+      } catch (error) {
+        console.error("获取通知详情失败:", error);
+        setNotification(null);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const found = mockNotifications.find((n) => n.id === id);
-    setNotification(found || null);
-    setLoading(false);
+    fetchNotification();
   }, [id]);
 
   const getTypeIcon = (type: string) => {
@@ -248,6 +216,11 @@ function NotificationDetail() {
                   {notification.title}
                 </h1>
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+                  {notification.teamName && (
+                    <span className="rounded-md bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700">
+                      来自团队: {notification.teamName}
+                    </span>
+                  )}
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-medium ${getTypeClass(
                       notification.type,

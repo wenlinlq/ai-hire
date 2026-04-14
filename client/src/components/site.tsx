@@ -1,6 +1,9 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import userApi from "../api/userApi";
+import { notificationApi } from "../api/notificationApi";
+import { aiPreInterviewApi } from "../api/aiPreInterviewApi";
+import { interviewInvitationApi } from "../api/interviewInvitationApi";
 
 type SiteNavProps = {
   current?: "home" | "hall" | "resume" | "interview" | "profile";
@@ -35,14 +38,46 @@ export function SiteNav({ current }: SiteNavProps) {
     null,
   );
   // 消息通知数量
-  const [messageCount, setMessageCount] = useState(2);
+  const [messageCount, setMessageCount] = useState(0);
   // 个人中心通知数量
-  const [profileCount, setProfileCount] = useState(3);
+  const [profileCount, setProfileCount] = useState(0);
   // 总通知数量
   const totalCount = messageCount + profileCount;
   const navigate = useNavigate();
   const user = userApi.getCurrentUser();
   const isLoggedIn = userApi.isLoggedIn();
+
+  // 获取通知和面试数据
+  useEffect(() => {
+    const fetchNotificationData = async () => {
+      if (!user) return;
+
+      try {
+        // 获取用户的未读通知
+        const unreadNotificationData =
+          await notificationApi.getUnreadNotifications(user._id);
+        setMessageCount(unreadNotificationData.data?.length || 0);
+
+        // 获取用户的AI预面试记录
+        const aiPreInterviewData =
+          await aiPreInterviewApi.getUserAiPreInterviews(user._id);
+        const aiPreInterviewCount = aiPreInterviewData.data?.length || 0;
+
+        // 获取用户的面试邀请
+        const interviewInvitationData =
+          await interviewInvitationApi.getUserInterviewInvitations(user._id);
+        const interviewInvitationCount =
+          interviewInvitationData.data?.length || 0;
+
+        // 计算个人中心通知数量
+        setProfileCount(aiPreInterviewCount + interviewInvitationCount);
+      } catch (error) {
+        console.error("获取通知数据失败:", error);
+      }
+    };
+
+    fetchNotificationData();
+  }, [user]);
 
   const handleLogout = () => {
     userApi.logout();

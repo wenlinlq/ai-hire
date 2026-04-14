@@ -19,6 +19,14 @@ const favoriteModel = require("./models/favoriteModel");
 const resumeModel = require("./models/resumeModel");
 // 导入面试题库模型
 const questionBankModel = require("./models/questionBankModel");
+// 导入投递模型
+const deliveryModel = require("./models/deliveryModel");
+// 导入AI预面试模型
+const aiPreInterviewModel = require("./models/aiPreInterviewModel");
+// 导入面试邀请模型
+const interviewInvitationModel = require("./models/interviewInvitationModel");
+// 导入通知模型
+const notificationModel = require("./models/notificationModel");
 
 var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/api/users");
@@ -28,6 +36,10 @@ var applicationsRouter = require("./routes/api/applications");
 var favoritesRouter = require("./routes/api/favorites");
 var resumesRouter = require("./routes/api/resumes");
 var questionBanksRouter = require("./routes/api/questionBanks");
+var deliveriesRouter = require("./routes/api/deliveries");
+var aiPreInterviewsRouter = require("./routes/api/aiPreInterviews");
+var interviewInvitationsRouter = require("./routes/api/interviewInvitations");
+var notificationsRouter = require("./routes/api/notifications");
 
 var app = express();
 
@@ -60,6 +72,10 @@ app.use("/api/applications", applicationsRouter);
 app.use("/api/favorites", favoritesRouter);
 app.use("/api/resumes", resumesRouter);
 app.use("/api/questionBanks", questionBanksRouter);
+app.use("/api/deliveries", deliveriesRouter);
+app.use("/api/aiPreInterviews", aiPreInterviewsRouter);
+app.use("/api/interviewInvitations", interviewInvitationsRouter);
+app.use("/api/notifications", notificationsRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -92,6 +108,14 @@ async function initIndexes() {
     await resumeModel.initIndexes();
     // 初始化面试题库模型索引
     await questionBankModel.initIndexes();
+    // 初始化投递模型索引
+    await deliveryModel.initializeIndexes();
+    // 初始化AI预面试模型索引
+    await aiPreInterviewModel.initializeIndexes();
+    // 初始化面试邀请模型索引
+    await interviewInvitationModel.initializeIndexes();
+    // 初始化通知模型索引
+    await notificationModel.initializeIndexes();
     console.log("Database indexes initialized successfully");
   } catch (error) {
     console.error("Error initializing database indexes:", error);

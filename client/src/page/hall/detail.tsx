@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import positionApi from "../../api/positionApi";
 import teamApi from "../../api/teamApi";
 import userApi from "../../api/userApi";
+import { deliveryApi } from "../../api/deliveryApi";
+import favoriteApi from "../../api/favoriteApi";
 
 interface Job {
   _id: string;
@@ -38,6 +40,7 @@ function JobDetail() {
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [delivered, setDelivered] = useState(false);
   const isLoggedIn = userApi.isLoggedIn();
 
   useEffect(() => {
@@ -54,6 +57,30 @@ function JobDetail() {
             ...response,
             teamName: team?.name || "未知团队",
           });
+
+          // 检查用户是否已经投递了该职位
+          const currentUser = userApi.getCurrentUser();
+          if (currentUser) {
+            try {
+              // 获取用户的投递记录
+              const deliveries = await deliveryApi.getUserDeliveries(
+                currentUser._id,
+              );
+              const deliveredJobIds = deliveries.data.map(
+                (delivery: any) => delivery.jobId,
+              );
+              // 检查当前职位是否在投递记录中
+              setDelivered(deliveredJobIds.includes(response._id));
+
+              // 检查是否收藏
+              const favoriteIds = await favoriteApi.getUserFavorites(
+                currentUser._id,
+              );
+              setIsFavorite(favoriteIds.includes(response._id));
+            } catch (error) {
+              console.error("获取用户状态失败:", error);
+            }
+          }
         } else {
           setJob(null);
         }
@@ -78,9 +105,27 @@ function JobDetail() {
 
     try {
       setApplying(true);
-      await positionApi.applyPosition(job._id);
+
+      // 这里需要获取用户的默认简历ID
+      // 假设用户已经上传了简历，并且有一个默认简历
+      // 实际项目中，这里应该从用户的简历列表中获取默认简历
+      const resumeId = "60d0fe4f5311236168a109ca"; // 示例简历ID
+
+      // 检查职位是否需要AI预面试
+      const hasAiPreInterview = (job as any).aiPreInterview || false;
+
+      // 创建投递记录
+      const currentUser = userApi.getCurrentUser();
+      await deliveryApi.createDelivery({
+        userId: currentUser._id,
+        jobId: job._id,
+        resumeId,
+        hasAiPreInterview,
+      });
+
       alert("投递成功！");
       setJob({ ...job, applyCount: job.applyCount + 1 });
+      setDelivered(true); // 更新投递状态
     } catch (error) {
       console.error("投递失败:", error);
       alert("投递失败，请稍后重试");
@@ -441,25 +486,31 @@ function JobDetail() {
                   快速操作
                 </h2>
                 <div className="space-y-4">
-                  <button
-                    onClick={handleApply}
-                    disabled={
-                      applying ||
-                      (job.status !== "active" && job.status !== "open")
-                    }
-                    className={`w-full rounded-lg px-6 py-4 font-medium text-white transition-colors ${
-                      applying ||
-                      (job.status !== "active" && job.status !== "open")
-                        ? "bg-neutral-400 cursor-not-allowed"
-                        : "bg-primary-500 hover:bg-primary-600"
-                    }`}
-                  >
-                    {applying
-                      ? "投递中..."
-                      : job.status === "active" || job.status === "open"
-                        ? "投递简历"
-                        : "已关闭"}
-                  </button>
+                  {delivered ? (
+                    <span className="w-full rounded-lg px-6 py-4 font-medium text-neutral-600 bg-neutral-100 text-center">
+                      等待结果
+                    </span>
+                  ) : (
+                    <button
+                      onClick={handleApply}
+                      disabled={
+                        applying ||
+                        (job.status !== "active" && job.status !== "open")
+                      }
+                      className={`w-full rounded-lg px-6 py-4 font-medium text-white transition-colors ${
+                        applying ||
+                        (job.status !== "active" && job.status !== "open")
+                          ? "bg-neutral-400 cursor-not-allowed"
+                          : "bg-primary-500 hover:bg-primary-600"
+                      }`}
+                    >
+                      {applying
+                        ? "投递中..."
+                        : job.status === "active" || job.status === "open"
+                          ? "投递简历"
+                          : "已关闭"}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

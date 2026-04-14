@@ -67,6 +67,10 @@ class ApplicationModel {
         name: applicationData.name || "",
         // 邮箱
         email: applicationData.email || "",
+        // 手机号
+        phone: applicationData.phone || "",
+        // 简历文件URL
+        resumeFileUrl: applicationData.resumeFileUrl || "",
         // AI匹配度评分
         aiScore: applicationData.aiScore || null,
         // AI分析结果

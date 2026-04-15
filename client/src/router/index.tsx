@@ -64,7 +64,7 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/ai-interview",
+    path: "/ai-interview/:id",
     element: (
       <ProtectedRoute>
         <Suspense fallback={null}>
@@ -72,6 +72,10 @@ const router = createBrowserRouter([
         </Suspense>
       </ProtectedRoute>
     ),
+  },
+  {
+    path: "/ai-interview",
+    element: <Navigate to="/" replace />,
   },
   {
     path: "/resume",

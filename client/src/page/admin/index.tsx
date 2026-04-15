@@ -76,6 +76,7 @@ interface Job {
   aiQuestionBankId?: string;
   aiQuestionBankName?: string;
   aiPreInterview?: boolean;
+  aiPreInterviewScore?: number;
 }
 
 // 职位表单状态类型
@@ -99,6 +100,7 @@ interface JobFormState {
   interviewType: string;
   aiQuestionBankId: string;
   aiPreInterview: boolean;
+  aiPreInterviewScore: number;
 }
 
 const interviewPrograms = [
@@ -156,6 +158,7 @@ function Admin() {
     interviewType: "online",
     aiQuestionBankId: "",
     aiPreInterview: false,
+    aiPreInterviewScore: 60,
   });
   // 当前编辑的职位ID
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -542,6 +545,8 @@ function Admin() {
                       teamId: currentUser?.team || "",
                       interviewType: "online",
                       aiQuestionBankId: "",
+                      aiPreInterview: false,
+                      aiPreInterviewScore: 60,
                     });
                     openModal("job");
                   }}
@@ -577,6 +582,7 @@ function Admin() {
                           "状态",
                           "AI试题",
                           "AI预面试",
+                          "AI预面试最低分",
                           "操作",
                         ].map((item) => (
                           <th key={item} className="px-6 py-3">
@@ -589,7 +595,7 @@ function Admin() {
                       {isLoading ? (
                         <tr>
                           <td
-                            colSpan={8}
+                            colSpan={9}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             加载中...
@@ -598,7 +604,7 @@ function Admin() {
                       ) : error ? (
                         <tr>
                           <td
-                            colSpan={8}
+                            colSpan={9}
                             className="px-6 py-8 text-center text-red-500"
                           >
                             {error}
@@ -607,7 +613,7 @@ function Admin() {
                       ) : jobs.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={8}
+                            colSpan={9}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             暂无职位
@@ -650,6 +656,11 @@ function Admin() {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-sm">
+                              {job.aiPreInterview
+                                ? job.aiPreInterviewScore || 60
+                                : "-"}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
                               <button
                                 type="button"
                                 className="mr-3 text-primary-600 hover:text-primary-900"
@@ -682,6 +693,9 @@ function Admin() {
                                       job.interviewType || "online",
                                     aiQuestionBankId:
                                       job.aiQuestionBankId || "",
+                                    aiPreInterview: job.aiPreInterview || false,
+                                    aiPreInterviewScore:
+                                      job.aiPreInterviewScore || 60,
                                   });
                                   setModal("job");
                                 }}
@@ -1309,6 +1323,26 @@ function Admin() {
                     启用AI预面试
                   </label>
                 </div>
+                {jobForm.aiPreInterview && (
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      AI预面试最低分
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      value={jobForm.aiPreInterviewScore}
+                      onChange={(e) =>
+                        setJobForm({
+                          ...jobForm,
+                          aiPreInterviewScore: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                )}
               </div>
             )}
 

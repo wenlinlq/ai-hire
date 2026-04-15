@@ -1012,7 +1012,9 @@ function Profile() {
                                 {interview.status === "pending" && (
                                   <button
                                     className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
-                                    onClick={() => navigate("/ai-interview")}
+                                    onClick={() =>
+                                      navigate(`/ai-interview/${interview._id}`)
+                                    }
                                   >
                                     开始面试
                                   </button>

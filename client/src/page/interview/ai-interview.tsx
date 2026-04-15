@@ -1,65 +1,44 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
+import { aiPreInterviewApi } from "../../api/aiPreInterviewApi";
+import userApi from "../../api/userApi";
 
-type InterviewState = "preparing" | "starting" | "ongoing" | "completed";
+type InterviewState =
+  | "loading"
+  | "preparing"
+  | "starting"
+  | "ongoing"
+  | "concluded"
+  | "completed";
 type Message = {
   sender: "interviewer" | "candidate";
   content: string;
   timestamp: string;
 };
 
-const jobPosition = {
-  title: "前端工程师",
-  company: "字节跳动",
-  department: "研发部",
-  interviewer: "王面试官",
-  interviewId: "INT20260413001",
-};
-
-const initialMessages: Message[] = [
-  {
-    sender: "interviewer",
-    content: `您好，欢迎参加${jobPosition.company}${jobPosition.title}岗位的面试。我是${jobPosition.interviewer}，今天将由我负责您的面试。`,
-    timestamp: new Date().toLocaleTimeString(),
-  },
-  {
-    sender: "interviewer",
-    content:
-      "首先，请您做一个简短的自我介绍，包括您的教育背景、工作经验和专业技能。",
-    timestamp: new Date().toLocaleTimeString(),
-  },
-];
-
-const interviewQuestions = [
-  "请介绍一下您最近参与的一个前端项目，您在其中承担了什么职责？",
-  "您如何处理前端性能优化？请举例说明。",
-  "请解释一下React的生命周期，以及在React 16.3+中的变化。",
-  "您如何保证前端代码的质量和可维护性？",
-  "请谈谈您对前端安全的理解，以及如何防止常见的安全漏洞。",
-];
-
-const feedbackSections = {
-  strengths: [
-    "技术基础扎实，对前端核心概念有清晰理解",
-    "项目经验丰富，能够独立完成复杂功能开发",
-    "代码风格规范，注重代码质量和可维护性",
-    "沟通表达清晰，能够有条理地阐述技术方案",
-  ],
-  improvements: [
-    "可以更深入地了解前端性能优化的高级策略",
-    "建议加强对前端安全最佳实践的学习",
-    "可以提高对新技术和框架的探索能力",
-  ],
-  suggestions: [
-    "在回答问题时，可以使用STAR法则（情境、任务、行动、结果）来结构化您的回答",
-    "建议提前了解公司的业务和产品，以便更好地展示您的适配性",
-    "在技术讨论中，可以主动分享您的思考过程和决策依据",
-  ],
-};
+interface InterviewData {
+  id: string;
+  title: string;
+  company: string;
+  department: string;
+  interviewer: string;
+  interviewId: string;
+  questions: string[];
+  feedback?: {
+    strengths: string[];
+    improvements: string[];
+    suggestions: string[];
+  };
+}
 
 function AIInterview() {
+  const { id } = useParams<{ id: string }>();
   const [interviewState, setInterviewState] =
-    useState<InterviewState>("preparing");
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+    useState<InterviewState>("loading");
+  const [interviewData, setInterviewData] = useState<InterviewData | null>(
+    null,
+  );
+  const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isInterviewerTyping, setIsInterviewerTyping] = useState(false);
@@ -70,6 +49,15 @@ function AIInterview() {
     communication: number;
     problemSolving: number;
   }>({ overall: 0, technical: 0, communication: 0, problemSolving: 0 });
+  const [feedbackSections, setFeedbackSections] = useState<{
+    strengths: string[];
+    improvements: string[];
+    suggestions: string[];
+  }>({
+    strengths: [],
+    improvements: [],
+    suggestions: [],
+  });
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,18 +67,124 @@ function AIInterview() {
     });
   }, [messages, isInterviewerTyping]);
 
+  useEffect(() => {
+    const fetchInterviewData = async () => {
+      try {
+        setInterviewState("loading");
+        // 从API获取面试详情
+        const response = await aiPreInterviewApi.getAiPreInterviewById(id!);
+        const data = response.data;
+
+        // 构建面试数据
+        const interviewData: InterviewData = {
+          id: data._id,
+          title: data.position?.title || "未知岗位",
+          company: data.team?.name || data.position?.company || "未知团队",
+          department: data.position?.department || "未知部门",
+          interviewer: "AI面试官",
+          interviewId: data._id,
+          questions: data.questions || [],
+          feedback: data.feedback,
+        };
+
+        // 检查是否有自我介绍问题
+        const hasSelfIntroduction = interviewData.questions.some(
+          (question) =>
+            question.includes("自我介绍") ||
+            question.includes("介绍一下") ||
+            question.includes("自我"),
+        );
+
+        // 如果没有自我介绍问题，自动添加一个
+        if (!hasSelfIntroduction) {
+          interviewData.questions.unshift("首先，请您做一个简短的自我介绍。");
+        }
+
+        // 检查是否有问题
+        console.log("面试问题:", interviewData.questions);
+
+        setInterviewData(interviewData);
+
+        // 初始化消息
+        const initialMessage: Message = {
+          sender: "interviewer",
+          content: `您好，欢迎参加${interviewData.company}${interviewData.title}岗位的面试。我是${interviewData.interviewer}，今天将由我负责您的面试。`,
+          timestamp: new Date().toLocaleTimeString(),
+        };
+
+        const firstQuestion: Message = {
+          sender: "interviewer",
+          content:
+            interviewData.questions[0] || "首先，请您做一个简短的自我介绍。",
+          timestamp: new Date().toLocaleTimeString(),
+        };
+
+        setMessages([initialMessage, firstQuestion]);
+        setInterviewState("preparing");
+      } catch (error) {
+        console.error("获取面试数据失败:", error);
+        setInterviewState("preparing");
+      }
+    };
+
+    if (id) {
+      fetchInterviewData();
+    }
+  }, [id]);
+
   const startInterview = () => {
+    if (!interviewData) return;
+
     setInterviewState("starting");
     // 3秒后自动进入面试
     setTimeout(() => {
       setInterviewState("ongoing");
+      // 显示第一个问题
+      console.log("开始面试，问题数量:", interviewData.questions.length);
+      console.log("问题列表:", interviewData.questions);
+      if (interviewData.questions.length > 0) {
+        const firstQuestion: Message = {
+          sender: "interviewer",
+          content: interviewData.questions[0],
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        // 保留初始消息，添加第一个问题
+        setMessages([
+          {
+            sender: "interviewer",
+            content: `您好，欢迎参加${interviewData.company}${interviewData.title}岗位的面试。我是${interviewData.interviewer}，今天将由我负责您的面试。`,
+            timestamp: new Date().toLocaleTimeString(),
+          },
+          firstQuestion,
+        ]);
+        setCurrentQuestionIndex(0);
+        console.log("显示第一个问题:", interviewData.questions[0]);
+      } else {
+        // 如果没有问题，使用默认问题
+        const defaultQuestion: Message = {
+          sender: "interviewer",
+          content: "首先，请您做一个简短的自我介绍。",
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        // 保留初始消息，添加默认问题
+        setMessages([
+          {
+            sender: "interviewer",
+            content: `您好，欢迎参加${interviewData.company}${interviewData.title}岗位的面试。我是${interviewData.interviewer}，今天将由我负责您的面试。`,
+            timestamp: new Date().toLocaleTimeString(),
+          },
+          defaultQuestion,
+        ]);
+        setCurrentQuestionIndex(0);
+        console.log("显示默认问题");
+      }
     }, 3000);
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const content = messageInput.trim();
-    if (!content || interviewState !== "ongoing") {
+    if (!content || interviewState !== "ongoing" || !interviewData) {
       return;
     }
 
@@ -106,30 +200,149 @@ function AIInterview() {
 
     window.setTimeout(() => {
       setIsInterviewerTyping(false);
-      if (currentQuestionIndex < interviewQuestions.length - 1) {
-        const nextQuestion: Message = {
-          sender: "interviewer",
-          content: interviewQuestions[currentQuestionIndex + 1],
-          timestamp: new Date().toLocaleTimeString(),
-        };
-        setMessages((current) => [...current, nextQuestion]);
-        setCurrentQuestionIndex((current) => current + 1);
+      // 检查是否有问题
+      if (interviewData.questions.length > 0) {
+        // 如果有问题，检查是否还有下一个问题
+        if (currentQuestionIndex < interviewData.questions.length - 1) {
+          const nextQuestion: Message = {
+            sender: "interviewer",
+            content: interviewData.questions[currentQuestionIndex + 1],
+            timestamp: new Date().toLocaleTimeString(),
+          };
+          setMessages((current) => [...current, nextQuestion]);
+          setCurrentQuestionIndex((current) => current + 1);
+        } else {
+          // 所有问题都已回答完毕
+          const conclusion: Message = {
+            sender: "interviewer",
+            content:
+              "感谢您的回答。面试到此结束，我们会在3个工作日内通知您面试结果。",
+            timestamp: new Date().toLocaleTimeString(),
+          };
+          setMessages((current) => [...current, conclusion]);
+          setInterviewState("concluded");
+
+          // 生成模拟评分
+          const overallScore = Math.floor(Math.random() * 20) + 80;
+          setFeedback({
+            overall: overallScore,
+            technical: Math.floor(Math.random() * 20) + 80,
+            communication: Math.floor(Math.random() * 20) + 80,
+            problemSolving: Math.floor(Math.random() * 20) + 80,
+          });
+
+          // 使用面试数据中的反馈或默认反馈
+          setFeedbackSections(
+            interviewData.feedback || {
+              strengths: [
+                "技术基础扎实，对前端核心概念有清晰理解",
+                "项目经验丰富，能够独立完成复杂功能开发",
+                "代码风格规范，注重代码质量和可维护性",
+                "沟通表达清晰，能够有条理地阐述技术方案",
+              ],
+              improvements: [
+                "可以更深入地了解前端性能优化的高级策略",
+                "建议加强对前端安全最佳实践的学习",
+                "可以提高对新技术和框架的探索能力",
+              ],
+              suggestions: [
+                "在回答问题时，可以使用STAR法则（情境、任务、行动、结果）来结构化您的回答",
+                "建议提前了解公司的业务和产品，以便更好地展示您的适配性",
+                "在技术讨论中，可以主动分享您的思考过程和决策依据",
+              ],
+            },
+          );
+
+          // 调用后端API完成AI预面试
+          const completeInterview = async () => {
+            try {
+              await aiPreInterviewApi.completeAiPreInterview(
+                interviewData.interviewId,
+                {
+                  score: overallScore,
+                  questions: interviewData.questions.map((question, index) => ({
+                    questionId: `q${index + 1}`,
+                    question: question,
+                    userAnswer: "", // 这里可以根据实际情况获取用户的回答
+                    score: overallScore,
+                  })),
+                },
+              );
+              console.log("AI预面试完成，已通知后端");
+            } catch (error) {
+              console.error("完成AI预面试失败:", error);
+            }
+          };
+
+          completeInterview();
+        }
       } else {
-        const conclusion: Message = {
-          sender: "interviewer",
-          content:
-            "感谢您的回答。面试到此结束，我们会在3个工作日内通知您面试结果。",
-          timestamp: new Date().toLocaleTimeString(),
-        };
-        setMessages((current) => [...current, conclusion]);
-        setInterviewState("completed");
-        // 生成模拟评分
-        setFeedback({
-          overall: Math.floor(Math.random() * 20) + 80,
-          technical: Math.floor(Math.random() * 20) + 80,
-          communication: Math.floor(Math.random() * 20) + 80,
-          problemSolving: Math.floor(Math.random() * 20) + 80,
-        });
+        // 如果没有问题，只在用户回答了默认问题后结束面试
+        if (currentQuestionIndex === 0) {
+          // 这是用户回答的第一个问题（默认问题），结束面试
+          const conclusion: Message = {
+            sender: "interviewer",
+            content:
+              "感谢您的回答。面试到此结束，我们会在3个工作日内通知您面试结果。",
+            timestamp: new Date().toLocaleTimeString(),
+          };
+          setMessages((current) => [...current, conclusion]);
+          setInterviewState("concluded");
+
+          // 生成模拟评分
+          const overallScore = Math.floor(Math.random() * 20) + 80;
+          setFeedback({
+            overall: overallScore,
+            technical: Math.floor(Math.random() * 20) + 80,
+            communication: Math.floor(Math.random() * 20) + 80,
+            problemSolving: Math.floor(Math.random() * 20) + 80,
+          });
+
+          // 使用面试数据中的反馈或默认反馈
+          setFeedbackSections(
+            interviewData.feedback || {
+              strengths: [
+                "技术基础扎实，对前端核心概念有清晰理解",
+                "项目经验丰富，能够独立完成复杂功能开发",
+                "代码风格规范，注重代码质量和可维护性",
+                "沟通表达清晰，能够有条理地阐述技术方案",
+              ],
+              improvements: [
+                "可以更深入地了解前端性能优化的高级策略",
+                "建议加强对前端安全最佳实践的学习",
+                "可以提高对新技术和框架的探索能力",
+              ],
+              suggestions: [
+                "在回答问题时，可以使用STAR法则（情境、任务、行动、结果）来结构化您的回答",
+                "建议提前了解公司的业务和产品，以便更好地展示您的适配性",
+                "在技术讨论中，可以主动分享您的思考过程和决策依据",
+              ],
+            },
+          );
+
+          // 调用后端API完成AI预面试
+          const completeInterview = async () => {
+            try {
+              await aiPreInterviewApi.completeAiPreInterview(
+                interviewData.interviewId,
+                {
+                  score: overallScore,
+                  questions: interviewData.questions.map((question, index) => ({
+                    questionId: `q${index + 1}`,
+                    question: question,
+                    userAnswer: "", // 这里可以根据实际情况获取用户的回答
+                    score: overallScore,
+                  })),
+                },
+              );
+              console.log("AI预面试完成，已通知后端");
+            } catch (error) {
+              console.error("完成AI预面试失败:", error);
+            }
+          };
+
+          completeInterview();
+        }
       }
     }, 1500);
   };
@@ -137,8 +350,27 @@ function AIInterview() {
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
       <main className="flex-1 py-12">
+        {/* 加载状态 */}
+        {interviewState === "loading" && (
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
+              <div className="text-center">
+                <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-primary-100">
+                  <div className="animate-spin rounded-full border-4 border-t-primary-700 border-r-primary-100 border-b-primary-100 border-l-primary-100 h-16 w-16" />
+                </div>
+                <h1 className="mb-4 text-3xl font-bold text-neutral-800">
+                  加载面试数据
+                </h1>
+                <p className="text-lg text-neutral-600">
+                  正在获取面试信息，请稍候...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 面试准备页面 */}
-        {interviewState === "preparing" && (
+        {interviewState === "preparing" && interviewData && (
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <div className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
               <div className="mb-8 text-center">
@@ -159,31 +391,25 @@ function AIInterview() {
                     <div>
                       <p className="text-sm text-neutral-500">面试岗位</p>
                       <p className="font-medium text-neutral-800">
-                        {jobPosition.title}
+                        {interviewData.title}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-neutral-500">公司</p>
+                      <p className="text-sm text-neutral-500">团队</p>
                       <p className="font-medium text-neutral-800">
-                        {jobPosition.company}
+                        {interviewData.company}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-neutral-500">部门</p>
                       <p className="font-medium text-neutral-800">
-                        {jobPosition.department}
+                        {interviewData.department}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-neutral-500">面试官</p>
                       <p className="font-medium text-neutral-800">
-                        {jobPosition.interviewer}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-neutral-500">面试编号</p>
-                      <p className="font-medium text-neutral-800">
-                        {jobPosition.interviewId}
+                        {interviewData.interviewer}
                       </p>
                     </div>
                     <div>
@@ -256,7 +482,7 @@ function AIInterview() {
                   </div>
                 </div>
                 <p className="mt-4 text-sm text-neutral-500">
-                  面试官 {jobPosition.interviewer} 正在准备中
+                  面试官 {interviewData?.interviewer || "AI面试官"} 正在准备中
                 </p>
               </div>
             </div>
@@ -272,7 +498,8 @@ function AIInterview() {
                   <div>
                     <h2 className="text-2xl font-bold">正式面试</h2>
                     <p className="mt-1 text-primary-100">
-                      {jobPosition.company} - {jobPosition.title}
+                      {interviewData?.company || "未知公司"} -{" "}
+                      {interviewData?.title || "未知岗位"}
                     </p>
                   </div>
                   <div className="rounded-full bg-green-500 px-3 py-1 text-sm">
@@ -292,7 +519,7 @@ function AIInterview() {
                   >
                     {message.sender === "interviewer" && (
                       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary-700 text-white">
-                        {jobPosition.interviewer.charAt(0)}
+                        {(interviewData?.interviewer || "AI面试官").charAt(0)}
                       </div>
                     )}
                     <div
@@ -301,7 +528,7 @@ function AIInterview() {
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-medium text-neutral-500">
                           {message.sender === "interviewer"
-                            ? jobPosition.interviewer
+                            ? interviewData?.interviewer || "AI面试官"
                             : "我"}
                         </span>
                         <span className="text-xs text-neutral-400">
@@ -316,7 +543,7 @@ function AIInterview() {
                 {isInterviewerTyping && (
                   <div className="flex items-start">
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary-700 text-white">
-                      {jobPosition.interviewer.charAt(0)}
+                      {(interviewData?.interviewer || "AI面试官").charAt(0)}
                     </div>
                     <div className="ml-3 rounded-lg bg-primary-50 p-4">
                       <div className="flex items-center gap-1">
@@ -345,6 +572,78 @@ function AIInterview() {
                     提交回答
                   </button>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 面试结束页面 - 显示结束语和下一步按钮 */}
+        {interviewState === "concluded" && (
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+              <div className="bg-primary-700 p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">面试结束</h2>
+                    <p className="mt-1 text-primary-100">
+                      {interviewData?.company || "未知公司"} -{" "}
+                      {interviewData?.title || "未知岗位"}
+                    </p>
+                  </div>
+                  <div className="rounded-full bg-blue-500 px-3 py-1 text-sm">
+                    面试已结束
+                  </div>
+                </div>
+              </div>
+
+              <div
+                ref={chatRef}
+                className="h-[600px] space-y-6 overflow-y-auto p-6"
+              >
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex items-start ${message.sender === "candidate" ? "justify-end" : ""}`}
+                  >
+                    {message.sender === "interviewer" && (
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary-700 text-white">
+                        {(interviewData?.interviewer || "AI面试官").charAt(0)}
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-lg p-4 ${message.sender === "interviewer" ? "ml-3 bg-primary-50 text-neutral-800" : "bg-primary-100 text-neutral-800"}`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-neutral-500">
+                          {message.sender === "interviewer"
+                            ? interviewData?.interviewer || "AI面试官"
+                            : "我"}
+                        </span>
+                        <span className="text-xs text-neutral-400">
+                          {message.timestamp}
+                        </span>
+                      </div>
+                      <p>{message.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-neutral-200 p-6 bg-neutral-50">
+                <div className="text-center mb-6">
+                  <p className="text-lg text-neutral-700">
+                    面试已经完成，您可以查看详细的面试反馈
+                  </p>
+                </div>
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    className="rounded-lg bg-primary-500 px-8 py-3 text-lg font-semibold text-white transition-colors hover:bg-primary-600"
+                    onClick={() => setInterviewState("completed")}
+                  >
+                    查看面试反馈
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -457,7 +756,7 @@ function AIInterview() {
                   className="rounded-lg border border-neutral-300 px-6 py-3 text-neutral-700 transition-colors hover:bg-neutral-50"
                   onClick={() => {
                     setInterviewState("preparing");
-                    setMessages(initialMessages);
+                    setMessages([]);
                     setCurrentQuestionIndex(0);
                     setFeedback({
                       overall: 0,

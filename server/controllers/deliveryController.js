@@ -80,11 +80,26 @@ class DeliveryController {
 
       // 如果需要AI预面试，创建AI预面试记录
       if (hasAiPreInterview) {
+        // 获取岗位信息，包括AI面试题库ID
+        const positionModel = require('../models/positionModel');
+        const position = await positionModel.findPositionById(jobId);
+        
+        let questions = [];
+        // 如果岗位有AI面试题库，获取题库中的问题
+        if (position && position.aiQuestionBankId) {
+          const questionBankModel = require('../models/questionBankModel');
+          const questionBank = await questionBankModel.findQuestionBankById(position.aiQuestionBankId);
+          if (questionBank && questionBank.questions) {
+            questions = questionBank.questions;
+          }
+        }
+        
         const interviewData = {
           deliveryId: delivery._id,
           userId,
           jobId,
           status: "pending",
+          questions: questions,
           expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000), // 72小时过期
         };
         await aiPreInterviewModel.createAiPreInterview(interviewData);

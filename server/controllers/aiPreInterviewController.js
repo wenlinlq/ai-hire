@@ -50,19 +50,37 @@ class AiPreInterviewController {
         return res.status(404).json({ error: 'AI pre interview not found' });
       }
 
-      // 更新投递记录状态
-      const deliveryStatus = score >= 80 ? 'ai_passed' : 'ai_failed';
+      // 获取职位信息，包括AI预面试最低分
+      const positionModel = require('../models/positionModel');
+      let position = null;
+      let minScore = 80; // 默认最低分
+      if (updatedInterview.jobId) {
+        position = await positionModel.findPositionById(updatedInterview.jobId);
+        if (position && position.aiPreInterviewScore) {
+          minScore = position.aiPreInterviewScore;
+        }
+      }
+
+      // 根据最低分判断面试结果
+      const deliveryStatus = score >= minScore ? 'ai_passed' : 'ai_failed';
       await deliveryModel.updateDelivery(updatedInterview.deliveryId, {
         status: deliveryStatus,
         aiScore: score
       });
 
       // 创建AI面试结果通知
+      let notificationContent = '';
+      if (score >= minScore) {
+        notificationContent = '恭喜您，AI面试通过！已加入该职位候选人列表，等待后续通知。';
+      } else {
+        notificationContent = '很遗憾，AI面试未通过。';
+      }
+
       await notificationModel.createNotification({
         userId: updatedInterview.userId,
         type: 'ai_result',
         title: 'AI面试结果',
-        content: score >= 80 ? '恭喜您，AI面试通过！' : '很遗憾，AI面试未通过',
+        content: notificationContent,
         relatedId: updatedInterview.deliveryId
       });
 
@@ -104,7 +122,41 @@ class AiPreInterviewController {
         return res.status(404).json({ error: 'AI pre interview not found' });
       }
 
-      res.status(200).json({ success: true, data: interview });
+      // 引入职位、团队和面试题库模型
+      const positionModel = require('../models/positionModel');
+      const teamModel = require('../models/teamModel');
+      const questionBankModel = require('../models/questionBankModel');
+
+      // 获取职位信息
+      let position = null;
+      if (interview.jobId) {
+        position = await positionModel.findPositionById(interview.jobId);
+      }
+
+      // 获取团队信息
+      let team = null;
+      if (position && position.teamId) {
+        team = await teamModel.findTeamById(position.teamId);
+      }
+
+      // 获取面试题库问题
+      let questions = interview.questions || [];
+      if (position && position.aiQuestionBankId) {
+        const questionBank = await questionBankModel.findQuestionBankById(position.aiQuestionBankId);
+        if (questionBank && questionBank.questions) {
+          questions = questionBank.questions;
+        }
+      }
+
+      // 构建完整的面试数据
+      const interviewWithDetails = {
+        ...interview,
+        questions: questions,
+        position: position || null,
+        team: team || null
+      };
+
+      res.status(200).json({ success: true, data: interviewWithDetails });
     } catch (error) {
       console.error('Error getting AI pre interview by id:', error);
       res.status(500).json({ error: 'Internal server error' });

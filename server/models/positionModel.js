@@ -65,6 +65,8 @@ class PositionModel {
         aiQuestionBankId: positionData.aiQuestionBankId ? this.getValidObjectId(positionData.aiQuestionBankId) : null,
         // AI预面试
         aiPreInterview: positionData.aiPreInterview || false,
+        // AI预面试最低分
+        aiPreInterviewScore: positionData.aiPreInterviewScore || 60,
         // 岗位要求
         requirements: {
           skills: positionData.requirements?.skills || [],

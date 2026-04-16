@@ -23,6 +23,7 @@ interface InterviewData {
   department: string;
   interviewer: string;
   interviewId: string;
+  jobId?: string;
   questions: string[];
   feedback?: {
     strengths: string[];
@@ -91,6 +92,7 @@ function AIInterview() {
             data.department || data.position?.department || "未知部门",
           interviewer: "AI面试官",
           interviewId: data._id,
+          jobId: data.jobId || data.position?._id,
           questions: data.questions || [],
           feedback: data.feedback,
         };
@@ -233,52 +235,84 @@ function AIInterview() {
           setMessages((current) => [...current, conclusion]);
           setInterviewState("concluded");
 
-          // 生成模拟评分
-          const overallScore = Math.floor(Math.random() * 20) + 80;
+          // 初始化为默认值，后续会被后端返回的AI分析结果覆盖
           setFeedback({
-            overall: overallScore,
-            technical: Math.floor(Math.random() * 20) + 80,
-            communication: Math.floor(Math.random() * 20) + 80,
-            problemSolving: Math.floor(Math.random() * 20) + 80,
+            overall: 0,
+            technical: 0,
+            communication: 0,
+            problemSolving: 0,
           });
 
-          // 使用面试数据中的反馈或默认反馈
-          setFeedbackSections(
-            interviewData.feedback || {
-              strengths: [
-                "技术基础扎实，对前端核心概念有清晰理解",
-                "项目经验丰富，能够独立完成复杂功能开发",
-                "代码风格规范，注重代码质量和可维护性",
-                "沟通表达清晰，能够有条理地阐述技术方案",
-              ],
-              improvements: [
-                "可以更深入地了解前端性能优化的高级策略",
-                "建议加强对前端安全最佳实践的学习",
-                "可以提高对新技术和框架的探索能力",
-              ],
-              suggestions: [
-                "在回答问题时，可以使用STAR法则（情境、任务、行动、结果）来结构化您的回答",
-                "建议提前了解公司的业务和产品，以便更好地展示您的适配性",
-                "在技术讨论中，可以主动分享您的思考过程和决策依据",
-              ],
-            },
-          );
+          // 初始化为默认值，后续会被后端返回的AI分析结果覆盖
+          setFeedbackSections({
+            strengths: [],
+            improvements: [],
+            suggestions: [],
+          });
+
+          // 收集用户的回答
+          const userAnswers = [];
+          for (let i = 0; i < messages.length; i++) {
+            if (messages[i].sender === "candidate") {
+              userAnswers.push(messages[i].content);
+            }
+          }
 
           // 调用后端API完成AI预面试
           const completeInterview = async () => {
             try {
-              await aiPreInterviewApi.completeAiPreInterview(
+              const response = await aiPreInterviewApi.completeAiPreInterview(
                 interviewData.interviewId,
                 {
-                  score: overallScore,
+                  score: 0, // 使用默认值，后端会使用AI分析的评分
+                  jobId: interviewData.jobId,
                   questions: interviewData.questions.map((question, index) => ({
                     questionId: `q${index + 1}`,
                     question: question,
-                    userAnswer: "", // 这里可以根据实际情况获取用户的回答
-                    score: overallScore,
+                    userAnswer: userAnswers[index] || "", // 关联用户的回答
+                    score: 0, // 使用默认值，后端会使用AI分析的评分
                   })),
                 },
               );
+
+              // 使用后端返回的AI分析结果
+              if (response && response.analysis) {
+                const analysis = response.analysis;
+                setFeedback({
+                  overall: analysis.overall,
+                  technical: analysis.technical,
+                  communication: analysis.communication,
+                  problemSolving: analysis.problemSolving,
+                });
+                setFeedbackSections({
+                  strengths: analysis.strengths,
+                  improvements: analysis.improvements,
+                  suggestions: analysis.suggestions,
+                });
+              } else {
+                // 如果没有返回分析结果，使用默认值
+                console.log("没有返回AI分析结果，使用默认值");
+                setFeedback({
+                  overall: 75,
+                  technical: 75,
+                  communication: 75,
+                  problemSolving: 75,
+                });
+                setFeedbackSections({
+                  strengths: ["技术基础扎实", "沟通表达清晰", "问题解决能力强"],
+                  improvements: [
+                    "可以更深入地分析问题",
+                    "建议提供更多具体案例",
+                    "可以提高技术细节的描述",
+                  ],
+                  suggestions: [
+                    "在回答问题时使用STAR法则",
+                    "提前了解公司业务",
+                    "保持自信的态度",
+                  ],
+                });
+              }
+
               console.log("AI预面试完成，已通知后端");
             } catch (error) {
               console.error("完成AI预面试失败:", error);
@@ -300,52 +334,84 @@ function AIInterview() {
           setMessages((current) => [...current, conclusion]);
           setInterviewState("concluded");
 
-          // 生成模拟评分
-          const overallScore = Math.floor(Math.random() * 20) + 80;
+          // 初始化为默认值，后续会被后端返回的AI分析结果覆盖
           setFeedback({
-            overall: overallScore,
-            technical: Math.floor(Math.random() * 20) + 80,
-            communication: Math.floor(Math.random() * 20) + 80,
-            problemSolving: Math.floor(Math.random() * 20) + 80,
+            overall: 0,
+            technical: 0,
+            communication: 0,
+            problemSolving: 0,
           });
 
-          // 使用面试数据中的反馈或默认反馈
-          setFeedbackSections(
-            interviewData.feedback || {
-              strengths: [
-                "技术基础扎实，对前端核心概念有清晰理解",
-                "项目经验丰富，能够独立完成复杂功能开发",
-                "代码风格规范，注重代码质量和可维护性",
-                "沟通表达清晰，能够有条理地阐述技术方案",
-              ],
-              improvements: [
-                "可以更深入地了解前端性能优化的高级策略",
-                "建议加强对前端安全最佳实践的学习",
-                "可以提高对新技术和框架的探索能力",
-              ],
-              suggestions: [
-                "在回答问题时，可以使用STAR法则（情境、任务、行动、结果）来结构化您的回答",
-                "建议提前了解公司的业务和产品，以便更好地展示您的适配性",
-                "在技术讨论中，可以主动分享您的思考过程和决策依据",
-              ],
-            },
-          );
+          // 初始化为默认值，后续会被后端返回的AI分析结果覆盖
+          setFeedbackSections({
+            strengths: [],
+            improvements: [],
+            suggestions: [],
+          });
+
+          // 收集用户的回答
+          const userAnswers = [];
+          for (let i = 0; i < messages.length; i++) {
+            if (messages[i].sender === "candidate") {
+              userAnswers.push(messages[i].content);
+            }
+          }
 
           // 调用后端API完成AI预面试
           const completeInterview = async () => {
             try {
-              await aiPreInterviewApi.completeAiPreInterview(
+              const response = await aiPreInterviewApi.completeAiPreInterview(
                 interviewData.interviewId,
                 {
-                  score: overallScore,
+                  score: 0, // 使用默认值，后端会使用AI分析的评分
+                  jobId: interviewData.jobId,
                   questions: interviewData.questions.map((question, index) => ({
                     questionId: `q${index + 1}`,
                     question: question,
-                    userAnswer: "", // 这里可以根据实际情况获取用户的回答
-                    score: overallScore,
+                    userAnswer: userAnswers[index] || "", // 关联用户的回答
+                    score: 0, // 使用默认值，后端会使用AI分析的评分
                   })),
                 },
               );
+
+              // 使用后端返回的AI分析结果
+              if (response && response.analysis) {
+                const analysis = response.analysis;
+                setFeedback({
+                  overall: analysis.overall,
+                  technical: analysis.technical,
+                  communication: analysis.communication,
+                  problemSolving: analysis.problemSolving,
+                });
+                setFeedbackSections({
+                  strengths: analysis.strengths,
+                  improvements: analysis.improvements,
+                  suggestions: analysis.suggestions,
+                });
+              } else {
+                // 如果没有返回分析结果，使用默认值
+                console.log("没有返回AI分析结果，使用默认值");
+                setFeedback({
+                  overall: 75,
+                  technical: 75,
+                  communication: 75,
+                  problemSolving: 75,
+                });
+                setFeedbackSections({
+                  strengths: ["技术基础扎实", "沟通表达清晰", "问题解决能力强"],
+                  improvements: [
+                    "可以更深入地分析问题",
+                    "建议提供更多具体案例",
+                    "可以提高技术细节的描述",
+                  ],
+                  suggestions: [
+                    "在回答问题时使用STAR法则",
+                    "提前了解公司业务",
+                    "保持自信的态度",
+                  ],
+                });
+              }
+
               console.log("AI预面试完成，已通知后端");
             } catch (error) {
               console.error("完成AI预面试失败:", error);

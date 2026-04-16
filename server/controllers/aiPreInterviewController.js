@@ -1,6 +1,7 @@
 const aiPreInterviewModel = require("../models/aiPreInterviewModel");
 const deliveryModel = require("../models/deliveryModel");
 const notificationModel = require("../models/notificationModel");
+const aliyunBailianService = require("../services/aliyunBailianService");
 
 class AiPreInterviewController {
   // 开始AI预面试
@@ -40,13 +41,45 @@ class AiPreInterviewController {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // 更新面试状态和评分
+      // 提取问题和回答
+      const interviewQuestions = questions.map((q) => q.question);
+      const interviewAnswers = questions.map((q) => q.userAnswer);
+
+      // 获取职位信息
+      const positionModel = require("../models/positionModel");
+      let position = null;
+      let minScore = 60; // 默认最低分
+      let jobTitle = "未知岗位";
+
+      if (req.body.jobId) {
+        position = await positionModel.findPositionById(req.body.jobId);
+        if (position) {
+          jobTitle = position.title;
+          if (position.aiPreInterviewScore) {
+            minScore = position.aiPreInterviewScore;
+          }
+        }
+      }
+
+      // 调用阿里云百炼服务分析面试问答
+      const analysis = await aliyunBailianService.analyzeInterviewQnA(
+        interviewQuestions,
+        interviewAnswers,
+        jobTitle,
+      );
+
+      // 更新面试状态、评分和反馈
       const updatedInterview = await aiPreInterviewModel.updateAiPreInterview(
         interviewId,
         {
           status: "completed",
-          score,
+          score: analysis.overall, // 使用AI分析的总体评分
           questions,
+          feedback: {
+            strengths: analysis.strengths,
+            improvements: analysis.improvements,
+            suggestions: analysis.suggestions,
+          },
           completedAt: new Date(),
         },
       );
@@ -55,27 +88,16 @@ class AiPreInterviewController {
         return res.status(404).json({ error: "AI pre interview not found" });
       }
 
-      // 获取职位信息
-      const positionModel = require("../models/positionModel");
-      let position = null;
-      let minScore = 60; // 默认最低分
-
-      if (updatedInterview.jobId) {
-        position = await positionModel.findPositionById(updatedInterview.jobId);
-        if (position && position.aiPreInterviewScore) {
-          minScore = position.aiPreInterviewScore;
-        }
-      }
-
       // 根据最低分判断面试结果
-      const deliveryStatus = score >= minScore ? "已通过预面试" : "ai_failed";
+      const deliveryStatus =
+        analysis.overall >= minScore ? "已通过预面试" : "ai_failed";
       await deliveryModel.updateDelivery(updatedInterview.deliveryId, {
         status: deliveryStatus,
-        aiScore: score,
+        aiScore: analysis.overall,
       });
 
       // 更新对应的应用状态
-      if (score >= minScore) {
+      if (analysis.overall >= minScore) {
         const applicationModel = require("../models/applicationModel");
         // 查找与该投递记录对应的应用记录（通过 userId 和 jobId 匹配）
         const deliveries = await deliveryModel.findDeliveriesByUserId(
@@ -95,7 +117,7 @@ class AiPreInterviewController {
                 // 更新应用状态为"已通过预面试"
                 await applicationModel.updateApplication(application._id, {
                   status: "已通过预面试",
-                  aiScore: score,
+                  aiScore: analysis.overall,
                 });
                 break;
               }
@@ -107,7 +129,7 @@ class AiPreInterviewController {
 
       // 准备通知内容
       let notificationContent = "";
-      if (score >= minScore) {
+      if (analysis.overall >= minScore) {
         notificationContent =
           "恭喜您，AI面试通过！已加入该职位候选人列表，等待后续通知。";
       } else {
@@ -123,7 +145,11 @@ class AiPreInterviewController {
         relatedId: updatedInterview.deliveryId,
       });
 
-      res.status(200).json(updatedInterview);
+      // 返回更新后的面试记录，包含AI分析结果
+      res.status(200).json({
+        ...updatedInterview,
+        analysis: analysis,
+      });
     } catch (error) {
       console.error("Error completing AI pre interview:", error);
       res.status(500).json({ error: "Internal server error" });

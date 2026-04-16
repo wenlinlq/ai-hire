@@ -75,17 +75,28 @@ function AIInterview() {
         const response = await aiPreInterviewApi.getAiPreInterviewById(id!);
         const data = response.data;
 
+        // 调试：打印API返回的数据结构
+        console.log("API返回的数据:", data);
+
         // 构建面试数据
         const interviewData: InterviewData = {
           id: data._id,
-          title: data.position?.title || "未知岗位",
-          company: data.team?.name || data.position?.company || "未知团队",
-          department: data.position?.department || "未知部门",
+          title: data.position?.title || data.title || "未知岗位",
+          company:
+            data.team?.name ||
+            data.company ||
+            data.position?.company ||
+            "未知团队",
+          department:
+            data.department || data.position?.department || "未知部门",
           interviewer: "AI面试官",
           interviewId: data._id,
           questions: data.questions || [],
           feedback: data.feedback,
         };
+
+        // 调试：打印构建的面试数据
+        console.log("构建的面试数据:", interviewData);
 
         // 检查是否有自我介绍问题
         const hasSelfIntroduction = interviewData.questions.some(

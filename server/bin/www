@@ -38,6 +38,40 @@ async function startServer() {
     const teamModel = require("../models/teamModel");
     await teamModel.initIndexes();
 
+    // 导入岗位模型并初始化索引
+    const positionModel = require("../models/positionModel");
+    await positionModel.initIndexes();
+
+    // 导入收藏模型并初始化索引
+    const favoriteModel = require("../models/favoriteModel");
+    await favoriteModel.initIndexes();
+
+    // 导入简历模型并初始化索引
+    const resumeModel = require("../models/resumeModel");
+    await resumeModel.initIndexes();
+
+    // 导入面试题库模型并初始化索引
+    const questionBankModel = require("../models/questionBankModel");
+    await questionBankModel.initIndexes();
+
+    // 导入投递模型并初始化索引
+    const deliveryModel = require("../models/deliveryModel");
+    await deliveryModel.initializeIndexes();
+
+    // 导入AI预面试模型并初始化索引
+    const aiPreInterviewModel = require("../models/aiPreInterviewModel");
+    await aiPreInterviewModel.initializeIndexes();
+
+    // 导入面试邀请模型并初始化索引
+    const interviewInvitationModel = require("../models/interviewInvitationModel");
+    await interviewInvitationModel.initializeIndexes();
+
+    // 导入通知模型并初始化索引
+    const notificationModel = require("../models/notificationModel");
+    await notificationModel.initializeIndexes();
+
+    console.log("Database indexes initialized successfully");
+
     // 启动服务器
     server.listen(port);
     server.on("error", onError);

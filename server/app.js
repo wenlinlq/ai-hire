@@ -93,36 +93,4 @@ app.use(function (err, req, res, next) {
   res.render("error");
 });
 
-// 初始化数据库索引
-async function initIndexes() {
-  try {
-    // 初始化用户模型索引
-    // await userModel.initIndexes();
-    // 初始化团队模型索引
-    // await teamModel.initIndexes();
-    // 初始化岗位模型索引
-    // await positionModel.initIndexes();
-    // 初始化收藏模型索引
-    await favoriteModel.initIndexes();
-    // 初始化简历模型索引
-    await resumeModel.initIndexes();
-    // 初始化面试题库模型索引
-    await questionBankModel.initIndexes();
-    // 初始化投递模型索引
-    await deliveryModel.initializeIndexes();
-    // 初始化AI预面试模型索引
-    await aiPreInterviewModel.initializeIndexes();
-    // 初始化面试邀请模型索引
-    await interviewInvitationModel.initializeIndexes();
-    // 初始化通知模型索引
-    await notificationModel.initializeIndexes();
-    console.log("Database indexes initialized successfully");
-  } catch (error) {
-    console.error("Error initializing database indexes:", error);
-  }
-}
-
-// 调用初始化函数
-initIndexes();
-
 module.exports = app;

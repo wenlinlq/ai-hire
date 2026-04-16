@@ -68,11 +68,42 @@ class AiPreInterviewController {
       }
 
       // 根据最低分判断面试结果
-      const deliveryStatus = score >= minScore ? "ai_passed" : "ai_failed";
+      const deliveryStatus = score >= minScore ? "已通过预面试" : "ai_failed";
       await deliveryModel.updateDelivery(updatedInterview.deliveryId, {
         status: deliveryStatus,
         aiScore: score,
       });
+
+      // 更新对应的应用状态
+      if (score >= minScore) {
+        const applicationModel = require("../models/applicationModel");
+        // 查找与该投递记录对应的应用记录（通过 userId 和 jobId 匹配）
+        const deliveries = await deliveryModel.findDeliveriesByUserId(
+          updatedInterview.userId,
+        );
+        for (const delivery of deliveries) {
+          if (delivery.jobId.toString() === updatedInterview.jobId.toString()) {
+            // 查找对应的应用记录
+            const applications =
+              await applicationModel.findApplicationsByPositionId(
+                delivery.jobId,
+              );
+            for (const application of applications) {
+              if (
+                application.studentId === updatedInterview.userId.toString()
+              ) {
+                // 更新应用状态为"已通过预面试"
+                await applicationModel.updateApplication(application._id, {
+                  status: "已通过预面试",
+                  aiScore: score,
+                });
+                break;
+              }
+            }
+            break;
+          }
+        }
+      }
 
       // 准备通知内容
       let notificationContent = "";

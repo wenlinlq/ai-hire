@@ -872,7 +872,7 @@ function Admin() {
                             </td>
                             <td className="px-6 py-4 text-sm">
                               <span
-                                className={`rounded-full px-2 py-1 text-xs font-semibold ${candidate.status === "pending" ? "bg-yellow-100 text-yellow-800" : candidate.status === "screening" ? "bg-blue-100 text-blue-800" : candidate.status === "interview" ? "bg-purple-100 text-purple-800" : candidate.status === "offer" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
+                                className={`rounded-full px-2 py-1 text-xs font-semibold ${candidate.status === "pending" ? "bg-yellow-100 text-yellow-800" : candidate.status === "screening" ? "bg-blue-100 text-blue-800" : candidate.status === "interview" ? "bg-purple-100 text-purple-800" : candidate.status === "offer" ? "bg-green-100 text-green-800" : candidate.status === "已通过预面试" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
                               >
                                 {candidate.status === "pending"
                                   ? "待处理"
@@ -882,7 +882,9 @@ function Admin() {
                                       ? "面试中"
                                       : candidate.status === "offer"
                                         ? "已录用"
-                                        : "已拒绝"}
+                                        : candidate.status === "已通过预面试"
+                                          ? "已通过预面试"
+                                          : "已拒绝"}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-sm">
@@ -1800,7 +1802,7 @@ function Admin() {
                 </label>
                 <div className="text-sm">
                   <span
-                    className={`rounded-full px-2 py-1 text-xs font-semibold ${currentCandidate.status === "pending" ? "bg-yellow-100 text-yellow-800" : currentCandidate.status === "screening" ? "bg-blue-100 text-blue-800" : currentCandidate.status === "interview" ? "bg-purple-100 text-purple-800" : currentCandidate.status === "offer" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
+                    className={`rounded-full px-2 py-1 text-xs font-semibold ${currentCandidate.status === "pending" ? "bg-yellow-100 text-yellow-800" : currentCandidate.status === "screening" ? "bg-blue-100 text-blue-800" : currentCandidate.status === "interview" ? "bg-purple-100 text-purple-800" : currentCandidate.status === "offer" ? "bg-green-100 text-green-800" : currentCandidate.status === "已通过预面试" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
                   >
                     {currentCandidate.status === "pending"
                       ? "待处理"
@@ -1810,7 +1812,9 @@ function Admin() {
                           ? "面试中"
                           : currentCandidate.status === "offer"
                             ? "已录用"
-                            : "已拒绝"}
+                            : currentCandidate.status === "已通过预面试"
+                              ? "已通过预面试"
+                              : "已拒绝"}
                   </span>
                 </div>
               </div>

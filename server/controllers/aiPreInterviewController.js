@@ -235,6 +235,31 @@ class AiPreInterviewController {
       res.status(500).json({ error: "Internal server error" });
     }
   }
+
+  // 删除AI预面试记录
+  async deleteAiPreInterview(req, res) {
+    try {
+      const { interviewId } = req.params;
+
+      if (!interviewId) {
+        return res.status(400).json({ error: "Missing interviewId" });
+      }
+
+      const deleted =
+        await aiPreInterviewModel.deleteAiPreInterview(interviewId);
+
+      if (!deleted) {
+        return res.status(404).json({ error: "AI pre interview not found" });
+      }
+
+      res
+        .status(200)
+        .json({ message: "AI pre interview deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting AI pre interview:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
 }
 
 module.exports = new AiPreInterviewController();

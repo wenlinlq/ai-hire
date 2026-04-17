@@ -34,4 +34,9 @@ export const aiPreInterviewApi = {
   getAiPreInterviewByDeliveryId: (deliveryId: string) => {
     return api.get(`/aiPreInterviews/delivery/${deliveryId}`);
   },
+
+  // 删除AI预面试记录
+  deleteAiPreInterview: (interviewId: string) => {
+    return api.delete(`/aiPreInterviews/${interviewId}`);
+  },
 };

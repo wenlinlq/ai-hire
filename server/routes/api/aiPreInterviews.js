@@ -17,4 +17,7 @@ router.get('/:interviewId', aiPreInterviewController.getAiPreInterviewById);
 // 根据投递ID获取AI预面试记录
 router.get('/delivery/:deliveryId', aiPreInterviewController.getAiPreInterviewByDeliveryId);
 
+// 删除AI预面试记录
+router.delete('/:interviewId', aiPreInterviewController.deleteAiPreInterview);
+
 module.exports = router;

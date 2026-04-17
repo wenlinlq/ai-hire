@@ -249,10 +249,13 @@ function Profile() {
           await interviewInvitationApi.getUserInterviewInvitations(user._id);
         setInterviewInvitations(interviewInvitationData.data || []);
 
-        // 计算面试数量
+        // 计算面试数量（只计算未完成的面试）
+        const pendingAiInterviews =
+          aiPreInterviewData.data?.filter(
+            (interview) => interview.status !== "completed",
+          ).length || 0;
         const totalInterviews =
-          (aiPreInterviewData.data?.length || 0) +
-          (interviewInvitationData.data?.length || 0);
+          pendingAiInterviews + (interviewInvitationData.data?.length || 0);
         setInterviewCount(totalInterviews);
       } catch (error) {
         console.error("获取面试数据失败:", error);
@@ -1009,21 +1012,81 @@ function Profile() {
                                     </p>
                                   )}
                                 </div>
-                                {interview.status === "pending" && (
+                                <div className="flex flex-col gap-2">
+                                  {interview.status === "pending" && (
+                                    <button
+                                      className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
+                                      onClick={() =>
+                                        navigate(
+                                          `/ai-interview/${interview._id}`,
+                                        )
+                                      }
+                                    >
+                                      开始面试
+                                    </button>
+                                  )}
+                                  {interview.status === "completed" && (
+                                    <span className="rounded-lg bg-neutral-100 px-4 py-2 text-sm text-neutral-600">
+                                      已完成
+                                    </span>
+                                  )}
                                   <button
-                                    className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
-                                    onClick={() =>
-                                      navigate(`/ai-interview/${interview._id}`)
-                                    }
+                                    className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
+                                    onClick={async () => {
+                                      if (
+                                        window.confirm(
+                                          "确定要删除这条面试记录吗？",
+                                        )
+                                      ) {
+                                        try {
+                                          await aiPreInterviewApi.deleteAiPreInterview(
+                                            interview._id,
+                                          );
+                                          // 重新获取面试数据
+                                          const user = userApi.getCurrentUser();
+                                          if (user) {
+                                            const aiPreInterviewData =
+                                              await aiPreInterviewApi.getUserAiPreInterviews(
+                                                user._id,
+                                              );
+                                            setAiPreInterviews(
+                                              aiPreInterviewData.data || [],
+                                            );
+
+                                            // 重新计算面试数量
+                                            const pendingAiInterviews =
+                                              aiPreInterviewData.data?.filter(
+                                                (interview) =>
+                                                  interview.status !==
+                                                  "completed",
+                                              ).length || 0;
+                                            const interviewInvitationData =
+                                              await interviewInvitationApi.getUserInterviewInvitations(
+                                                user._id,
+                                              );
+                                            setInterviewInvitations(
+                                              interviewInvitationData.data ||
+                                                [],
+                                            );
+                                            const totalInterviews =
+                                              pendingAiInterviews +
+                                              (interviewInvitationData.data
+                                                ?.length || 0);
+                                            setInterviewCount(totalInterviews);
+                                          }
+                                        } catch (error) {
+                                          console.error(
+                                            "删除面试记录失败:",
+                                            error,
+                                          );
+                                          alert("删除面试记录失败，请重试");
+                                        }
+                                      }
+                                    }}
                                   >
-                                    开始面试
+                                    删除
                                   </button>
-                                )}
-                                {interview.status === "completed" && (
-                                  <span className="rounded-lg bg-neutral-100 px-4 py-2 text-sm text-neutral-600">
-                                    已完成
-                                  </span>
-                                )}
+                                </div>
                               </div>
                             </div>
                           ))}

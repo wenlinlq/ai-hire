@@ -114,8 +114,37 @@ const resumeApi = {
   },
 
   // 更新简历信息
-  updateResume: async (resumeId: string, updateData: Partial<Resume>): Promise<void> => {
+  updateResume: async (
+    resumeId: string,
+    updateData: Partial<Resume>,
+  ): Promise<void> => {
     await apiClient.put(`/resumes/${resumeId}`, updateData);
+  },
+
+  // 解析简历
+  parseResume: async (resumeContent: string): Promise<any> => {
+    const response = await apiClient.post("/resumes/parse", { resumeContent });
+    return response.data.data;
+  },
+
+  // 优化简历
+  optimizeResume: async (
+    resumeContent: string,
+    prompt: string,
+  ): Promise<string> => {
+    const response = await apiClient.post("/resumes/optimize", {
+      resumeContent,
+      prompt,
+    });
+    return response.data.data;
+  },
+
+  // 一键优化简历
+  oneClickOptimizeResume: async (resumeContent: string): Promise<string> => {
+    const response = await apiClient.post("/resumes/optimize/one-click", {
+      resumeContent,
+    });
+    return response.data.data;
   },
 };
 

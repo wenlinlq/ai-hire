@@ -260,6 +260,63 @@ class AiPreInterviewController {
       res.status(500).json({ error: "Internal server error" });
     }
   }
+
+  // 解析简历
+  async parseResume(req, res) {
+    try {
+      const { resumeContent } = req.body;
+
+      if (!resumeContent) {
+        return res.status(400).json({ error: "Missing resume content" });
+      }
+
+      const parsedResume =
+        await aliyunBailianService.parseResume(resumeContent);
+      res.status(200).json({ data: parsedResume });
+    } catch (error) {
+      console.error("Error parsing resume:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  // 优化简历
+  async optimizeResume(req, res) {
+    try {
+      const { resumeContent, prompt } = req.body;
+
+      if (!resumeContent) {
+        return res.status(400).json({ error: "Missing resume content" });
+      }
+
+      const optimizedResume = await aliyunBailianService.optimizeResume(
+        resumeContent,
+        prompt,
+      );
+      res.status(200).json({ data: optimizedResume });
+    } catch (error) {
+      console.error("Error optimizing resume:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  // 一键优化简历
+  async oneClickOptimizeResume(req, res) {
+    try {
+      const { resumeContent } = req.body;
+
+      if (!resumeContent) {
+        return res.status(400).json({ error: "Missing resume content" });
+      }
+
+      // 一键优化不需要用户提示词，使用默认优化策略
+      const optimizedResume =
+        await aliyunBailianService.optimizeResume(resumeContent);
+      res.status(200).json({ data: optimizedResume });
+    } catch (error) {
+      console.error("Error with one-click resume optimization:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
 }
 
 module.exports = new AiPreInterviewController();

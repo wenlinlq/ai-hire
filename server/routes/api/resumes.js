@@ -54,6 +54,28 @@ router.post(
   resumeController.uploadResume,
 );
 
+// 导入AI预面试控制器，用于简历解析和优化
+const aiPreInterviewController = require("../../controllers/aiPreInterviewController");
+
+// 解析简历路由
+// POST 请求到 /api/resumes/parse
+// 调用 aiPreInterviewController.parseResume 解析简历
+router.post("/parse", verifyToken, aiPreInterviewController.parseResume);
+
+// 优化简历路由
+// POST 请求到 /api/resumes/optimize
+// 调用 aiPreInterviewController.optimizeResume 优化简历
+router.post("/optimize", verifyToken, aiPreInterviewController.optimizeResume);
+
+// 一键优化简历路由
+// POST 请求到 /api/resumes/optimize/one-click
+// 调用 aiPreInterviewController.oneClickOptimizeResume 一键优化简历
+router.post(
+  "/optimize/one-click",
+  verifyToken,
+  aiPreInterviewController.oneClickOptimizeResume,
+);
+
 // 获取学生的所有简历路由
 // GET 请求到 /api/resumes/
 // 调用 resumeController.getStudentResumes 获取学生的所有简历
@@ -63,11 +85,6 @@ router.get("/", verifyToken, resumeController.getStudentResumes);
 // GET 请求到 /api/resumes/current
 // 调用 resumeController.getCurrentResume 获取学生的当前简历
 router.get("/current", verifyToken, resumeController.getCurrentResume);
-
-// 删除简历路由
-// DELETE 请求到 /api/resumes/:resumeId
-// 调用 resumeController.deleteResume 删除简历
-router.delete("/:resumeId", verifyToken, resumeController.deleteResume);
 
 // 设置当前简历路由
 // PUT 请求到 /api/resumes/:resumeId/current
@@ -82,6 +99,11 @@ router.put(
 // PUT 请求到 /api/resumes/:resumeId
 // 调用 resumeController.updateResume 更新简历信息
 router.put("/:resumeId", verifyToken, resumeController.updateResume);
+
+// 删除简历路由
+// DELETE 请求到 /api/resumes/:resumeId
+// 调用 resumeController.deleteResume 删除简历
+router.delete("/:resumeId", verifyToken, resumeController.deleteResume);
 
 // 导出路由模块，供主应用使用
 module.exports = router;

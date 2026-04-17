@@ -65,43 +65,7 @@ JSON格式要求：
 }
 `;
 
-      // 打印API请求参数，用于调试
-      console.log("Making API request to Aliyun Bailian...");
-
-      // 模拟API响应，用于测试
-      // 实际项目中，这里会调用真实的API
-      console.log("Simulating API response for testing...");
-
-      // 模拟分析结果
-      /*
-      const analysis = {
-        overall: 85,
-        technical: 80,
-        communication: 90,
-        problemSolving: 85,
-        strengths: [
-          "技术基础扎实，对前端开发有深入了解",
-          "沟通表达清晰，能够准确理解问题",
-          "问题解决能力强，能够快速找到解决方案",
-        ],
-        improvements: [
-          "可以更深入地分析问题的根本原因",
-          "建议提供更多具体的项目案例",
-          "可以提高技术细节的描述能力",
-        ],
-        suggestions: [
-          "在回答问题时使用STAR法则",
-          "提前了解公司的业务和技术栈",
-          "保持自信的态度，展现自己的优势",
-        ],
-      };
-
-      // 打印分析结果，用于调试
-      console.log("Analysis result:", analysis);
-      return analysis;
-*/
-
-      // 实际API调用代码（暂时注释掉）
+      // 实际API调用代码
       const response = await axios.post(
         this.apiUrl,
         {
@@ -169,6 +133,293 @@ JSON格式要求：
           "保持自信的态度",
         ],
       };
+    }
+  }
+
+  // 解析简历内容
+  async parseResume(resumeContent) {
+    try {
+      console.log("Parsing resume...");
+
+      if (!resumeContent || resumeContent.length === 0) {
+        throw new Error("No resume content provided");
+      }
+
+      // 限制输入内容长度，避免超出API限制
+      const maxContentLength = 10000; // 限制为10,000字符，确保prompt不会过大
+      const truncatedContent =
+        resumeContent.length > maxContentLength
+          ? resumeContent.substring(0, maxContentLength) + "\n\n[内容已截断]"
+          : resumeContent;
+
+      // 计算内容长度，用于调试
+      console.log(`Original content length: ${resumeContent.length}`);
+      console.log(`Truncated content length: ${truncatedContent.length}`);
+
+      const prompt = `
+你是一位专业的简历解析专家，负责从简历文本中提取关键信息，并对简历质量进行分析评估。
+
+请从以下简历内容中提取结构化信息并进行质量分析：
+${truncatedContent}
+
+请提取以下信息：
+1. 姓名
+2. 联系方式（电话、邮箱等）
+3. 教育背景（学校、专业、学位、毕业时间）
+4. 工作经历（公司、职位、工作时间、主要职责和成就）
+5. 项目经验（项目名称、时间、角色、主要职责和成就）
+6. 技能（技术技能、软技能等）
+7. 证书和荣誉
+
+同时，请对简历质量进行评估：
+1. 整体评分（0-100分）
+2. 优点分析（至少3点）
+3. 改进建议（至少3点）
+4. 具体的修改意见（针对简历中需要改进的部分）
+
+请以JSON格式返回解析结果，不要包含任何其他文本。
+JSON格式要求：
+{
+  "name": "",
+  "contact": {
+    "phone": "",
+    "email": "",
+    "other": ""
+  },
+  "education": [
+    {
+      "school": "",
+      "major": "",
+      "degree": "",
+      "graduationDate": ""
+    }
+  ],
+  "workExperience": [
+    {
+      "company": "",
+      "position": "",
+      "startDate": "",
+      "endDate": "",
+      "responsibilities": [""],
+      "achievements": [""]
+    }
+  ],
+  "projectExperience": [
+    {
+      "name": "",
+      "startDate": "",
+      "endDate": "",
+      "role": "",
+      "responsibilities": [""],
+      "achievements": [""]
+    }
+  ],
+  "skills": {
+    "technical": [""],
+    "soft": [""]
+  },
+  "certifications": [""],
+  "honors": [""],
+  "analysis": {
+    "score": 0,
+    "strengths": [""],
+    "improvements": [""],
+    "suggestions": [""]
+  }
+}
+`;
+
+      // 计算prompt长度，用于调试
+      console.log(`Prompt length: ${prompt.length}`);
+
+      const response = await axios.post(
+        this.apiUrl,
+        {
+          model: "qwen-max", // 使用Qwen-Max模型
+          messages: [
+            {
+              role: "system",
+              content:
+                "你是一位专业的简历解析专家，负责从简历文本中提取关键信息。",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.3,
+          max_tokens: 2000, // 一次解析最多消耗2000token
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+        },
+      );
+
+      console.log("Resume parsing API response received:", response.data);
+
+      // 检查响应结构
+      if (
+        !response.data ||
+        !response.data.choices ||
+        response.data.choices.length === 0
+      ) {
+        throw new Error("Invalid response structure from AI model");
+      }
+
+      const choice = response.data.choices[0];
+      if (!choice.message || !choice.message.content) {
+        throw new Error("Invalid message format from AI model");
+      }
+
+      const content = choice.message.content;
+      console.log(
+        "AI response content:",
+        content.substring(0, 200) + (content.length > 200 ? "..." : ""),
+      );
+
+      // 提取JSON部分
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const parsedResume = JSON.parse(jsonMatch[0]);
+          console.log("Parsed resume result:", parsedResume);
+          return parsedResume;
+        } catch (parseError) {
+          throw new Error("Failed to parse JSON response from AI model");
+        }
+      } else {
+        throw new Error("No JSON found in AI model response");
+      }
+    } catch (error) {
+      console.error("Error parsing resume with Aliyun Bailian:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+
+      // 如果是API错误，返回更友好的错误信息
+      if (error.response?.status === 400) {
+        throw new Error("简历内容过大，请上传较小的简历文件");
+      }
+
+      // 重新抛出错误，让控制器处理
+      throw error;
+    }
+  }
+
+  // 优化简历内容
+  async optimizeResume(resumeContent, prompt = "") {
+    try {
+      console.log("Optimizing resume...");
+
+      if (!resumeContent || resumeContent.length === 0) {
+        throw new Error("No resume content provided");
+      }
+
+      // 限制输入内容长度，避免超出API限制
+      const maxContentLength = 8000; // 限制为8,000字符，确保prompt不会过大
+      const truncatedContent =
+        resumeContent.length > maxContentLength
+          ? resumeContent.substring(0, maxContentLength) + "\n\n[内容已截断]"
+          : resumeContent;
+
+      // 计算内容长度，用于调试
+      console.log(`Original content length: ${resumeContent.length}`);
+      console.log(`Truncated content length: ${truncatedContent.length}`);
+
+      let optimizationPrompt = `
+你是一位专业的简历优化专家，负责提升简历的质量和吸引力。
+
+请根据以下简历内容进行优化：
+${truncatedContent}
+
+优化要求：
+1. 语言表达更加专业、简洁有力
+2. 突出关键成就和技能
+3. 使用量化的成果展示
+4. 结构清晰，逻辑连贯
+5. 符合招聘方的阅读习惯
+`;
+
+      if (prompt) {
+        optimizationPrompt += `
+用户特别要求：
+${prompt}
+`;
+      }
+
+      optimizationPrompt += `
+请返回优化后的完整简历内容，不要包含任何其他文本。
+`;
+
+      // 计算prompt长度，用于调试
+      console.log(`Prompt length: ${optimizationPrompt.length}`);
+
+      const response = await axios.post(
+        this.apiUrl,
+        {
+          model: "qwen-max", // 使用Qwen-Max模型
+          messages: [
+            {
+              role: "system",
+              content:
+                "你是一位专业的简历优化专家，负责提升简历的质量和吸引力。",
+            },
+            {
+              role: "user",
+              content: optimizationPrompt,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 2000, // 一次优化最多消耗2000token
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+        },
+      );
+
+      console.log("Resume optimization API response received:", response.data);
+
+      // 检查响应结构
+      if (
+        !response.data ||
+        !response.data.choices ||
+        response.data.choices.length === 0
+      ) {
+        throw new Error("Invalid response structure from AI model");
+      }
+
+      const choice = response.data.choices[0];
+      if (!choice.message || !choice.message.content) {
+        throw new Error("Invalid message format from AI model");
+      }
+
+      const content = choice.message.content;
+      console.log(
+        "AI response content:",
+        content.substring(0, 200) + (content.length > 200 ? "..." : ""),
+      );
+
+      return content;
+    } catch (error) {
+      console.error("Error optimizing resume with Aliyun Bailian:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+
+      // 如果是API错误，返回更友好的错误信息
+      if (error.response?.status === 400) {
+        throw new Error("简历内容过大，请上传较小的简历文件");
+      }
+
+      throw error;
     }
   }
 }

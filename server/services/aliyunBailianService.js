@@ -4,7 +4,8 @@ class AliyunBailianService {
   constructor() {
     // 阿里云百炼API密钥和配置
     this.apiKey =
-      process.env.ALIYUN_BAILIAN_API_KEY ||'sk-756ae44eb5f74cf58e864a855f71f16e'
+      process.env.ALIYUN_BAILIAN_API_KEY ||
+      "sk-756ae44eb5f74cf58e864a855f71f16e";
     this.apiUrl =
       "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
   }
@@ -99,12 +100,12 @@ JSON格式要求：
       console.log("Analysis result:", analysis);
       return analysis;
 */
-      
+
       // 实际API调用代码（暂时注释掉）
       const response = await axios.post(
         this.apiUrl,
         {
-          model: "qwen-plus", // 通义千问模型
+          model: "deepseek-v3", // 通义千问模型
           messages: [
             {
               role: "system",
@@ -142,7 +143,6 @@ JSON格式要求：
       } else {
         throw new Error("Invalid response format from AI model");
       }
-     
     } catch (error) {
       // 打印详细的错误信息，用于调试
       console.error("Error analyzing interview with Aliyun Bailian:", {

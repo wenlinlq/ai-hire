@@ -64,8 +64,8 @@ const InterviewPreparation = () => {
     useState<InterviewSubType | null>(null);
 
   const handleStartInterview = () => {
-    // 跳转到面试页面，携带面试类型和子类型参数
-    let url = `/interview?type=${selectedType}`;
+    // 跳转到面试对话页面，携带面试类型和子类型参数
+    let url = `/interview/conversation?type=${selectedType}`;
     if (selectedSubType) {
       url += `&subType=${selectedSubType}`;
     }

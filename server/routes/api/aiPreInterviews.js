@@ -32,4 +32,10 @@ router.post(
   aiPreInterviewController.generateInterviewQuestion,
 );
 
+// 分析面试问答
+router.post(
+  "/analyze-answers",
+  aiPreInterviewController.analyzeInterviewAnswers,
+);
+
 module.exports = router;

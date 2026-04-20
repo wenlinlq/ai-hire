@@ -539,6 +539,126 @@ ${prompt}
       return defaultQuestions[type]?.[subType] || "请做一个简短的自我介绍。";
     }
   }
+
+  // 分析面试问答并生成评分和总结
+  async analyzeInterviewQnA(questions, answers, type) {
+    try {
+      console.log("Analyzing interview Q&A:", { questions, answers, type });
+
+      const typeMap = {
+        frontend: "前端开发",
+        backend: "后端开发",
+        ui: "UI设计",
+      };
+
+      const domain = typeMap[type] || "技术";
+
+      let prompt = `请分析以下${domain}面试的问答内容，并生成详细的评分和总结。\n\n`;
+
+      // 添加问答内容
+      questions.forEach((question, index) => {
+        prompt += `问题${index + 1}: ${question}\n`;
+        prompt += `回答${index + 1}: ${answers[index] || ""}\n\n`;
+      });
+
+      // 添加分析要求
+      prompt += `\n\n请按照以下格式输出分析结果：
+
+{"overall": 0-100, "technical": 0-100, "communication": 0-100, "problemSolving": 0-100, "strengths": ["优势1", "优势2"], "improvements": ["改进点1", "改进点2"], "suggestions": ["建议1", "建议2"]}
+
+要求：
+1. overall：总体评分（0-100）
+2. technical：技术能力评分（0-100）
+3. communication：沟通表达评分（0-100）
+4. problemSolving：问题解决能力评分（0-100）
+5. strengths：候选人的优势（如果回答质量差，可能没有优势）
+6. improvements：候选人需要改进的地方（至少2条）
+7. suggestions：给候选人的面试建议（至少2条）
+8. 评分要严格客观，基于实际回答内容的质量
+9. 对于简短、无意义的回答（如"123"、"不知道"等），应该给予较低的评分
+10. 只有当回答确实有价值时，才列出优势
+11. 优势、改进点和建议要具体，基于实际回答内容
+12. 直接输出JSON格式，不要添加其他文字`;
+
+      console.log(`Analysis prompt length: ${prompt.length}`);
+
+      const response = await axios.post(
+        this.apiUrl,
+        {
+          model: "deepseek-v3.2", // 使用deepseek-v3.2模型
+          messages: [
+            {
+              role: "system",
+              content: `你是一位专业的${domain}面试分析师，擅长评估候选人的表现并提供客观的反馈。`,
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.3,
+          max_tokens: 1000,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+        },
+      );
+
+      console.log("Interview analysis API response received:", response.data);
+
+      // 检查响应结构
+      if (
+        !response.data ||
+        !response.data.choices ||
+        response.data.choices.length === 0
+      ) {
+        throw new Error("Invalid response structure from AI model");
+      }
+
+      const choice = response.data.choices[0];
+      if (!choice.message || !choice.message.content) {
+        throw new Error("Invalid message format from AI model");
+      }
+
+      const content = choice.message.content.trim();
+      console.log("Analysis content:", content);
+
+      try {
+        // 解析JSON响应
+        const analysis = JSON.parse(content);
+        console.log("Parsed analysis:", analysis);
+        return analysis;
+      } catch (parseError) {
+        console.error("Error parsing analysis JSON:", parseError);
+        // 解析失败时返回默认分析结果
+        return this.getDefaultAnalysis();
+      }
+    } catch (error) {
+      console.error("Error analyzing interview with Aliyun Bailian:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      // 失败时返回默认分析结果
+      return this.getDefaultAnalysis();
+    }
+  }
+
+  // 获取默认分析结果
+  getDefaultAnalysis() {
+    return {
+      overall: 75,
+      technical: 70,
+      communication: 80,
+      problemSolving: 75,
+      strengths: ["回答问题积极主动", "沟通表达清晰"],
+      improvements: ["技术细节可以更深入", "问题分析可以更全面"],
+      suggestions: ["提前准备常见面试问题", "加强技术知识的复习"],
+    };
+  }
 }
 
 module.exports = new AliyunBailianService();

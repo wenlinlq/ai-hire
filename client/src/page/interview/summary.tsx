@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
 import { SiteNav } from "../../components/site";
 
 interface InterviewFeedback {
@@ -13,21 +13,23 @@ interface InterviewFeedback {
 
 const InterviewSummary = () => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const type = searchParams.get("type") || "frontend";
   const subType = searchParams.get("subType") || "interview";
+  const analysis = location.state?.analysis;
 
   const typeLabels: Record<string, string> = {
     frontend: "前端开发",
     backend: "后端开发",
-    ui: "UI设计"
+    ui: "UI设计",
   };
 
   const subTypeLabels: Record<string, string> = {
     interview: "面试",
-    written: "笔试"
+    written: "笔试",
   };
 
-  const feedback: InterviewFeedback = {
+  const feedback: InterviewFeedback = analysis || {
     overall: 85,
     technical: 82,
     communication: 88,
@@ -36,24 +38,24 @@ const InterviewSummary = () => {
       "技术基础扎实，对前端框架有深入理解",
       "沟通表达清晰，能够准确传达技术概念",
       "问题解决能力强，能够快速定位和解决bug",
-      "学习能力强，对新技术有很好的掌握能力"
+      "学习能力强，对新技术有很好的掌握能力",
     ],
     improvements: [
       "可以更深入地分析复杂问题的根本原因",
       "建议提供更多具体的项目案例来展示能力",
       "可以提高技术细节的描述深度",
-      "在回答问题时可以更加结构化"
+      "在回答问题时可以更加结构化",
     ],
     suggestions: [
       "在回答问题时使用STAR法则（情境、任务、行动、结果）",
       "提前准备一些常见的技术面试问题答案",
       "多参与开源项目，积累实际项目经验",
-      "保持对新技术的好奇心和学习热情"
-    ]
+      "保持对新技术的好奇心和学习热情",
+    ],
   };
 
   const handleRestart = () => {
-    window.location.href = `/interview/preparation`;
+    window.location.href = `/interview`;
   };
 
   return (
@@ -67,7 +69,8 @@ const InterviewSummary = () => {
                 面试完成
               </h1>
               <p className="text-lg text-neutral-600">
-                感谢您参加{typeLabels[type]}{subTypeLabels[subType]}，以下是您的面试反馈
+                感谢您参加{typeLabels[type]}
+                {subTypeLabels[subType]}，以下是您的面试反馈
               </p>
             </div>
 
@@ -82,11 +85,7 @@ const InterviewSummary = () => {
                     feedback.overall,
                     "bg-primary-50 text-primary-700",
                   ],
-                  [
-                    "技术能力",
-                    feedback.technical,
-                    "bg-blue-50 text-blue-700",
-                  ],
+                  ["技术能力", feedback.technical, "bg-blue-50 text-blue-700"],
                   [
                     "沟通表达",
                     feedback.communication,
@@ -170,7 +169,7 @@ const InterviewSummary = () => {
               <button
                 type="button"
                 className="rounded-lg border border-neutral-300 bg-white px-8 py-3 text-lg font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
-                onClick={() => window.location.href = "/"}
+                onClick={() => (window.location.href = "/")}
               >
                 返回首页
               </button>

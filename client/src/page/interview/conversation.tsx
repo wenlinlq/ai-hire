@@ -142,7 +142,8 @@ const InterviewConversation = () => {
       timestamp: new Date().toLocaleTimeString(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setMessageInput("");
 
     // 模拟AI面试官思考和回复
@@ -152,7 +153,7 @@ const InterviewConversation = () => {
       setTimeout(() => {
         const interviewerMessage: Message = {
           sender: "interviewer",
-          content: getNextQuestion(type, subType, messages.length + 1),
+          content: getNextQuestion(type, subType, updatedMessages.length),
           timestamp: new Date().toLocaleTimeString(),
         };
 
@@ -172,9 +173,49 @@ const InterviewConversation = () => {
       // 这里可以添加逻辑生成后续问题，但根据需求只设置1个问题
       return "感谢您的回答。面试到此结束，我们会在后续联系您。";
     } else {
+      // 提取问题和回答
+      const questions: string[] = [];
+      const answers: string[] = [];
+
+      for (let i = 1; i < messages.length; i += 2) {
+        if (messages[i] && messages[i].sender === "interviewer") {
+          questions.push(messages[i].content);
+        }
+        if (
+          i + 1 < messages.length &&
+          messages[i + 1] &&
+          messages[i + 1].sender === "candidate"
+        ) {
+          answers.push(messages[i + 1].content);
+        }
+      }
+
+      console.log("Interview questions:", questions);
+      console.log("Interview answers:", answers);
+
       // 面试结束，跳转到总结页面
-      setTimeout(() => {
-        navigate(`/interview/summary?type=${type}&subType=${subType}`);
+      setTimeout(async () => {
+        try {
+          // 调用API分析面试问答
+          const response = await api.post("/aiPreInterviews/analyze-answers", {
+            type,
+            subType,
+            questions,
+            answers,
+          });
+
+          console.log("Analysis response:", response);
+
+          // 跳转到总结页面并传递分析结果
+          const analysis = response.data?.data || response.data;
+          navigate(`/interview/summary?type=${type}&subType=${subType}`, {
+            state: { analysis },
+          });
+        } catch (error) {
+          console.error("Error analyzing interview:", error);
+          // 如果API调用失败，仍然跳转到总结页面
+          navigate(`/interview/summary?type=${type}&subType=${subType}`);
+        }
       }, 2000);
       return "感谢您的回答。面试到此结束，我们会在后续联系您。";
     }

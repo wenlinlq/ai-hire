@@ -337,6 +337,27 @@ class AiPreInterviewController {
       res.status(500).json({ error: "Internal server error" });
     }
   }
+
+  // 分析面试问答并生成评分和总结
+  async analyzeInterviewAnswers(req, res) {
+    try {
+      const { type, subType, questions, answers } = req.body;
+
+      if (!type || !subType || !questions || !answers) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const analysis = await aliyunBailianService.analyzeInterviewQnA(
+        questions,
+        answers,
+        type,
+      );
+      res.status(200).json({ data: analysis });
+    } catch (error) {
+      console.error("Error analyzing interview answers:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
 }
 
 module.exports = new AiPreInterviewController();

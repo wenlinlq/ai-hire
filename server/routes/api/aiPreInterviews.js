@@ -1,23 +1,35 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const aiPreInterviewController = require('../../controllers/aiPreInterviewController');
+const aiPreInterviewController = require("../../controllers/aiPreInterviewController");
 
 // 开始AI预面试
-router.put('/:interviewId/start', aiPreInterviewController.startAiPreInterview);
+router.put("/:interviewId/start", aiPreInterviewController.startAiPreInterview);
 
 // 完成AI预面试
-router.put('/:interviewId/complete', aiPreInterviewController.completeAiPreInterview);
+router.put(
+  "/:interviewId/complete",
+  aiPreInterviewController.completeAiPreInterview,
+);
 
 // 获取用户的AI预面试记录
-router.get('/user/:userId', aiPreInterviewController.getUserAiPreInterviews);
+router.get("/user/:userId", aiPreInterviewController.getUserAiPreInterviews);
 
 // 获取AI预面试详情
-router.get('/:interviewId', aiPreInterviewController.getAiPreInterviewById);
+router.get("/:interviewId", aiPreInterviewController.getAiPreInterviewById);
 
 // 根据投递ID获取AI预面试记录
-router.get('/delivery/:deliveryId', aiPreInterviewController.getAiPreInterviewByDeliveryId);
+router.get(
+  "/delivery/:deliveryId",
+  aiPreInterviewController.getAiPreInterviewByDeliveryId,
+);
 
 // 删除AI预面试记录
-router.delete('/:interviewId', aiPreInterviewController.deleteAiPreInterview);
+router.delete("/:interviewId", aiPreInterviewController.deleteAiPreInterview);
+
+// 生成面试问题
+router.post(
+  "/generate-question",
+  aiPreInterviewController.generateInterviewQuestion,
+);
 
 module.exports = router;

@@ -317,6 +317,26 @@ class AiPreInterviewController {
       res.status(500).json({ error: "Internal server error" });
     }
   }
+
+  // 生成面试问题
+  async generateInterviewQuestion(req, res) {
+    try {
+      const { type, subType } = req.body;
+
+      if (!type || !subType) {
+        return res.status(400).json({ error: "Missing type or subType" });
+      }
+
+      const question = await aliyunBailianService.generateInterviewQuestion(
+        type,
+        subType,
+      );
+      res.status(200).json({ data: { question } });
+    } catch (error) {
+      console.error("Error generating interview question:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
 }
 
 module.exports = new AiPreInterviewController();

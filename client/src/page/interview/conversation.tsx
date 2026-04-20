@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { SiteNav } from "../../components/site";
+import api from "../../api/api";
 
 interface Message {
   sender: "interviewer" | "candidate";
@@ -50,7 +51,41 @@ const InterviewConversation = () => {
         timestamp: new Date().toLocaleTimeString(),
       };
 
+      // 调用API生成面试问题
+      const response = await api.post("/aiPreInterviews/generate-question", {
+        type,
+        subType,
+      });
+
+      console.log("API Response:", response);
+
+      const generatedQuestion =
+        response.data?.question ||
+        response.question ||
+        response.data?.data?.question;
+
+      if (!generatedQuestion) {
+        throw new Error("无法生成面试问题");
+      }
+
       // 生成第一个问题
+      const firstQuestion: Message = {
+        sender: "interviewer",
+        content: generatedQuestion,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+
+      setMessages([openingMessage, firstQuestion]);
+      setInterviewState("ongoing");
+    } catch (error) {
+      console.error("初始化面试失败:", error);
+      // 如果API调用失败，使用默认问题
+      const openingMessage: Message = {
+        sender: "interviewer",
+        content: getOpeningMessage(type),
+        timestamp: new Date().toLocaleTimeString(),
+      };
+
       const firstQuestion: Message = {
         sender: "interviewer",
         content: getFirstQuestion(type, subType),
@@ -59,9 +94,6 @@ const InterviewConversation = () => {
 
       setMessages([openingMessage, firstQuestion]);
       setInterviewState("ongoing");
-    } catch (error) {
-      console.error("初始化面试失败:", error);
-      setInterviewState("preparing");
     }
   };
 
@@ -135,76 +167,10 @@ const InterviewConversation = () => {
     subType: InterviewSubType | null,
     questionIndex: number,
   ): string => {
-    const questions: Record<
-      InterviewType,
-      Partial<Record<InterviewSubType | "default", string[]>>
-    > = {
-      frontend: {
-        interview: [
-          "请您做一个简短的自我介绍，重点介绍您的前端技术栈和项目经验。",
-          "您最熟悉的前端框架是什么？请详细说明您在该框架方面的经验。",
-          "您在前端开发中遇到过哪些性能问题？是如何解决的？",
-          "请解释一下您对React组件生命周期的理解。",
-          "您如何看待前端状态管理？有哪些常用的状态管理方案？",
-        ],
-        written: [
-          "请您做一个简短的自我介绍，重点介绍您的前端开发技能和项目经验。",
-          "请编写一个函数来反转字符串。",
-          "请解释一下JavaScript中的闭包概念。",
-          "请设计一个简单的登录系统，包括前端验证和后端处理。",
-          "请分析一下以下代码的时间复杂度和空间复杂度。",
-        ],
-        default: [
-          "请您做一个简短的自我介绍，重点介绍您的前端背景。",
-          "您为什么选择从事前端开发工作？",
-          "您对未来的前端技术发展有什么看法？",
-        ],
-      },
-      backend: {
-        interview: [
-          "请您做一个简短的自我介绍，重点介绍您的后端技术栈和项目经验。",
-          "您最熟悉的后端技术栈是什么？请详细说明您在该技术栈方面的经验。",
-          "您在后端开发中遇到过哪些技术挑战？是如何解决的？",
-          "请解释一下您对RESTful API设计的理解。",
-          "您如何看待数据库性能优化？有哪些常用的优化策略？",
-        ],
-        written: [
-          "请您做一个简短的自我介绍，重点介绍您的后端开发技能和项目经验。",
-          "请编写一个函数来反转字符串。",
-          "请解释一下数据库事务的概念。",
-          "请设计一个简单的登录系统，包括前端验证和后端处理。",
-          "请分析一下以下代码的时间复杂度和空间复杂度。",
-        ],
-        default: [
-          "请您做一个简短的自我介绍，重点介绍您的后端背景。",
-          "您为什么选择从事后端开发工作？",
-          "您对未来的后端技术发展有什么看法？",
-        ],
-      },
-      ui: {
-        interview: [
-          "请您做一个简短的自我介绍，重点介绍您的设计理念和项目经验。",
-          "您如何理解用户体验设计？",
-          "请分享一个您认为设计得很好的产品，并说明理由。",
-          "您如何进行用户需求分析？",
-          "您如何衡量设计的成功？",
-        ],
-        default: [
-          "请您做一个简短的自我介绍，重点介绍您的设计相关经验。",
-          "您为什么对UI设计感兴趣？",
-          "您如何看待设计迭代的重要性？",
-        ],
-      },
-    };
-
-    const typeQuestions = questions[type];
-    const subtypeQuestions =
-      subType && typeQuestions[subType]
-        ? typeQuestions[subType]
-        : typeQuestions["default"] || [];
-
-    if (questionIndex < subtypeQuestions.length) {
-      return subtypeQuestions[questionIndex];
+    // 只设置1个问题，所以回答完第一个问题后就结束面试
+    if (questionIndex < 1) {
+      // 这里可以添加逻辑生成后续问题，但根据需求只设置1个问题
+      return "感谢您的回答。面试到此结束，我们会在后续联系您。";
     } else {
       // 面试结束，跳转到总结页面
       setTimeout(() => {

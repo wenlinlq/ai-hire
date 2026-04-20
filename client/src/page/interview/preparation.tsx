@@ -2,32 +2,28 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SiteNav } from "../../components/site";
 
-type InterviewType = "tech" | "product" | "general";
-type InterviewSubType =
-  | "tech-defense"
-  | "tech-written"
-  | "product-sense"
-  | "product-logic";
+type InterviewType = "frontend" | "backend" | "ui";
+type InterviewSubType = "interview" | "written";
 
 const typeConfig: Record<
   InterviewType,
   { label: string; desc: string; color: string; button: string }
 > = {
-  tech: {
-    label: "技术面试",
-    desc: "适合程序员、工程师等技术岗位",
+  frontend: {
+    label: "前端",
+    desc: "适合前端开发工程师岗位",
     color: "bg-primary-500",
     button: "bg-primary-500 hover:bg-primary-600",
   },
-  product: {
-    label: "产品面试",
-    desc: "适合产品经理、产品运营等岗位",
+  backend: {
+    label: "后端",
+    desc: "适合后端开发工程师岗位",
     color: "bg-primary-500",
     button: "bg-primary-500 hover:bg-primary-600",
   },
-  general: {
-    label: "综合面试",
-    desc: "适合大多数通用岗位面试",
+  ui: {
+    label: "UI",
+    desc: "适合UI设计师岗位",
     color: "bg-neutral-600",
     button: "bg-neutral-600 hover:bg-neutral-700",
   },
@@ -37,37 +33,38 @@ const subTypeConfig: Record<
   InterviewType,
   { label: string; options: { value: InterviewSubType; label: string }[] }
 > = {
-  tech: {
+  frontend: {
     label: "选择面试形式",
     options: [
-      { value: "tech-defense", label: "技术答辩" },
-      { value: "tech-written", label: "技术笔试" },
+      { value: "interview", label: "技术面试" },
+      { value: "written", label: "技术笔试" },
     ],
   },
-  product: {
+  backend: {
     label: "选择面试形式",
     options: [
-      { value: "product-sense", label: "产品感面试" },
-      { value: "product-logic", label: "逻辑面试" },
+      { value: "interview", label: "技术面试" },
+      { value: "written", label: "技术笔试" },
     ],
   },
-  general: {
-    label: "",
-    options: [],
+  ui: {
+    label: "选择面试形式",
+    options: [{ value: "interview", label: "面试" }],
   },
 };
 
 const InterviewPreparation = () => {
   const navigate = useNavigate();
-  const [selectedType, setSelectedType] = useState<InterviewType>("tech");
+  const [selectedType, setSelectedType] = useState<InterviewType>("frontend");
   const [selectedSubType, setSelectedSubType] =
     useState<InterviewSubType | null>(null);
 
   const handleStartInterview = () => {
     // 跳转到面试对话页面，携带面试类型和子类型参数
     let url = `/interview/conversation?type=${selectedType}`;
-    if (selectedSubType) {
-      url += `&subType=${selectedSubType}`;
+    if (selectedSubType || selectedType === "ui") {
+      // 对于UI类型，默认使用interview子类型
+      url += `&subType=${selectedSubType || "interview"}`;
     }
     navigate(url);
   };
@@ -101,7 +98,10 @@ const InterviewPreparation = () => {
                         className={`rounded-xl border border-neutral-200 p-6 transition-shadow hover:shadow-lg cursor-pointer ${selectedType === type ? "ring-2 ring-primary-500 ring-offset-2" : ""}`}
                         onClick={() => {
                           setSelectedType(type);
-                          setSelectedSubType(null);
+                          // 只有非UI类型才需要重置selectedSubType
+                          if (type !== "ui") {
+                            setSelectedSubType(null);
+                          }
                         }}
                       >
                         <div
@@ -124,26 +124,27 @@ const InterviewPreparation = () => {
               </div>
 
               {/* 子选项选择 */}
-              {subTypeConfig[selectedType].options.length > 0 && (
-                <div className="rounded-lg border border-neutral-200 p-6">
-                  <h2 className="mb-6 text-xl font-semibold text-neutral-800">
-                    {subTypeConfig[selectedType].label}
-                  </h2>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {subTypeConfig[selectedType].options.map((option) => (
-                      <div
-                        key={option.value}
-                        className={`rounded-xl border border-neutral-200 p-6 transition-shadow hover:shadow-lg cursor-pointer ${selectedSubType === option.value ? "ring-2 ring-primary-500 ring-offset-2" : ""}`}
-                        onClick={() => setSelectedSubType(option.value)}
-                      >
-                        <h3 className="text-center text-lg font-medium text-neutral-800">
-                          {option.label}
-                        </h3>
-                      </div>
-                    ))}
+              {selectedType !== "ui" &&
+                subTypeConfig[selectedType].options.length > 0 && (
+                  <div className="rounded-lg border border-neutral-200 p-6">
+                    <h2 className="mb-6 text-xl font-semibold text-neutral-800">
+                      {subTypeConfig[selectedType].label}
+                    </h2>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {subTypeConfig[selectedType].options.map((option) => (
+                        <div
+                          key={option.value}
+                          className={`rounded-xl border border-neutral-200 p-6 transition-shadow hover:shadow-lg cursor-pointer ${selectedSubType === option.value ? "ring-2 ring-primary-500 ring-offset-2" : ""}`}
+                          onClick={() => setSelectedSubType(option.value)}
+                        >
+                          <h3 className="text-center text-lg font-medium text-neutral-800">
+                            {option.label}
+                          </h3>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               <div className="rounded-lg border border-neutral-200 p-6 bg-neutral-50">
                 <h2 className="mb-4 text-xl font-semibold text-neutral-800">
@@ -183,6 +184,7 @@ const InterviewPreparation = () => {
                   className="rounded-lg bg-primary-500 px-8 py-3 text-lg font-semibold text-white transition-colors hover:bg-primary-600"
                   onClick={handleStartInterview}
                   disabled={
+                    selectedType !== "ui" &&
                     subTypeConfig[selectedType].options.length > 0 &&
                     !selectedSubType
                   }

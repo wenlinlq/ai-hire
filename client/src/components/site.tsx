@@ -14,6 +14,7 @@ const navItems = [
   { key: "hall", label: "招新大厅", to: "/hall" },
   { key: "resume", label: "AI简历", to: "/resume" },
   { key: "interview", label: "AI模拟面试", to: "/interview" },
+  { key: "ai-chat", label: "AI智能问答", to: "/ai-chat" },
 ] as const;
 
 const jobServiceLinks = ["职位搜索", "简历优化", "AI模拟面试", "职业规划"];

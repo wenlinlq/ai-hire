@@ -659,6 +659,93 @@ ${prompt}
       suggestions: ["提前准备常见面试问题", "加强技术知识的复习"],
     };
   }
+
+  // 智能问答功能
+  async askQuestion(question, context = []) {
+    try {
+      console.log("Processing AI question:", question);
+
+      if (!question || question.trim().length === 0) {
+        throw new Error("No question provided");
+      }
+
+      const prompt = `
+你是一位智能招聘助手，专注于高校社团招新相关的问题。
+
+请根据以下上下文和问题，提供专业、准确的回答：
+
+上下文：
+${context.length > 0 ? context.map((item, index) => `Q: ${item.question}\nA: ${item.answer}`).join('\n\n') : '无'}
+
+用户问题：
+${question}
+
+要求：
+1. 回答要专业、准确，与招聘和社团相关
+2. 语言要友好、自然，适合学生理解
+3. 回答要具体，避免泛泛而谈
+4. 如果问题超出招聘和社团范围，礼貌地说明无法回答
+5. 直接返回回答内容，不要添加任何其他文本
+`;
+
+      console.log(`Question prompt length: ${prompt.length}`);
+
+      const response = await axios.post(
+        this.apiUrl,
+        {
+          model: "qwen-flash", // 使用Qwen-Flash模型
+          messages: [
+            {
+              role: "system",
+              content: "你是一位智能招聘助手，专注于高校社团招新相关的问题。",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 1000,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+        },
+      );
+
+      console.log("AI question API response received:", response.data);
+
+      // 检查响应结构
+      if (
+        !response.data ||
+        !response.data.choices ||
+        response.data.choices.length === 0
+      ) {
+        throw new Error("Invalid response structure from AI model");
+      }
+
+      const choice = response.data.choices[0];
+      if (!choice.message || !choice.message.content) {
+        throw new Error("Invalid message format from AI model");
+      }
+
+      const content = choice.message.content.trim();
+      console.log("AI answer:", content);
+
+      return content;
+    } catch (error) {
+      console.error("Error processing AI question with Aliyun Bailian:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+
+      // 返回默认回答
+      return "抱歉，我暂时无法回答这个问题。请稍后再试或联系社团负责人获取更多信息。";
+    }
+  }
 }
 
 module.exports = new AliyunBailianService();

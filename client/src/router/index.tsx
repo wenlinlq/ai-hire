@@ -15,6 +15,7 @@ const InterviewConversation = lazy(
 );
 const InterviewSummary = lazy(() => import("../page/interview/summary"));
 const AIInterview = lazy(() => import("../page/interview/ai-interview"));
+const AIChat = lazy(() => import("../page/ai-chat"));
 const Login = lazy(() => import("../page/login"));
 const Notifications = lazy(() => import("../page/notifications"));
 const NotificationDetail = lazy(() => import("../page/notifications/detail"));
@@ -162,6 +163,16 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <Suspense fallback={null}>
           <Team />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ai-chat",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={null}>
+          <AIChat />
         </Suspense>
       </ProtectedRoute>
     ),

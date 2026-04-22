@@ -25,6 +25,8 @@ interface User {
   team?: string;
   avatar?: string;
   status: string;
+  grade?: string;
+  intro?: string;
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;

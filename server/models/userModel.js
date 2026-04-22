@@ -64,6 +64,10 @@ class UserModel {
         avatar: userData.avatar || "",
         // 用户状态（active：激活，inactive：未激活，banned：封禁）
         status: userData.status || "active",
+        // 年级
+        grade: userData.grade || "",
+        // 个人简介
+        intro: userData.intro || "",
         // 最后登录时间，初始为 null
         lastLogin: null,
         // 创建时间

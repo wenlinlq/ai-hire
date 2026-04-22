@@ -121,24 +121,48 @@ function Profile() {
 
   // 获取用户信息
   useEffect(() => {
-    const user = userApi.getCurrentUser();
-    if (user) {
-      // 处理手机号，4-7位用*隐藏
-      let maskedPhone = user.phone || "";
-      if (maskedPhone.length === 11) {
-        maskedPhone =
-          maskedPhone.substring(0, 3) + "****" + maskedPhone.substring(7);
-      }
+    const fetchUserProfile = async () => {
+      const user = userApi.getCurrentUser();
+      if (user) {
+        try {
+          // 从API获取最新的用户信息
+          const userData = await userApi.getUserById(user._id);
+          // 处理手机号，4-7位用*隐藏
+          let maskedPhone = userData.phone || "";
+          if (maskedPhone.length === 11) {
+            maskedPhone =
+              maskedPhone.substring(0, 3) + "****" + maskedPhone.substring(7);
+          }
 
-      setProfileForm({
-        name: user.username || "",
-        phone: maskedPhone,
-        email: user.email || "",
-        grade: "", // 年级信息需要让用户填写
-        intro: "",
-        _id: user._id,
-      });
-    }
+          setProfileForm({
+            name: userData.username || "",
+            phone: maskedPhone,
+            email: userData.email || "",
+            grade: userData.grade || "",
+            intro: userData.intro || "",
+            _id: userData._id,
+          });
+        } catch (error) {
+          console.error("获取用户信息失败:", error);
+          // 如果API调用失败，使用本地存储的用户信息
+          let maskedPhone = user.phone || "";
+          if (maskedPhone.length === 11) {
+            maskedPhone =
+              maskedPhone.substring(0, 3) + "****" + maskedPhone.substring(7);
+          }
+          setProfileForm({
+            name: user.username || "",
+            phone: maskedPhone,
+            email: user.email || "",
+            grade: user.grade || "",
+            intro: user.intro || "",
+            _id: user._id,
+          });
+        }
+      }
+    };
+
+    fetchUserProfile();
   }, []);
 
   // 获取收藏职位数据
@@ -373,6 +397,29 @@ function Profile() {
     }
   };
 
+  // 保存个人信息（年级和个人简介）
+  const handleSaveProfile = async () => {
+    const user = userApi.getCurrentUser();
+    if (!user) {
+      alert("请先登录");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await userApi.updateUser(user._id, {
+        grade: profileForm.grade,
+        intro: profileForm.intro,
+      });
+      alert("保存成功");
+    } catch (error) {
+      console.error("保存个人信息失败:", error);
+      alert("保存失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-700">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
@@ -551,10 +598,12 @@ function Profile() {
 
                   <div className="flex justify-end">
                     <button
-                      type="submit"
-                      className="rounded-lg bg-primary-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-primary-600"
+                      type="button"
+                      onClick={handleSaveProfile}
+                      disabled={loading}
+                      className="rounded-lg bg-primary-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-primary-600 disabled:opacity-50"
                     >
-                      保存修改
+                      {loading ? "保存中..." : "保存修改"}
                     </button>
                   </div>
                 </form>

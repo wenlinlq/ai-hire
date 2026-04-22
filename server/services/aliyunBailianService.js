@@ -675,7 +675,7 @@ ${prompt}
 请根据以下上下文和问题，提供专业、准确的回答：
 
 上下文：
-${context.length > 0 ? context.map((item, index) => `Q: ${item.question}\nA: ${item.answer}`).join('\n\n') : '无'}
+${context.length > 0 ? context.map((item, index) => `Q: ${item.question}\nA: ${item.answer}`).join("\n\n") : "无"}
 
 用户问题：
 ${question}
@@ -690,6 +690,7 @@ ${question}
 
       console.log(`Question prompt length: ${prompt.length}`);
 
+      // 流式请求配置
       const response = await axios.post(
         this.apiUrl,
         {
@@ -706,35 +707,64 @@ ${question}
           ],
           temperature: 0.7,
           max_tokens: 1000,
+          stream: true, // 开启流式输出
         },
         {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${this.apiKey}`,
           },
+          responseType: "stream", // 设置响应类型为流
         },
       );
 
-      console.log("AI question API response received:", response.data);
+      console.log("AI question API stream response received");
 
-      // 检查响应结构
-      if (
-        !response.data ||
-        !response.data.choices ||
-        response.data.choices.length === 0
-      ) {
-        throw new Error("Invalid response structure from AI model");
-      }
+      // 处理流式响应
+      return new Promise((resolve, reject) => {
+        let fullContent = "";
+        let isCompleted = false;
 
-      const choice = response.data.choices[0];
-      if (!choice.message || !choice.message.content) {
-        throw new Error("Invalid message format from AI model");
-      }
+        response.data.on("data", (chunk) => {
+          const chunkStr = chunk.toString();
+          const lines = chunkStr.split("\n");
 
-      const content = choice.message.content.trim();
-      console.log("AI answer:", content);
+          for (const line of lines) {
+            if (line.trim() === "") continue;
+            if (line === "data: [DONE]") {
+              isCompleted = true;
+              break;
+            }
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                if (data.choices && data.choices[0] && data.choices[0].delta) {
+                  const delta = data.choices[0].delta;
+                  if (delta.content) {
+                    fullContent += delta.content;
+                  }
+                }
+              } catch (error) {
+                console.error("Error parsing stream chunk:", error);
+              }
+            }
+          }
+        });
 
-      return content;
+        response.data.on("end", () => {
+          if (isCompleted) {
+            const content = fullContent.trim();
+            console.log("AI answer:", content);
+            resolve(content);
+          } else {
+            reject(new Error("Stream ended without completion marker"));
+          }
+        });
+
+        response.data.on("error", (error) => {
+          reject(error);
+        });
+      });
     } catch (error) {
       console.error("Error processing AI question with Aliyun Bailian:", {
         message: error.message,

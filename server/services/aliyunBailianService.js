@@ -540,6 +540,139 @@ ${prompt}
     }
   }
 
+  // 流式生成面试问题
+  async generateInterviewQuestionStream(res, type, subType) {
+    try {
+      console.log("Generating streaming interview question:", {
+        type,
+        subType,
+      });
+
+      const typeMap = {
+        frontend: "前端开发",
+        backend: "后端开发",
+        ui: "UI设计",
+      };
+      const domain = typeMap[type] || "技术";
+
+      const questionTypeMap = {
+        interview: "面试",
+        written: "笔试",
+      };
+      const questionType = questionTypeMap[subType] || "面试";
+
+      let prompt = `请为${domain}岗位生成1个${questionType}问题。\n\n`;
+
+      prompt += `
+要求：
+1. 问题要专业、有深度，能够考察候选人的真实能力
+2. 问题要与${domain}领域紧密相关
+3. 如果是面试题，问题要适合一对一交流
+4. 如果是笔试题，问题要适合书面回答，可能包含代码或设计任务
+5. 只生成1个问题，不要生成多个问题
+6. 问题要具体、明确，避免过于宽泛
+7. 直接返回问题内容，不要包含任何其他文本
+`;
+
+      console.log(`Stream prompt length: ${prompt.length}`);
+
+      const response = await axios.post(
+        this.apiUrl,
+        {
+          model: "qwen-flash", // 使用Qwen-Flash模型
+          messages: [
+            {
+              role: "system",
+              content: `你是一位专业的${domain}${questionType}生成专家。`,
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+          stream: true, // 开启流式输出
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          responseType: "stream", // 设置响应类型为流
+        },
+      );
+
+      console.log("Streaming interview question response received");
+
+      // 处理流式响应
+      response.data.on("data", (chunk) => {
+        const chunkStr = chunk.toString();
+        const lines = chunkStr.split("\n");
+
+        for (const line of lines) {
+          if (line.trim() === "") continue;
+          if (line === "data: [DONE]") {
+            res.write("data: [DONE]\n\n");
+            break;
+          }
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.substring(6));
+              if (data.choices && data.choices[0] && data.choices[0].delta) {
+                const delta = data.choices[0].delta;
+                if (delta.content) {
+                  // 发送流式数据
+                  res.write(
+                    `data: ${JSON.stringify({ content: delta.content })}\n\n`,
+                  );
+                }
+              }
+            } catch (error) {
+              console.error("Error parsing stream chunk:", error);
+            }
+          }
+        }
+      });
+
+      response.data.on("end", () => {
+        console.log("Stream completed");
+        res.end();
+      });
+
+      response.data.on("error", (error) => {
+        console.error("Stream error:", error);
+        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        res.end();
+      });
+    } catch (error) {
+      console.error("Error generating streaming interview question:", error);
+      // 发送默认问题
+      const defaultQuestions = {
+        frontend: {
+          interview: "请解释一下React中的虚拟DOM是什么，它是如何工作的？",
+          written: "请编写一个函数来实现React的useState hook的基本功能。",
+        },
+        backend: {
+          interview: "请解释一下RESTful API的设计原则。",
+          written:
+            "请设计一个简单的用户认证系统，包括登录、注册和密码重置功能。",
+        },
+        ui: {
+          interview:
+            "请解释一下什么是用户体验设计，它与用户界面设计有什么区别？",
+          written:
+            "请为一个在线教育平台设计一个课程详情页的UI草图，并说明设计思路。",
+        },
+      };
+      const defaultQuestion =
+        defaultQuestions[type]?.[subType] || "请做一个简短的自我介绍。";
+      res.write(`data: ${JSON.stringify({ content: defaultQuestion })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
+    }
+  }
+
   // 分析面试问答并生成评分和总结
   async analyzeInterviewQnA(questions, answers, type) {
     try {

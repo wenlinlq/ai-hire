@@ -1,12 +1,13 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { SiteNav } from "../../components/site";
-import api from "../../api/api";
+import api, { streamRequest } from "../../api/api";
 
 interface Message {
   sender: "interviewer" | "candidate";
   content: string;
   timestamp: string;
+  id: string;
 }
 
 type InterviewState = "loading" | "preparing" | "ongoing" | "completed";
@@ -22,6 +23,8 @@ const InterviewConversation = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [isInterviewerTyping, setIsInterviewerTyping] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false); // 防止重复初始化
+  const initializedRef = useRef(false); // 跟踪是否已经初始化过
   const chatRef = useRef<HTMLDivElement>(null);
 
   const type = searchParams.get("type") as InterviewType;
@@ -35,65 +38,179 @@ const InterviewConversation = () => {
   }, [messages, isInterviewerTyping]);
 
   useEffect(() => {
-    if (type) {
+    console.log("useEffect triggered:", {
+      type,
+      subType,
+      initialized: initializedRef.current,
+    });
+    // 只在初次渲染时初始化，使用ref确保只执行一次
+    if (type && !initializedRef.current) {
+      console.log("Starting initialization...");
+      initializedRef.current = true;
       initializeInterview();
+    } else if (type && initializedRef.current) {
+      console.log("Already initialized, skipping...");
     }
   }, [type, subType]);
 
   const initializeInterview = async () => {
+    // 提前生成问题消息ID，确保在catch块中也能访问
+    const questionMessageId = `msg-${Date.now()}-2`;
+
     try {
+      setIsInitializing(true); // 开始初始化
       setInterviewState("preparing");
 
-      // 生成面试开场白
+      // 生成面试开场白和空问题消息
       const openingMessage: Message = {
         sender: "interviewer",
         content: getOpeningMessage(type),
         timestamp: new Date().toLocaleTimeString(),
+        id: `msg-${Date.now()}-1`,
       };
 
-      // 调用API生成面试问题
-      const response = await api.post("/aiPreInterviews/generate-question", {
-        type,
-        subType,
+      let generatedQuestion = "";
+
+      const firstQuestionMessage: Message = {
+        sender: "interviewer",
+        content: "",
+        timestamp: new Date().toLocaleTimeString(),
+        id: questionMessageId,
+      };
+
+      console.log("Setting initial messages:", {
+        openingMessage: {
+          id: openingMessage.id,
+          content: openingMessage.content.substring(0, 30),
+        },
+        firstQuestionMessage: {
+          id: firstQuestionMessage.id,
+          content: firstQuestionMessage.content,
+        },
       });
 
-      console.log("API Response:", response);
+      // 一次性设置所有初始消息，避免异步状态更新的竞争条件
+      setMessages([openingMessage, firstQuestionMessage]);
+      setIsInterviewerTyping(true);
 
-      const generatedQuestion =
-        response.data?.question ||
-        response.question ||
-        response.data?.data?.question;
+      // 调用流式API生成面试问题
+      await new Promise<void>((resolve, reject) => {
+        streamRequest(
+          "/aiPreInterviews/generate-question-stream",
+          { type, subType },
+          (content) => {
+            // 逐字更新问题内容
+            generatedQuestion += content;
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === questionMessageId
+                  ? { ...msg, content: generatedQuestion }
+                  : msg,
+              ),
+            );
+          },
+          (error) => {
+            console.error("流式获取面试问题失败:", error);
+            // 使用默认问题
+            generatedQuestion = getFirstQuestion(type, subType);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === questionMessageId
+                  ? { ...msg, content: generatedQuestion }
+                  : msg,
+              ),
+            );
+            resolve();
+          },
+          () => {
+            // 流式传输完成
+            if (!generatedQuestion) {
+              generatedQuestion = getFirstQuestion(type, subType);
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === questionMessageId
+                    ? { ...msg, content: generatedQuestion }
+                    : msg,
+                ),
+              );
+            }
+            resolve();
+          },
+        );
+      });
 
-      if (!generatedQuestion) {
-        throw new Error("无法生成面试问题");
-      }
-
-      // 生成第一个问题
-      const firstQuestion: Message = {
-        sender: "interviewer",
-        content: generatedQuestion,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-
-      setMessages([openingMessage, firstQuestion]);
+      setIsInterviewerTyping(false);
       setInterviewState("ongoing");
     } catch (error) {
       console.error("初始化面试失败:", error);
       // 如果API调用失败，使用默认问题
-      const openingMessage: Message = {
-        sender: "interviewer",
-        content: getOpeningMessage(type),
-        timestamp: new Date().toLocaleTimeString(),
-      };
+      const openingContent = getOpeningMessage(type);
+      const defaultQuestion = getFirstQuestion(type, subType);
 
-      const firstQuestion: Message = {
-        sender: "interviewer",
-        content: getFirstQuestion(type, subType),
-        timestamp: new Date().toLocaleTimeString(),
-      };
+      // 检查当前消息状态，决定如何更新
+      setMessages((prev) => {
+        console.log(
+          "Current messages in catch:",
+          prev.length,
+          prev.map((m) => ({
+            sender: m.sender,
+            content: m.content.substring(0, 20),
+            id: m.id,
+          })),
+        );
 
-      setMessages([openingMessage, firstQuestion]);
+        // 情况1：还没有任何消息（不太可能发生在这个阶段）
+        // 情况2：只有开场白
+        // 情况3：有开场白和空问题消息（等待流式响应）
+        // 情况4：已经有内容了（流式已经返回了问题）
+
+        if (prev.length === 0) {
+          return [
+            {
+              sender: "interviewer" as const,
+              content: openingContent,
+              timestamp: new Date().toLocaleTimeString(),
+              id: `msg-${Date.now()}-1`,
+            },
+            {
+              sender: "interviewer" as const,
+              content: defaultQuestion,
+              timestamp: new Date().toLocaleTimeString(),
+              id: `msg-${Date.now()}-2`,
+            },
+          ];
+        } else if (prev.length === 1) {
+          // 只有开场白，添加默认问题
+          return [
+            ...prev,
+            {
+              sender: "interviewer" as const,
+              content: defaultQuestion,
+              timestamp: new Date().toLocaleTimeString(),
+              id: `msg-${Date.now()}-2`,
+            },
+          ];
+        } else {
+          // 使用消息ID来更新问题内容
+          const hasQuestionMessage = prev.some(
+            (msg) => msg.id === questionMessageId,
+          );
+          if (hasQuestionMessage) {
+            return prev.map((msg) =>
+              msg.id === questionMessageId
+                ? { ...msg, content: defaultQuestion }
+                : msg,
+            );
+          }
+        }
+        // 已经有完整内容了，不用修改
+        return prev;
+      });
+
+      setIsInterviewerTyping(false);
       setInterviewState("ongoing");
+    } finally {
+      setIsInitializing(false); // 初始化完成
     }
   };
 
@@ -140,6 +257,7 @@ const InterviewConversation = () => {
       sender: "candidate",
       content: messageInput,
       timestamp: new Date().toLocaleTimeString(),
+      id: `msg-${Date.now()}-candidate`,
     };
 
     const updatedMessages = [...messages, userMessage];
@@ -155,6 +273,7 @@ const InterviewConversation = () => {
           sender: "interviewer",
           content: getNextQuestion(type, subType, updatedMessages.length),
           timestamp: new Date().toLocaleTimeString(),
+          id: `msg-${Date.now()}-interviewer`,
         };
 
         setMessages((prev) => [...prev, interviewerMessage]);

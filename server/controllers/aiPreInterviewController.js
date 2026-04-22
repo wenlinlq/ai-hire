@@ -338,6 +338,30 @@ class AiPreInterviewController {
     }
   }
 
+  // 生成面试问题（流式）
+  async generateInterviewQuestionStream(req, res) {
+    try {
+      const { type, subType } = req.body;
+
+      if (!type || !subType) {
+        return res.status(400).json({ error: "Missing type or subType" });
+      }
+
+      // 设置SSE响应头
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+
+      // 调用流式生成面试问题
+      await aliyunBailianService.generateInterviewQuestionStream(res, type, subType);
+
+    } catch (error) {
+      console.error("Error generating streaming interview question:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
   // 分析面试问答并生成评分和总结
   async analyzeInterviewAnswers(req, res) {
     try {

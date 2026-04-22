@@ -32,6 +32,12 @@ router.post(
   aiPreInterviewController.generateInterviewQuestion,
 );
 
+// 生成面试问题（流式）
+router.post(
+  "/generate-question-stream",
+  aiPreInterviewController.generateInterviewQuestionStream,
+);
+
 // 分析面试问答
 router.post(
   "/analyze-answers",

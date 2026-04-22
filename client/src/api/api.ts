@@ -58,3 +58,86 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// 流式请求函数
+export const streamRequest = async (
+  url: string,
+  data: any,
+  onMessage: (content: string) => void,
+  onError?: (error: Error) => void,
+  onDone?: () => void,
+) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(`${api.defaults.baseURL}${url}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("Response body is not readable");
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.trim() === "") continue;
+
+        if (line.startsWith("data: ")) {
+          const dataStr = line.substring(6);
+
+          // 检查是否是[DONE]标记
+          if (dataStr === "[DONE]") {
+            onDone?.();
+            return;
+          }
+
+          // 尝试解析JSON
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.content) {
+              onMessage(parsed.content);
+            }
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+          } catch (e) {
+            // 忽略解析错误，继续处理
+            // 如果是DONE标记的解析错误，不用处理
+            if (dataStr === "[DONE]") {
+              onDone?.();
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    // 如果循环正常结束但还没有调用onDone，调用它
+    onDone?.();
+  } catch (error) {
+    onError?.(error as Error);
+  }
+};

@@ -274,6 +274,7 @@ class AiPreInterviewController {
     try {
       const userId = req.user?.id;
       const { resumeId, resumeContent } = req.body;
+      const file = req.file;
 
       let result;
 
@@ -358,11 +359,29 @@ class AiPreInterviewController {
         fs.unlinkSync(tempFilePath);
       }
 
-      // 情况3：既没有 resumeId 也没有 resumeContent
+      // 情况3：直接上传文件
+      else if (file) {
+        // 调用 Python 分析服务
+        const formData = new FormData();
+        formData.append("file", fs.createReadStream(file.path));
+
+        const response = await axios.post(
+          `${ANALYSIS_SERVICE_URL}/analyze`,
+          formData,
+          {
+            headers: { ...formData.getHeaders() },
+            timeout: 120000,
+          },
+        );
+
+        result = response.data;
+      }
+
+      // 情况4：既没有 resumeId、resumeContent 也没有 file
       else {
         return res.status(400).json({
           success: false,
-          error: "请提供简历ID或简历内容",
+          error: "请提供简历ID、简历内容或上传简历文件",
         });
       }
 

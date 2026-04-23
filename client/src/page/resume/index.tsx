@@ -15,51 +15,20 @@ function ResumeAnalyze() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
-      // 检查文件大小，限制为1MB
-      if (selectedFile.size > 1024 * 1024) {
-        alert("文件大小超过1MB，请上传较小的文件");
+      // 检查文件大小，限制为10MB
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        alert("文件大小超过10MB，请上传较小的文件");
         return;
       }
-      // 限制文件类型，只接受文本文件
-      const allowedTypes = ["text/plain", ".txt"];
+      // 限制文件类型，只接受指定格式
+      const allowedExtensions = ["pdf", "doc", "docx", "jpg", "jpeg", "png"];
       const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase();
-      if (
-        !allowedTypes.includes(selectedFile.type) &&
-        fileExtension !== "txt"
-      ) {
-        alert("请上传文本文件（.txt）");
+      if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+        alert("请上传 PDF、DOC、DOCX、JPG、JPEG、PNG 格式的文件");
         return;
       }
       setFile(selectedFile);
     }
-  };
-
-  const extractTextFromFile = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          const content = e.target.result as string;
-          // 检查提取的内容是否有效
-          if (content && content.length > 0) {
-            // 限制内容长度，避免发送过大的数据
-            const maxLength = 50000; // 限制为50,000字符
-            const truncatedContent =
-              content.length > maxLength
-                ? content.substring(0, maxLength) +
-                  "\n\n[内容已截断，请上传更完整的简历文本]"
-                : content;
-            resolve(truncatedContent);
-          } else {
-            reject(new Error("文件内容为空"));
-          }
-        } else {
-          reject(new Error("Failed to read file"));
-        }
-      };
-      reader.onerror = () => reject(new Error("Failed to read file"));
-      reader.readAsText(file);
-    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,13 +37,25 @@ function ResumeAnalyze() {
 
     setLoading(true);
     try {
-      // 提取文件内容
-      const content = await extractTextFromFile(file);
-      setResumeContent(content);
+      // 直接将文件发送到后端
+      const formData = new FormData();
+      formData.append("resume", file);
 
       // 调用后端API解析简历
-      const parsedData = await resumeApi.parseResume(content);
+      const response = await resumeApi.uploadAndParseResume(formData);
+
+      // 后端返回的数据结构: { success: true, data: { extracted_data, analysis } }
+      const parsedData = response.data || response;
+
+      // 保存解析结果
       setResult(parsedData);
+
+      // 提取简历文本内容用于优化功能（如果有的话）
+      if (parsedData.extracted_data?.content) {
+        setResumeContent(parsedData.extracted_data.content);
+      } else if (parsedData.rawContent) {
+        setResumeContent(parsedData.rawContent);
+      }
     } catch (error) {
       console.error("Error parsing resume:", error);
       alert("解析简历失败，请重试");
@@ -183,7 +164,7 @@ function ResumeAnalyze() {
                     <input
                       id="fileInput"
                       type="file"
-                      accept=".txt"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                       onChange={handleFileChange}
                       className="hidden"
                     />
@@ -205,154 +186,184 @@ function ResumeAnalyze() {
                 </h3>
                 {result ? (
                   <div className="space-y-4 flex-1 overflow-y-auto pr-2 max-h-[calc(100vh-300px)]">
-                    <p>
-                      <span className="font-medium">姓名：</span>
-                      {result.name}
-                    </p>
-                    <p>
-                      <span className="font-medium">电话：</span>
-                      {result.contact.phone}
-                    </p>
-                    <p>
-                      <span className="font-medium">邮箱：</span>
-                      {result.contact.email}
-                    </p>
-                    {result.education && result.education.length > 0 && (
-                      <div>
-                        <span className="font-medium">教育背景：</span>
-                        {result.education.map((edu: any, index: number) => (
-                          <div key={index} className="mt-1 ml-4">
-                            <p>
-                              {edu.school} - {edu.major} ({edu.degree})
-                            </p>
-                            <p className="text-sm text-neutral-600">
-                              毕业时间：{edu.graduationDate}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {result.skills &&
-                      (result.skills.technical || result.skills.soft) && (
-                        <div>
-                          <span className="font-medium">技能标签：</span>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {(result.skills.technical || []).map(
-                              (skill: string, index: number) => (
-                                <span
-                                  key={index}
-                                  className="rounded bg-primary-50 px-3 py-1 text-sm text-primary-600"
-                                >
-                                  [{skill}]
-                                </span>
-                              ),
-                            )}
-                            {(result.skills.soft || []).map(
-                              (skill: string, index: number) => (
-                                <span
-                                  key={index}
-                                  className="rounded bg-secondary-50 px-3 py-1 text-sm text-secondary-600"
-                                >
-                                  [{skill}]
-                                </span>
-                              ),
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    {result.projectExperience &&
-                      result.projectExperience.length > 0 && (
-                        <div className="mt-4">
-                          <span className="font-medium">项目经历：</span>
-                          <div className="mt-2 space-y-2">
-                            {result.projectExperience.map(
-                              (project: any, index: number) => (
-                                <div
-                                  key={index}
-                                  className="p-3 rounded-lg border border-neutral-100"
-                                >
-                                  <p className="font-medium">{project.name}</p>
+                    {(() => {
+                      // 从正确路径读取数据
+                      const data = result.data || result;
+                      const extractedData = data.extracted_data || {};
+                      const analysis = data.analysis || {};
+                      const basicInfo = extractedData.basic_info || {};
+                      const educationList = extractedData.education || [];
+                      const workExperience =
+                        extractedData.work_experience || [];
+                      const skills = analysis.skills || {};
+
+                      return (
+                        <>
+                          {/* 基本信息 */}
+                          <p>
+                            <span className="font-medium">姓名：</span>
+                            {basicInfo.name ||
+                              analysis.summary?.name ||
+                              "未识别"}
+                          </p>
+                          <p>
+                            <span className="font-medium">电话：</span>
+                            {basicInfo.phone || "未识别"}
+                          </p>
+                          <p>
+                            <span className="font-medium">邮箱：</span>
+                            {basicInfo.email || "未识别"}
+                          </p>
+
+                          {/* 教育背景 */}
+                          {educationList.length > 0 && (
+                            <div>
+                              <span className="font-medium">教育背景：</span>
+                              {educationList.map((edu: any, index: number) => (
+                                <div key={index} className="mt-1 ml-4">
+                                  <p>
+                                    {edu.school || "未识别"} -{" "}
+                                    {edu.major || "未知专业"} (
+                                    {edu.degreeLevel || "本科"})
+                                  </p>
                                   <p className="text-sm text-neutral-600">
-                                    {project.responsibilities?.join("; ") ||
-                                      project.description}
+                                    {edu.period?.startDate} -{" "}
+                                    {edu.period?.endDate}
                                   </p>
                                 </div>
-                              ),
-                            )}
-                          </div>
-                        </div>
-                      )}
+                              ))}
+                            </div>
+                          )}
 
-                    {result.analysis && (
-                      <div className="mt-6 p-4 bg-gradient-to-r from-primary-50 to-secondary-50 rounded-lg border border-primary-200">
-                        <h4 className="mb-3 font-bold text-primary-700">
-                          简历质量分析
-                        </h4>
+                          {/* 技能标签 */}
+                          {(skills.tech_stack?.length > 0 ||
+                            skills.soft_skills?.length > 0) && (
+                            <div>
+                              <span className="font-medium">技能标签：</span>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {(skills.tech_stack || []).map(
+                                  (skill: string, index: number) => (
+                                    <span
+                                      key={index}
+                                      className="rounded bg-primary-50 px-3 py-1 text-sm text-primary-600"
+                                    >
+                                      [{skill}]
+                                    </span>
+                                  ),
+                                )}
+                                {(skills.soft_skills || []).map(
+                                  (skill: string, index: number) => (
+                                    <span
+                                      key={index}
+                                      className="rounded bg-secondary-50 px-3 py-1 text-sm text-secondary-600"
+                                    >
+                                      [{skill}]
+                                    </span>
+                                  ),
+                                )}
+                              </div>
+                            </div>
+                          )}
 
-                        <div className="mb-4">
-                          <span className="font-medium">整体评分：</span>
-                          <span className="text-2xl font-bold text-primary-600 ml-2">
-                            {result.analysis.score}/100
-                          </span>
-                        </div>
+                          {/* 项目经历 */}
+                          {workExperience.length > 0 && (
+                            <div className="mt-4">
+                              <span className="font-medium">项目经历：</span>
+                              <div className="mt-2 space-y-2">
+                                {workExperience.map(
+                                  (project: any, index: number) => (
+                                    <div
+                                      key={index}
+                                      className="p-3 rounded-lg border border-neutral-100"
+                                    >
+                                      <p className="font-medium">
+                                        {project.companyName ||
+                                          project.position ||
+                                          "未识别"}
+                                      </p>
+                                      <p className="text-sm text-neutral-600">
+                                        {project.jobDescription?.substring(
+                                          0,
+                                          200,
+                                        ) || "未提取"}
+                                        ...
+                                      </p>
+                                    </div>
+                                  ),
+                                )}
+                              </div>
+                            </div>
+                          )}
 
-                        <div className="mb-4">
-                          <span className="font-medium text-green-700">
-                            优点分析：
-                          </span>
-                          <ul className="mt-2 ml-4 space-y-1">
-                            {result.analysis.strengths?.map(
-                              (strength: string, index: number) => (
-                                <li
-                                  key={index}
-                                  className="text-sm text-neutral-700"
-                                >
-                                  ✓ {strength}
-                                </li>
-                              ),
-                            )}
-                          </ul>
-                        </div>
+                          {/* AI 分析结果 */}
+                          {analysis && (
+                            <div className="mt-6 p-4 bg-gradient-to-r from-primary-50 to-secondary-50 rounded-lg border border-primary-200">
+                              <h4 className="mb-3 font-bold text-primary-700">
+                                简历质量分析
+                              </h4>
 
-                        <div className="mb-4">
-                          <span className="font-medium text-orange-700">
-                            改进建议：
-                          </span>
-                          <ul className="mt-2 ml-4 space-y-1">
-                            {result.analysis.improvements?.map(
-                              (improvement: string, index: number) => (
-                                <li
-                                  key={index}
-                                  className="text-sm text-neutral-700"
-                                >
-                                  • {improvement}
-                                </li>
-                              ),
-                            )}
-                          </ul>
-                        </div>
+                              <div className="mb-4">
+                                <span className="font-medium">整体评分：</span>
+                                <span className="text-2xl font-bold text-primary-600 ml-2">
+                                  {analysis.score}/10
+                                </span>
+                              </div>
 
-                        <div>
-                          <span className="font-medium text-blue-700">
-                            具体修改意见：
-                          </span>
-                          <ul className="mt-2 ml-4 space-y-1">
-                            {result.analysis.suggestions?.map(
-                              (suggestion: string, index: number) => (
-                                <li
-                                  key={index}
-                                  className="text-sm text-neutral-700"
-                                >
-                                  💡 {suggestion}
-                                </li>
-                              ),
-                            )}
-                          </ul>
-                        </div>
-                      </div>
-                    )}
+                              <div className="mb-4">
+                                <span className="font-medium text-green-700">
+                                  优点分析：
+                                </span>
+                                <ul className="mt-2 ml-4 space-y-1">
+                                  {(analysis.strengths || []).map(
+                                    (strength: string, index: number) => (
+                                      <li
+                                        key={index}
+                                        className="text-sm text-neutral-700"
+                                      >
+                                        ✓ {strength}
+                                      </li>
+                                    ),
+                                  )}
+                                </ul>
+                              </div>
+
+                              <div className="mb-4">
+                                <span className="font-medium text-orange-700">
+                                  待提升之处：
+                                </span>
+                                <ul className="mt-2 ml-4 space-y-1">
+                                  {(analysis.weaknesses || []).map(
+                                    (weakness: any, index: number) => (
+                                      <li
+                                        key={index}
+                                        className="text-sm text-neutral-700"
+                                      >
+                                        •{" "}
+                                        {typeof weakness === "string"
+                                          ? weakness
+                                          : weakness.description}
+                                      </li>
+                                    ),
+                                  )}
+                                </ul>
+                              </div>
+
+                              <div>
+                                <span className="font-medium text-blue-700">
+                                  综合评价：
+                                </span>
+                                <p className="mt-2 text-sm text-neutral-700">
+                                  {analysis.overall_comment || "暂无"}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
+                  // 空状态显示
                   <div className="flex-1 flex items-center justify-center text-center text-neutral-500">
                     <div>
                       <svg
@@ -360,7 +371,6 @@ function ResumeAnalyze() {
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
-                        aria-hidden="true"
                       >
                         <path
                           strokeLinecap="round"

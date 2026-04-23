@@ -127,6 +127,16 @@ const resumeApi = {
     return response.data.data;
   },
 
+  // 上传并解析简历
+  uploadAndParseResume: async (formData: FormData): Promise<any> => {
+    const response = await apiClient.post("/resumes/parse", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data.data;
+  },
+
   // 优化简历
   optimizeResume: async (
     resumeContent: string,

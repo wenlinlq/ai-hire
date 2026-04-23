@@ -60,7 +60,12 @@ const aiPreInterviewController = require("../../controllers/aiPreInterviewContro
 // 解析简历路由
 // POST 请求到 /api/resumes/parse
 // 调用 aiPreInterviewController.parseResume 解析简历
-router.post("/parse", verifyToken, aiPreInterviewController.parseResume);
+router.post(
+  "/parse",
+  verifyToken,
+  upload.single("resume"),
+  aiPreInterviewController.parseResume,
+);
 
 // 优化简历路由
 // POST 请求到 /api/resumes/optimize

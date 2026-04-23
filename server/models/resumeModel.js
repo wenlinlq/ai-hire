@@ -249,6 +249,62 @@ class ResumeModel {
       throw error;
     }
   }
+  // 根据 ID 获取简历
+  async getResumeById(resumeId) {
+    try {
+      const collection = this.getCollection();
+
+      const resume = await collection.findOne({
+        _id: new ObjectId(resumeId),
+      });
+
+      return resume;
+    } catch (error) {
+      console.error("Error getting resume by id:", error);
+      throw error;
+    }
+  }
+
+  // 保存分析结果
+  async saveAnalysisResult(resumeId, analysisResult) {
+    try {
+      const collection = this.getCollection();
+
+      const result = await collection.updateOne(
+        { _id: new ObjectId(resumeId) },
+        {
+          $set: {
+            parsedData: analysisResult.extracted_data, // 存储解析出的结构化数据
+            analysis: analysisResult.analysis, // 存储 AI 分析结果
+            parsedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
+      );
+
+      return result.modifiedCount > 0;
+    } catch (error) {
+      console.error("Error saving analysis result:", error);
+      throw error;
+    }
+  }
+
+  // 获取简历分析结果
+  async getAnalysisResult(resumeId) {
+    try {
+      const collection = this.getCollection();
+
+      const resume = await collection.findOne(
+        { _id: new ObjectId(resumeId) },
+        { projection: { parsedData: 1, analysis: 1, parsedAt: 1 } },
+      );
+
+      return resume;
+    } catch (error) {
+      console.error("Error getting analysis result:", error);
+      throw error;
+    }
+  }
 }
 
 // 导出简历模型

@@ -1,69 +1,368 @@
-// 导入简历模型
-const resumeModel = require("../models/resumeModel");
-// 导入文件系统模块，用于处理文件操作
+// 导入数据库连接模块，用于获取数据库实例
+const { getDB } = require("../db/db");
+// 导入 MongoDB 的 ObjectId 类型，用于处理文档的 _id 字段
+const { ObjectId } = require("mongodb");
+// 新增：用于调用 Python 分析服务
+const axios = require("axios");
+const FormData = require("form-data");
 const fs = require("fs");
-// 导入路径模块，用于处理文件路径
 const path = require("path");
 
-// 定义简历控制器
+// Python 分析服务配置
+const ANALYSIS_SERVICE_URL =
+  process.env.ANALYSIS_SERVICE_URL || "http://localhost:8000";
+
+// 定义简历模型类，封装所有简历相关的数据库操作
+class ResumeModel {
+  // 构造函数，在创建实例时自动执行
+  constructor() {
+    // 延迟获取数据库连接，在需要时通过 getCollection 方法获取
+  }
+
+  // 获取数据库集合的方法
+  getCollection() {
+    if (!this.collection) {
+      this.collection = getDB().collection("resumes");
+    }
+    return this.collection;
+  }
+
+  // 初始化数据库索引的方法
+  async initIndexes() {
+    try {
+      const collection = this.getCollection();
+      // 创建 studentId 普通索引
+      await collection.createIndex({ studentId: 1 });
+      // 创建 isActive 普通索引
+      await collection.createIndex({ isActive: 1 });
+      // 控制台输出索引初始化成功的消息
+      console.log("Resume indexes initialized successfully");
+    } catch (error) {
+      // 如果索引创建失败，输出错误信息
+      console.error("Error initializing resume indexes:", error);
+    }
+  }
+
+  // 创建新简历记录的方法
+  async createResume(resumeData) {
+    try {
+      const collection = this.getCollection();
+
+      // 构建简历文档对象
+      const resume = {
+        // 学生ID
+        studentId: new ObjectId(resumeData.studentId),
+        // 简历文件URL
+        fileUrl: resumeData.fileUrl || "",
+        // 文件类型
+        fileType: resumeData.fileType || "",
+        // 简历原始文本
+        content: resumeData.content || "",
+        // AI解析结果
+        parsedData: resumeData.parsedData || {
+          name: "",
+          phone: "",
+          email: "",
+          education: {},
+          skills: [],
+          projects: [],
+          experience: [],
+        },
+        // AI分析结果（新增）
+        analysis: resumeData.analysis || null,
+        // 解析时间
+        parsedAt: resumeData.parsedAt || null,
+        // 是否为当前简历
+        isActive:
+          resumeData.isActive !== undefined ? resumeData.isActive : true,
+        // 上传时间
+        createdAt: new Date(),
+        // 更新时间
+        updatedAt: new Date(),
+      };
+
+      // 如果设置为当前简历，将其他简历设置为非当前
+      if (resume.isActive) {
+        await collection.updateMany(
+          { studentId: resume.studentId, isActive: true },
+          { $set: { isActive: false, updatedAt: new Date() } },
+        );
+      }
+
+      // 向数据库插入简历文档
+      const result = await collection.insertOne(resume);
+      // 返回完整的简历对象，包含 MongoDB 自动生成的 _id
+      return {
+        ...resume,
+        _id: result.insertedId,
+      };
+    } catch (error) {
+      // 如果创建失败，输出错误信息
+      console.error("Error creating resume:", error);
+      // 抛出错误，让上层调用者处理
+      throw error;
+    }
+  }
+
+  // 获取学生的所有简历
+  async getStudentResumes(studentId) {
+    try {
+      const collection = this.getCollection();
+
+      // 查询学生的所有简历，按创建时间倒序排列
+      const resumes = await collection
+        .find({
+          studentId: new ObjectId(studentId),
+        })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      return resumes;
+    } catch (error) {
+      // 如果查询失败，输出错误信息
+      console.error("Error getting student resumes:", error);
+      // 抛出错误，让上层调用者处理
+      throw error;
+    }
+  }
+
+  // 获取学生的当前简历
+  async getCurrentResume(studentId) {
+    try {
+      const collection = this.getCollection();
+
+      // 查询学生的当前简历
+      const resume = await collection.findOne({
+        studentId: new ObjectId(studentId),
+        isActive: true,
+      });
+
+      return resume;
+    } catch (error) {
+      // 如果查询失败，输出错误信息
+      console.error("Error getting current resume:", error);
+      // 抛出错误，让上层调用者处理
+      throw error;
+    }
+  }
+
+  // 根据 ID 获取简历（新增）
+  async getResumeById(resumeId) {
+    try {
+      const collection = this.getCollection();
+
+      const resume = await collection.findOne({
+        _id: new ObjectId(resumeId),
+      });
+
+      return resume;
+    } catch (error) {
+      console.error("Error getting resume by id:", error);
+      throw error;
+    }
+  }
+
+  // 保存分析结果（新增）
+  async saveAnalysisResult(resumeId, analysisResult) {
+    try {
+      const collection = this.getCollection();
+
+      const result = await collection.updateOne(
+        { _id: new ObjectId(resumeId) },
+        {
+          $set: {
+            parsedData:
+              analysisResult.extracted_data ||
+              analysisResult.data?.extracted_data,
+            analysis: analysisResult.analysis || analysisResult.data?.analysis,
+            parsedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
+      );
+
+      return result.modifiedCount > 0;
+    } catch (error) {
+      console.error("Error saving analysis result:", error);
+      throw error;
+    }
+  }
+
+  // 获取简历分析结果（新增）
+  async getAnalysisResult(resumeId) {
+    try {
+      const collection = this.getCollection();
+
+      const resume = await collection.findOne(
+        { _id: new ObjectId(resumeId) },
+        { projection: { parsedData: 1, analysis: 1, parsedAt: 1 } },
+      );
+
+      return resume;
+    } catch (error) {
+      console.error("Error getting analysis result:", error);
+      throw error;
+    }
+  }
+
+  // 更新简历信息
+  async updateResume(resumeId, updateData) {
+    try {
+      const collection = this.getCollection();
+
+      // 构建更新对象
+      const update = {
+        $set: {
+          ...updateData,
+          updatedAt: new Date(),
+        },
+      };
+
+      // 如果设置为当前简历，将其他简历设置为非当前
+      if (updateData.isActive) {
+        const resume = await collection.findOne({
+          _id: new ObjectId(resumeId),
+        });
+        if (resume) {
+          await collection.updateMany(
+            { studentId: resume.studentId, isActive: true },
+            { $set: { isActive: false, updatedAt: new Date() } },
+          );
+        }
+      }
+
+      // 执行更新操作
+      const result = await collection.updateOne(
+        { _id: new ObjectId(resumeId) },
+        update,
+      );
+
+      // 返回是否更新成功
+      return result.modifiedCount > 0;
+    } catch (error) {
+      // 如果更新失败，输出错误信息
+      console.error("Error updating resume:", error);
+      // 抛出错误，让上层调用者处理
+      throw error;
+    }
+  }
+
+  // 删除简历
+  async deleteResume(resumeId) {
+    try {
+      const collection = this.getCollection();
+
+      // 先获取简历信息，用于后续处理
+      const resume = await collection.findOne({ _id: new ObjectId(resumeId) });
+      if (!resume) {
+        return false;
+      }
+
+      // 执行删除操作
+      const result = await collection.deleteOne({
+        _id: new ObjectId(resumeId),
+      });
+
+      // 如果删除的是当前简历，将最新的简历设置为当前
+      if (resume.isActive && result.deletedCount > 0) {
+        const latestResume = await collection.findOne(
+          { studentId: resume.studentId },
+          { sort: { createdAt: -1 } },
+        );
+        if (latestResume) {
+          await collection.updateOne(
+            { _id: latestResume._id },
+            { $set: { isActive: true, updatedAt: new Date() } },
+          );
+        }
+      }
+
+      // 返回是否删除成功
+      return result.deletedCount > 0;
+    } catch (error) {
+      // 如果删除失败，输出错误信息
+      console.error("Error deleting resume:", error);
+      // 抛出错误，让上层调用者处理
+      throw error;
+    }
+  }
+
+  // 设置当前简历
+  async setCurrentResume(resumeId) {
+    try {
+      const collection = this.getCollection();
+
+      // 先获取简历信息
+      const resume = await collection.findOne({ _id: new ObjectId(resumeId) });
+      if (!resume) {
+        return false;
+      }
+
+      // 将所有简历设置为非当前
+      await collection.updateMany(
+        { studentId: resume.studentId, isActive: true },
+        { $set: { isActive: false, updatedAt: new Date() } },
+      );
+
+      // 将指定简历设置为当前
+      const result = await collection.updateOne(
+        { _id: new ObjectId(resumeId) },
+        { $set: { isActive: true, updatedAt: new Date() } },
+      );
+
+      // 返回是否设置成功
+      return result.modifiedCount > 0;
+    } catch (error) {
+      // 如果设置失败，输出错误信息
+      console.error("Error setting current resume:", error);
+      // 抛出错误，让上层调用者处理
+      throw error;
+    }
+  }
+}
+
+// 导出简历模型
+const resumeModel = new ResumeModel();
+
+// 简历控制器
 const resumeController = {
   // 上传简历
   async uploadResume(req, res) {
     try {
-      // 从请求中获取用户ID
-      const userId = req.user.id;
-
-      // 检查是否有文件上传
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: "请选择要上传的文件",
-        });
-      }
-
-      // 获取文件信息
+      const userId = req.user?.id;
       const file = req.file;
-      const fileType = path
-        .extname(file.originalname)
-        .toLowerCase()
-        .substring(1);
 
-      // 验证文件类型
-      const allowedTypes = ["pdf", "doc", "docx", "jpg", "jpeg", "png"];
-      if (!allowedTypes.includes(fileType)) {
-        // 删除上传的文件
-        fs.unlinkSync(file.path);
+      if (!file) {
         return res.status(400).json({
           success: false,
-          message: "不支持的文件类型",
+          message: "请选择要上传的简历文件",
         });
       }
 
-      // 构建文件URL（实际项目中应该使用云存储或CDN）
+      // 构建文件路径
       const fileUrl = `/uploads/${file.filename}`;
 
       // 构建简历数据
       const resumeData = {
         studentId: userId,
         fileUrl: fileUrl,
-        fileType: fileType,
+        fileType: file.mimetype.split("/")[1],
         isActive: true,
       };
 
-      // 调用模型方法创建简历记录
+      // 创建简历记录
       const resume = await resumeModel.createResume(resumeData);
 
-      // 返回成功响应
-      res.status(201).json({
+      res.status(200).json({
         success: true,
         message: "简历上传成功",
         data: resume,
       });
     } catch (error) {
-      // 捕获错误并返回错误响应
+      console.error("上传简历失败:", error);
       res.status(500).json({
         success: false,
-        message: "简历上传失败",
+        message: "上传简历失败",
         error: error.message,
       });
     }
@@ -72,20 +371,16 @@ const resumeController = {
   // 获取学生的所有简历
   async getStudentResumes(req, res) {
     try {
-      // 从请求中获取用户ID
-      const userId = req.user.id;
+      const userId = req.user?.id;
 
-      // 调用模型方法获取学生的所有简历
       const resumes = await resumeModel.getStudentResumes(userId);
 
-      // 返回成功响应
       res.status(200).json({
         success: true,
-        message: "获取简历列表成功",
         data: resumes,
       });
     } catch (error) {
-      // 捕获错误并返回错误响应
+      console.error("获取简历列表失败:", error);
       res.status(500).json({
         success: false,
         message: "获取简历列表失败",
@@ -97,20 +392,16 @@ const resumeController = {
   // 获取学生的当前简历
   async getCurrentResume(req, res) {
     try {
-      // 从请求中获取用户ID
-      const userId = req.user.id;
+      const userId = req.user?.id;
 
-      // 调用模型方法获取学生的当前简历
       const resume = await resumeModel.getCurrentResume(userId);
 
-      // 返回成功响应
       res.status(200).json({
         success: true,
-        message: "获取当前简历成功",
         data: resume,
       });
     } catch (error) {
-      // 捕获错误并返回错误响应
+      console.error("获取当前简历失败:", error);
       res.status(500).json({
         success: false,
         message: "获取当前简历失败",
@@ -119,62 +410,26 @@ const resumeController = {
     }
   },
 
-  // 删除简历
-  async deleteResume(req, res) {
-    try {
-      // 从请求参数中获取简历ID
-      const { resumeId } = req.params;
-
-      // 调用模型方法删除简历
-      const deleted = await resumeModel.deleteResume(resumeId);
-
-      // 检查删除是否成功
-      if (!deleted) {
-        return res.status(404).json({
-          success: false,
-          message: "简历不存在",
-        });
-      }
-
-      // 返回成功响应
-      res.status(200).json({
-        success: true,
-        message: "简历删除成功",
-      });
-    } catch (error) {
-      // 捕获错误并返回错误响应
-      res.status(500).json({
-        success: false,
-        message: "简历删除失败",
-        error: error.message,
-      });
-    }
-  },
-
   // 设置当前简历
   async setCurrentResume(req, res) {
     try {
-      // 从请求参数中获取简历ID
       const { resumeId } = req.params;
 
-      // 调用模型方法设置当前简历
-      const updated = await resumeModel.setCurrentResume(resumeId);
+      const result = await resumeModel.setCurrentResume(resumeId);
 
-      // 检查设置是否成功
-      if (!updated) {
-        return res.status(404).json({
+      if (result) {
+        res.status(200).json({
+          success: true,
+          message: "设置当前简历成功",
+        });
+      } else {
+        res.status(404).json({
           success: false,
           message: "简历不存在",
         });
       }
-
-      // 返回成功响应
-      res.status(200).json({
-        success: true,
-        message: "设置当前简历成功",
-      });
     } catch (error) {
-      // 捕获错误并返回错误响应
+      console.error("设置当前简历失败:", error);
       res.status(500).json({
         success: false,
         message: "设置当前简历失败",
@@ -186,37 +441,59 @@ const resumeController = {
   // 更新简历信息
   async updateResume(req, res) {
     try {
-      // 从请求参数中获取简历ID
       const { resumeId } = req.params;
-      // 从请求体中获取更新数据
       const updateData = req.body;
 
-      // 调用模型方法更新简历
-      const updated = await resumeModel.updateResume(resumeId, updateData);
+      const result = await resumeModel.updateResume(resumeId, updateData);
 
-      // 检查更新是否成功
-      if (!updated) {
-        return res.status(404).json({
+      if (result) {
+        res.status(200).json({
+          success: true,
+          message: "更新简历成功",
+        });
+      } else {
+        res.status(404).json({
           success: false,
           message: "简历不存在",
         });
       }
-
-      // 返回成功响应
-      res.status(200).json({
-        success: true,
-        message: "简历更新成功",
-      });
     } catch (error) {
-      // 捕获错误并返回错误响应
+      console.error("更新简历失败:", error);
       res.status(500).json({
         success: false,
-        message: "简历更新失败",
+        message: "更新简历失败",
+        error: error.message,
+      });
+    }
+  },
+
+  // 删除简历
+  async deleteResume(req, res) {
+    try {
+      const { resumeId } = req.params;
+
+      const result = await resumeModel.deleteResume(resumeId);
+
+      if (result) {
+        res.status(200).json({
+          success: true,
+          message: "删除简历成功",
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: "简历不存在",
+        });
+      }
+    } catch (error) {
+      console.error("删除简历失败:", error);
+      res.status(500).json({
+        success: false,
+        message: "删除简历失败",
         error: error.message,
       });
     }
   },
 };
 
-// 导出简历控制器
 module.exports = resumeController;

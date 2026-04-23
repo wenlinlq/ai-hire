@@ -317,7 +317,7 @@ class AiPreInterviewController {
           formData,
           {
             headers: { ...formData.getHeaders() },
-            timeout: 120000,
+            timeout: 300000,
           },
         );
 
@@ -349,7 +349,7 @@ class AiPreInterviewController {
           formData,
           {
             headers: { ...formData.getHeaders() },
-            timeout: 120000,
+            timeout: 300000,
           },
         );
 
@@ -370,7 +370,7 @@ class AiPreInterviewController {
           formData,
           {
             headers: { ...formData.getHeaders() },
-            timeout: 120000,
+            timeout: 300000,
           },
         );
 

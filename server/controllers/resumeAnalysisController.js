@@ -45,7 +45,7 @@ const resumeAnalysisController = {
           headers: {
             ...formData.getHeaders(),
           },
-          timeout: 120000,
+          timeout: 300000,
         },
       );
 

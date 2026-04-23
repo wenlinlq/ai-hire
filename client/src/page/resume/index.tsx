@@ -43,7 +43,8 @@ function ResumeAnalyze() {
 
       // 调用后端API解析简历
       const response = await resumeApi.uploadAndParseResume(formData);
-
+      console.log("=== 完整响应 ===", JSON.stringify(response, null, 2));
+      console.log("=== response.data ===", response.data);
       // 后端返回的数据结构: { success: true, data: { extracted_data, analysis } }
       const parsedData = response.data || response;
 
@@ -313,14 +314,24 @@ function ResumeAnalyze() {
                                 <span className="font-medium text-green-700">
                                   优点分析：
                                 </span>
-                                <ul className="mt-2 ml-4 space-y-1">
+                                <ul className="mt-2 ml-4 space-y-2">
                                   {(analysis.strengths || []).map(
-                                    (strength: string, index: number) => (
+                                    (strength: any, index: number) => (
                                       <li
                                         key={index}
                                         className="text-sm text-neutral-700"
                                       >
-                                        ✓ {strength}
+                                        ✓{" "}
+                                        {typeof strength === "string" ? (
+                                          strength
+                                        ) : (
+                                          <div>
+                                            <span className="font-medium">
+                                              {strength.title}：
+                                            </span>
+                                            {strength.description}
+                                          </div>
+                                        )}
                                       </li>
                                     ),
                                   )}

@@ -2,6 +2,14 @@ const aiPreInterviewModel = require("../models/aiPreInterviewModel");
 const deliveryModel = require("../models/deliveryModel");
 const notificationModel = require("../models/notificationModel");
 const aliyunBailianService = require("../services/aliyunBailianService");
+const axios = require("axios");
+const FormData = require("form-data");
+const fs = require("fs");
+const path = require("path");
+const resumeModel = require("../models/resumeModel"); // 需要引入简历模型
+// Python 分析服务配置（放在文件顶部）
+const ANALYSIS_SERVICE_URL =
+  process.env.ANALYSIS_SERVICE_URL || "http://localhost:8000";
 
 class AiPreInterviewController {
   // 开始AI预面试
@@ -264,18 +272,123 @@ class AiPreInterviewController {
   // 解析简历
   async parseResume(req, res) {
     try {
-      const { resumeContent } = req.body;
+      const userId = req.user?.id;
+      const { resumeId, resumeContent } = req.body;
 
-      if (!resumeContent) {
-        return res.status(400).json({ error: "Missing resume content" });
+      let result;
+
+      // 情况1：通过 resumeId 分析已上传的简历文件
+      if (resumeId) {
+        // 获取简历信息
+        const resume = await resumeModel.getResumeById(resumeId);
+
+        if (!resume) {
+          return res.status(404).json({
+            success: false,
+            error: "简历不存在",
+          });
+        }
+
+        // 检查权限
+        if (resume.studentId && resume.studentId.toString() !== userId) {
+          return res.status(403).json({
+            success: false,
+            error: "无权访问此简历",
+          });
+        }
+
+        // 获取文件路径
+        const filePath = path.join(__dirname, "../..", resume.fileUrl);
+
+        if (!fs.existsSync(filePath)) {
+          return res.status(404).json({
+            success: false,
+            error: "简历文件不存在",
+          });
+        }
+
+        // 调用 Python 分析服务
+        const formData = new FormData();
+        formData.append("file", fs.createReadStream(filePath));
+
+        const response = await axios.post(
+          `${ANALYSIS_SERVICE_URL}/analyze`,
+          formData,
+          {
+            headers: { ...formData.getHeaders() },
+            timeout: 120000,
+          },
+        );
+
+        result = response.data;
+
+        // 保存分析结果到数据库
+        if (result.success && resumeId) {
+          await resumeModel.saveAnalysisResult(resumeId, result);
+        }
       }
 
-      const parsedResume =
-        await aliyunBailianService.parseResume(resumeContent);
-      res.status(200).json({ data: parsedResume });
+      // 情况2：直接传入简历文本内容
+      else if (resumeContent) {
+        // 创建临时文件
+        const tempDir = path.join(__dirname, "../../temp");
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        const tempFilePath = path.join(tempDir, `resume_${Date.now()}.txt`);
+        fs.writeFileSync(tempFilePath, resumeContent, "utf-8");
+
+        // 调用 Python 分析服务
+        const formData = new FormData();
+        formData.append("file", fs.createReadStream(tempFilePath));
+
+        const response = await axios.post(
+          `${ANALYSIS_SERVICE_URL}/analyze`,
+          formData,
+          {
+            headers: { ...formData.getHeaders() },
+            timeout: 120000,
+          },
+        );
+
+        result = response.data;
+
+        // 清理临时文件
+        fs.unlinkSync(tempFilePath);
+      }
+
+      // 情况3：既没有 resumeId 也没有 resumeContent
+      else {
+        return res.status(400).json({
+          success: false,
+          error: "请提供简历ID或简历内容",
+        });
+      }
+
+      // 返回分析结果
+      res.status(200).json({
+        success: true,
+        data: {
+          extracted_data: result.extracted_data,
+          analysis: result.analysis,
+        },
+      });
     } catch (error) {
-      console.error("Error parsing resume:", error);
-      res.status(500).json({ error: "Internal server error" });
+      console.error("Error parsing resume:", error.message);
+
+      if (error.code === "ECONNREFUSED") {
+        return res.status(503).json({
+          success: false,
+          error:
+            "简历分析服务不可用，请确保 Python 服务已启动 (http://localhost:8000)",
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: error.message || "简历解析失败",
+      });
     }
   }
 
@@ -348,14 +461,17 @@ class AiPreInterviewController {
       }
 
       // 设置SSE响应头
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("Access-Control-Allow-Origin", "*");
 
       // 调用流式生成面试问题
-      await aliyunBailianService.generateInterviewQuestionStream(res, type, subType);
-
+      await aliyunBailianService.generateInterviewQuestionStream(
+        res,
+        type,
+        subType,
+      );
     } catch (error) {
       console.error("Error generating streaming interview question:", error);
       res.status(500).json({ error: "Internal server error" });

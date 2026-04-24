@@ -62,7 +62,8 @@ export function SiteNav({ current }: SiteNavProps) {
         // 获取用户的AI预面试记录
         const aiPreInterviewData =
           await aiPreInterviewApi.getUserAiPreInterviews(user._id);
-        const aiPreInterviewCount = aiPreInterviewData.data?.length || 0;
+        // 只计算未完成的AI预面试记录
+        const aiPreInterviewCount = aiPreInterviewData.data?.filter((item: any) => item.status !== 'completed').length || 0;
 
         // 获取用户的面试邀请
         const interviewInvitationData =

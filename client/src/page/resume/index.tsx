@@ -20,11 +20,11 @@ function ResumeAnalyze() {
         alert("文件大小超过10MB，请上传较小的文件");
         return;
       }
-      // 限制文件类型，只接受指定格式
-      const allowedExtensions = ["pdf", "doc", "docx", "jpg", "jpeg", "png"];
+      // 限制文件类型，只接受PDF格式
+      const allowedExtensions = ["pdf"];
       const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase();
       if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
-        alert("请上传 PDF、DOC、DOCX、JPG、JPEG、PNG 格式的文件");
+        alert("请上传 PDF 格式的文件");
         return;
       }
       setFile(selectedFile);
@@ -154,7 +154,7 @@ function ResumeAnalyze() {
                         点击或拖拽上传简历
                       </p>
                       <p className="text-sm text-neutral-500">
-                        支持 PDF、DOC、DOCX、JPG、PNG 格式
+                        仅支持 PDF 格式
                       </p>
                       {file && (
                         <p className="text-sm text-primary-600">
@@ -165,7 +165,7 @@ function ResumeAnalyze() {
                     <input
                       id="fileInput"
                       type="file"
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      accept=".pdf"
                       onChange={handleFileChange}
                       className="hidden"
                     />

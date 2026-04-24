@@ -1,369 +1,339 @@
 import { useState, useEffect } from "react";
 import { LogoMark } from "../../components/site";
-import positionApi from "../../api/positionApi";
-import applicationApi from "../../api/applicationApi";
 import userApi from "../../api/userApi";
-import * as questionBankApi from "../../api/questionBankApi";
+import teamApi from "../../api/teamApi";
+import type { User } from "../../api/userApi";
 
-type AdminTab =
-  | "dashboard"
-  | "jobs"
-  | "candidates"
-  | "interviews"
-  | "questions";
-type AdminModal = "job" | "candidate" | "interview" | "questionBank" | null;
+type TeamTab = "user" | "team" | "stats" | "config";
+type ModalType = "user" | "team" | null;
+type UserModalType = "add" | "edit" | null;
 
-const dashboardStats = [
-  {
-    label: "开放职位",
-    value: "24",
-    delta: "+12%",
-    iconClass: "bg-primary-100 text-primary-600",
-  },
-  {
-    label: "候选人",
-    value: "156",
-    delta: "+8%",
-    iconClass: "bg-primary-100 text-primary-600",
-  },
-  {
-    label: "面试中",
-    value: "32",
-    delta: "-3%",
-    iconClass: "bg-blue-100 text-blue-600",
-  },
-  {
-    label: "已录用",
-    value: "8",
-    delta: "+25%",
-    iconClass: "bg-green-100 text-green-600",
-  },
-] as const;
-
-const activityFeed = [
-  {
-    title: "新职位发布",
-    subtitle: "高级前端工程师 - 阿里巴巴",
-    time: "2小时前",
-  },
-  { title: "候选人通过面试", subtitle: "李四 - 产品经理", time: "5小时前" },
-  { title: "面试安排", subtitle: "王五 - UI设计师", time: "1天前" },
-] as const;
-
-// 职位数据类型
-interface Job {
-  _id: string;
-  title: string;
-  type: string;
-  department: string;
-  quota: number;
-  requirements: {
-    skills: string[];
-    experience: string;
-    education: string;
-    description: string;
-  };
-  responsibilities: string[];
-  benefits: string[];
+interface UserFormState {
+  username: string;
+  email: string;
+  role: string;
+  team: string;
   status: string;
-  deadline: string;
-  viewCount: number;
-  applyCount: number;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-  teamId: string;
-  aiQuestionBankId?: string;
-  aiQuestionBankName?: string;
-  aiPreInterview?: boolean;
-  aiPreInterviewScore?: number;
 }
 
-// 职位表单状态类型
-interface JobFormState {
-  title: string;
-  type: string;
-  department: string;
-  quota: number;
-  salary: string;
-  requirements: {
-    skills: string[];
-    experience: string;
-    education: string;
-    description: string;
-  };
-  responsibilities: string[];
-  benefits: string[];
-  status: string;
-  deadline: string;
-  teamId: string;
-  interviewType: string;
-  aiQuestionBankId: string;
-  aiPreInterview: boolean;
-  aiPreInterviewScore: number;
-}
+const initialUserForm: UserFormState = {
+  username: "",
+  email: "",
+  role: "student",
+  team: "",
+  status: "active",
+};
 
-const interviewPrograms = [
-  { title: "技术面试任务", count: 28, note: "本周计划完成 12 场" },
-  { title: "评分分布", count: 86, note: "平均分稳定在 80 以上" },
+const charts = [
+  { title: "用户活跃度", values: [68, 74, 81, 76, 88, 92, 86] },
+  { title: "团队分布", values: [35, 55, 22, 41] },
+  { title: "功能使用频率", values: [92, 77, 65, 58, 81] },
+  { title: "系统性能", values: [99, 97, 98, 96, 99] },
 ] as const;
 
-function Admin() {
-  // 从localStorage读取标签页状态，如果没有则默认为dashboard
-  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
-    const savedTab = localStorage.getItem("adminActiveTab");
-    return (savedTab as AdminTab) || "dashboard";
+function Team() {
+  const [activeTab, setActiveTab] = useState<TeamTab>(() => {
+    const savedTab = localStorage.getItem("teamActiveTab");
+    return (savedTab as TeamTab) || "user";
   });
 
-  // 切换标签页并保存到localStorage
-  const handleTabChange = (tab: AdminTab) => {
-    setActiveTab(tab);
-    localStorage.setItem("adminActiveTab", tab);
-  };
-  const [modal, setModal] = useState<AdminModal>(null);
-
-  // 打开模态框时的处理
-  const openModal = (modalType: AdminModal) => {
-    setModal(modalType);
-    // 当打开面试弹框时，确保加载候选人数据
-    if (modalType === "interview" && candidates.length === 0) {
-      fetchCandidates();
-    }
-  };
-
-  // 职位列表状态
-  const [jobs, setJobs] = useState<Job[]>([]);
-  // 加载状态
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  // 错误状态
-  const [error, setError] = useState<string | null>(null);
-  // 职位表单状态
-  const [jobForm, setJobForm] = useState<JobFormState>({
-    title: "",
-    type: "full-time",
-    department: "",
-    quota: 1,
-    salary: "",
-    requirements: {
-      skills: [],
-      experience: "",
-      education: "",
-      description: "",
-    },
-    responsibilities: [],
-    benefits: [],
-    status: "open",
-    deadline: "",
-    teamId: "",
-    interviewType: "online",
-    aiQuestionBankId: "",
-    aiPreInterview: false,
-    aiPreInterviewScore: 60,
-  });
-  // 当前编辑的职位ID
-  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
-
-  // 题目类型
-  interface Question {
-    id: string;
-    content: string;
-  }
-
-  // 题库表单状态
-  interface QuestionBankFormState {
-    title: string;
-    description: string;
-    category: string;
-    questionCount: number;
-    createdAt: string;
-    questions: Question[];
-  }
-
-  // 当前编辑的题库ID
-  const [currentQuestionBankId, setCurrentQuestionBankId] = useState<
-    string | null
-  >(null);
-  // 题库表单状态
-  const [questionBankForm, setQuestionBankForm] =
-    useState<QuestionBankFormState>({
-      title: "",
-      description: "",
-      category: "",
-      questionCount: 0,
-      createdAt: new Date().toISOString().split("T")[0],
-      questions: [],
-    });
-
-  // 题目表单状态
-  const [questionForm, setQuestionForm] = useState({
-    content: "",
-  });
-
-  // 面试题库列表状态
-  const [questionBanks, setQuestionBanks] = useState<
-    questionBankApi.QuestionBank[]
-  >([]);
-  // 面试题库加载状态
-  const [isLoadingQuestionBanks, setIsLoadingQuestionBanks] =
-    useState<boolean>(false);
-  // 面试题库错误状态
-  const [errorQuestionBanks, setErrorQuestionBanks] = useState<string | null>(
-    null,
-  );
-
-  // 候选人列表状态
-  const [candidates, setCandidates] = useState<any[]>([]);
-  // 候选人加载状态
-  const [isLoadingCandidates, setIsLoadingCandidates] =
-    useState<boolean>(false);
-  // 候选人错误状态
-  const [errorCandidates, setErrorCandidates] = useState<string | null>(null);
-
-  // 候选人表单状态
-  const [candidateForm, setCandidateForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    grade: "",
-    major: "",
-    positionId: "",
-    teamId: "",
-    resume: null,
-  });
-
-  // 查看候选人弹窗状态
-  const [viewModal, setViewModal] = useState(false);
-  // 当前查看的候选人信息
-  const [currentCandidate, setCurrentCandidate] = useState<any>(null);
-
-  // 当前用户信息
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  // 监听标签变化，保存到localStorage
+  useEffect(() => {
+    localStorage.setItem("teamActiveTab", activeTab);
+  }, [activeTab]);
 
   // 获取当前用户信息
   useEffect(() => {
     const user = userApi.getCurrentUser();
     setCurrentUser(user);
   }, []);
+  const [modal, setModal] = useState<ModalType>(null);
+  const [userModal, setUserModal] = useState<UserModalType>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [userForm, setUserForm] = useState<UserFormState>(initialUserForm);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // 获取面试题库列表
-  const fetchQuestionBanks = async () => {
-    setIsLoadingQuestionBanks(true);
-    setErrorQuestionBanks(null);
-    try {
-      const response = await questionBankApi.getAllQuestionBanks();
-      let questionBanks = response.data || [];
-      // 根据用户的teamId过滤题库
-      if (currentUser?.team) {
-        questionBanks = questionBanks.filter(
-          (bank) => bank.teamId === currentUser.team,
-        );
-      }
-      setQuestionBanks(questionBanks);
-    } catch (err: any) {
-      console.error("获取面试题库列表错误:", err);
-      setErrorQuestionBanks(err.message || "获取面试题库列表失败");
-    } finally {
-      setIsLoadingQuestionBanks(false);
-    }
-  };
+  // 当前用户信息
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // 当用户信息变化时，获取面试题库列表
-  useEffect(() => {
-    if (currentUser) {
-      fetchQuestionBanks();
-    }
-  }, [currentUser]);
+  // 团队表单状态
+  const [teamForm, setTeamForm] = useState({
+    name: "",
+    department: "",
+    description: "",
+    logo: "",
+    leaderId: "",
+    contact: {
+      phone: "",
+    },
+  });
 
-  // 获取职位列表
-  const fetchJobs = async () => {
+  // 团队列表状态
+  const [teams, setTeams] = useState<any[]>([]);
+
+  // 团队管理员列表状态
+  const [teamAdmins, setTeamAdmins] = useState<any[]>([]);
+
+  // 当前编辑的团队ID
+  const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
+
+  // 团队列表（用于用户编辑弹框）
+  const [userTeams, setUserTeams] = useState<any[]>([]);
+
+  // 获取用户列表
+  const fetchUsers = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      let jobList;
-      // 如果当前用户有团队ID，则获取该团队的职位；否则获取所有职位
-      console.log("当前用户信息:", currentUser);
-      console.log("当前用户team字段:", currentUser?.team);
-      console.log("team字段类型:", typeof currentUser?.team);
-
-      if (currentUser?.team) {
-        jobList = await positionApi.getPositionsByTeam(currentUser.team);
-        console.log("根据团队获取的职位列表:", jobList);
-      } else {
-        jobList = await positionApi.getPositions();
-        console.log("获取的所有职位列表:", jobList);
-      }
-      // 确保jobList是一个数组
-      if (Array.isArray(jobList)) {
-        // 为每个职位添加AI试题名称
-        const jobsWithQuestionBankNames = jobList.map((job) => {
-          if (job.aiQuestionBankId) {
-            const questionBank = questionBanks.find(
-              (bank) => bank._id === job.aiQuestionBankId,
-            );
-            return {
-              ...job,
-              aiQuestionBankName: questionBank?.title || "已设置",
-            };
-          }
-          return job;
-        });
-        setJobs(jobsWithQuestionBankNames);
-      } else {
-        setJobs([]);
-      }
+      const userList = await userApi.getUsers();
+      setUsers(userList);
     } catch (err: any) {
-      console.error("获取职位列表错误:", err);
-      setError(err.message || "获取职位列表失败");
-      // 发生错误时，确保jobs是一个空数组
-      setJobs([]);
+      setError(err.message || "获取用户列表失败");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 获取候选人列表
-  const fetchCandidates = async () => {
-    setIsLoadingCandidates(true);
-    setErrorCandidates(null);
+  // 获取团队列表
+  const fetchTeams = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      let candidateList;
-      // 如果当前用户有团队ID，则获取该团队的候选人；否则获取所有候选人
-      if (currentUser?.team) {
-        candidateList = await applicationApi.getApplicationsByTeam(
-          currentUser.team,
-        );
-      } else {
-        candidateList = await applicationApi.getApplications();
-      }
-      // 确保candidateList是一个数组
-      setCandidates(Array.isArray(candidateList) ? candidateList : []);
+      const teamList = await teamApi.getTeams();
+      // 获取所有用户，用于匹配总负责人和成员
+      const userList = await userApi.getUsers();
+      // 对每个团队添加leader信息和成员列表
+      const teamsWithLeaderAndMembers = teamList.map((team) => {
+        // 查找对应的用户
+        const leader = userList.find((user) => user._id === team.leaderId);
+        // 查找属于该团队的成员
+        const members = userList.filter((user) => {
+          if (!user.team) return false;
+          // 处理team字段可能是对象或字符串的情况
+          if (typeof user.team === "object" && user.team._id) {
+            return user.team._id === team._id;
+          } else {
+            return user.team === team._id;
+          }
+        });
+        return {
+          ...team,
+          leader: leader ? leader.username : "无",
+          members: members,
+        };
+      });
+      setTeams(teamsWithLeaderAndMembers);
     } catch (err: any) {
-      setErrorCandidates(err.message || "获取候选人列表失败");
-      // 发生错误时，确保candidates是一个空数组
-      setCandidates([]);
+      setError(err.message || "获取团队列表失败");
     } finally {
-      setIsLoadingCandidates(false);
+      setIsLoading(false);
     }
   };
 
-  // 组件挂载时获取数据
-  useEffect(() => {
-    // 无论当前标签页是什么，都获取职位列表，因为导入候选人弹窗需要使用
-    if (currentUser) {
-      fetchJobs();
+  // 获取团队管理员列表
+  const fetchTeamAdmins = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const userList = await userApi.getUsers();
+      // 过滤出角色为团队管理员的用户
+      const admins = userList.filter((user) => user.role === "hr");
+      setTeamAdmins(admins);
+    } catch (err: any) {
+      setError(err.message || "获取团队管理员列表失败");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      if (activeTab === "candidates") {
-        fetchCandidates();
+  // 初始化数据
+  useEffect(() => {
+    if (activeTab === "user") {
+      fetchUsers();
+      fetchTeams(); // 获取团队列表，用于用户编辑弹框
+    } else if (activeTab === "team") {
+      fetchTeams();
+      fetchTeamAdmins();
+    }
+  }, [activeTab]);
+
+  // 处理添加用户
+  const handleAddUser = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await userApi.register({
+        username: userForm.username,
+        password: "123456", // 默认为123456，后续可以让用户修改
+        email: userForm.email,
+        role: userForm.role,
+      });
+      setUserModal(null);
+      setUserForm(initialUserForm);
+      fetchUsers(); // 重新获取用户列表
+      fetchTeams(); // 重新获取团队列表，更新团队人数
+    } catch (err: any) {
+      setError(err.message || "添加用户失败");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 处理编辑用户
+  const handleEditUser = async () => {
+    if (!currentUserId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await userApi.updateUser(currentUserId, {
+        username: userForm.username,
+        email: userForm.email,
+        role: userForm.role,
+        team: userForm.team,
+        status: userForm.status,
+      });
+      if (result.success) {
+        setUserModal(null);
+        setUserForm(initialUserForm);
+        setCurrentUserId(null);
+        fetchUsers(); // 重新获取用户列表
+        fetchTeams(); // 重新获取团队列表，更新团队人数
+      }
+    } catch (err: any) {
+      setError(err.message || "更新用户失败");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 处理删除用户
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm("确定要删除这个用户吗？")) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      await userApi.deleteUser(userId);
+      fetchUsers(); // 重新获取用户列表
+      fetchTeams(); // 重新获取团队列表，更新团队人数
+    } catch (err: any) {
+      setError(err.message || "删除用户失败");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 打开编辑团队模态框
+  const openEditTeamModal = (team: any) => {
+    setCurrentTeamId(team._id);
+    setTeamForm({
+      name: team.name,
+      department: team.department,
+      description: team.description,
+      logo: team.logo,
+      leaderId: team.leaderId,
+      contact: {
+        phone: team.contact.phone || "",
+      },
+    });
+    setModal("team");
+  };
+
+  // 处理创建或编辑团队
+  const handleCreateTeam = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (currentTeamId) {
+        // 编辑团队
+        await teamApi.updateTeam(currentTeamId, {
+          name: teamForm.name,
+          department: teamForm.department,
+          description: teamForm.description,
+          leaderId: teamForm.leaderId,
+          logo: teamForm.logo,
+          contact: teamForm.contact,
+        });
+      } else {
+        // 创建团队
+        await teamApi.createTeam({
+          name: teamForm.name,
+          department: teamForm.department,
+          description: teamForm.description,
+          leaderId: teamForm.leaderId,
+          logo: teamForm.logo,
+          contact: teamForm.contact,
+        });
+      }
+      // 成功后关闭模态框并重置表单
+      setModal(null);
+      setCurrentTeamId(null);
+      setTeamForm({
+        name: "",
+        department: "",
+        description: "",
+        logo: "",
+        leaderId: "",
+        contact: {
+          phone: "",
+        },
+      });
+      // 重新获取团队列表
+      fetchTeams();
+    } catch (err: any) {
+      setError(
+        err.message || (currentTeamId ? "更新团队失败" : "创建团队失败"),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 处理删除团队
+  const handleDeleteTeam = async (teamId: string) => {
+    if (window.confirm("确定要删除这个团队吗？")) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await teamApi.deleteTeam(teamId);
+        // 成功后重新获取团队列表
+        fetchTeams();
+      } catch (err: any) {
+        setError(err.message || "删除团队失败");
+      } finally {
+        setIsLoading(false);
       }
     }
-  }, [activeTab, currentUser]);
+  };
 
-  // 当面试题库列表更新时，重新获取职位列表以更新AI试题名称
-  useEffect(() => {
-    if (currentUser && activeTab === "jobs") {
-      fetchJobs();
+  // 打开编辑用户模态框
+  const openEditModal = async (user: User) => {
+    setCurrentUserId(user._id);
+    // 处理team字段，确保它是字符串（团队ID）
+    let teamValue = "";
+    if (user.team) {
+      teamValue =
+        typeof user.team === "object" && user.team._id
+          ? user.team._id
+          : user.team;
     }
-  }, [questionBanks, currentUser, activeTab]);
+    setUserForm({
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      team: teamValue,
+      status: user.status,
+    });
+    setUserModal("edit");
+  };
+
+  // 打开添加用户模态框
+  const openAddModal = () => {
+    setUserForm(initialUserForm);
+    setCurrentUserId(null);
+    setUserModal("add");
+  };
 
   return (
     <div className="flex min-h-screen bg-neutral-50 text-neutral-700">
@@ -377,15 +347,14 @@ function Admin() {
 
         <nav className="py-4">
           <div className="mb-2 px-4 text-xs font-semibold uppercase text-neutral-500">
-            管理后台
+            团队管理
           </div>
           <ul className="space-y-1">
             {[
-              ["dashboard", "团队仪表盘"],
-              ["jobs", "职位管理"],
-              ["candidates", "候选人管理"],
-              ["interviews", "AI面试中心"],
-              ["questions", "面试题库"],
+              ["user", "用户管理"],
+              ["team", "团队管理"],
+              ["stats", "数据统计"],
+              ["config", "系统配置"],
             ].map(([key, label]) => (
               <li key={key}>
                 <button
@@ -395,7 +364,7 @@ function Admin() {
                       ? "border-primary-500 bg-neutral-50 text-primary-500"
                       : "border-transparent hover:bg-neutral-50"
                   }`}
-                  onClick={() => handleTabChange(key as AdminTab)}
+                  onClick={() => setActiveTab(key as TeamTab)}
                 >
                   {label}
                 </button>
@@ -407,152 +376,26 @@ function Admin() {
 
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-neutral-200 bg-white px-6">
-          <h1 className="text-xl font-bold text-neutral-800">管理后台</h1>
+          <h1 className="text-xl font-bold text-neutral-800">团队管理</h1>
           <div className="flex items-center space-x-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
               <span className="font-semibold text-primary-600">
-                {currentUser?.username?.charAt(0)?.toUpperCase() || "U"}
+                {currentUser?.username ? currentUser.username.charAt(0) : "张"}
               </span>
             </div>
             <span className="text-sm font-medium text-neutral-700">
-              {currentUser?.username || "用户"}
+              {currentUser?.username || "张经理"}
             </span>
           </div>
         </header>
 
         <main className="flex-1 p-6">
-          {activeTab === "dashboard" && (
+          {activeTab === "user" && (
             <section>
-              <div className="mb-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                {dashboardStats.map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="mb-1 text-sm text-neutral-500">
-                          {item.label}
-                        </p>
-                        <h3 className="text-2xl font-bold text-neutral-800">
-                          {item.value}
-                        </h3>
-                      </div>
-                      <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-lg ${item.iconClass}`}
-                      >
-                        ●
-                      </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                      <span
-                        className={`text-sm ${item.delta.startsWith("+") ? "text-green-600" : "text-red-600"}`}
-                      >
-                        {item.delta}
-                      </span>
-                      <span className="ml-2 text-xs text-neutral-500">
-                        较上月
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mb-6 grid gap-6 lg:grid-cols-2">
-                {["招聘漏斗", "月度招聘趋势"].map((chart) => (
-                  <div
-                    key={chart}
-                    className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
-                  >
-                    <h3 className="mb-4 text-lg font-semibold text-neutral-800">
-                      {chart}
-                    </h3>
-                    <div className="flex h-80 items-end gap-3">
-                      {[35, 62, 48, 70, 54, 83].map((value, index) => (
-                        <div
-                          key={`${chart}-${index}`}
-                          className="flex flex-1 flex-col items-center"
-                        >
-                          <div
-                            className="w-full rounded-t-md bg-primary-400"
-                            style={{ height: `${value}%` }}
-                          />
-                          <span className="mt-2 text-xs text-neutral-500">
-                            {index + 1}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-4 text-lg font-semibold text-neutral-800">
-                  最近活动
-                </h3>
-                <div className="space-y-4">
-                  {activityFeed.map((item) => (
-                    <div
-                      key={item.title + item.time}
-                      className="flex items-start space-x-4"
-                    >
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                        ●
-                      </div>
-                      <div>
-                        <p className="text-neutral-800">{item.title}</p>
-                        <p className="text-sm text-neutral-500">
-                          {item.subtitle}
-                        </p>
-                        <p className="text-xs text-neutral-400">{item.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activeTab === "jobs" && (
-            <section>
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6">
                 <h2 className="text-2xl font-bold text-neutral-800">
-                  职位管理
+                  用户管理
                 </h2>
-                <button
-                  type="button"
-                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => {
-                    // 重置表单
-                    setCurrentJobId(null);
-                    setJobForm({
-                      title: "",
-                      type: "full-time",
-                      department: "",
-                      quota: 1,
-                      salary: "",
-                      requirements: {
-                        skills: [],
-                        experience: "",
-                        education: "",
-                        description: "",
-                      },
-                      responsibilities: [],
-                      benefits: [],
-                      status: "open",
-                      deadline: "",
-                      teamId: currentUser?.team || "",
-                      interviewType: "online",
-                      aiQuestionBankId: "",
-                      aiPreInterview: false,
-                      aiPreInterviewScore: 60,
-                    });
-                    openModal("job");
-                  }}
-                >
-                  发布新职位
-                </button>
               </div>
 
               <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
@@ -560,42 +403,37 @@ function Admin() {
                   <div className="flex items-center space-x-4">
                     <input
                       type="text"
-                      placeholder="搜索职位"
+                      placeholder="搜索用户"
                       className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     />
-                    <select className="rounded-lg border border-neutral-300 px-4 py-2">
-                      <option>全部状态</option>
-                      <option>招聘中</option>
-                      <option>已关闭</option>
+                    <select className="rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                      {["全部角色", "超级管理员", "团队管理员", "学生"].map(
+                        (item) => (
+                          <option key={item}>{item}</option>
+                        ),
+                      )}
                     </select>
                   </div>
                 </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-neutral-50">
                       <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
-                        {[
-                          "职位名称",
-                          "部门",
-                          "招聘人数",
-                          "截止时间",
-                          "状态",
-                          "AI试题",
-                          "AI预面试",
-                          "AI预面试最低分",
-                          "操作",
-                        ].map((item) => (
-                          <th key={item} className="px-6 py-3">
-                            {item}
-                          </th>
-                        ))}
+                        {["用户", "邮箱", "所属团队", "状态", "操作"].map(
+                          (item) => (
+                            <th key={item} className="px-6 py-3">
+                              {item}
+                            </th>
+                          ),
+                        )}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-200">
+                    <tbody className="divide-y divide-neutral-200 bg-white">
                       {isLoading ? (
                         <tr>
                           <td
-                            colSpan={9}
+                            colSpan={6}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
                             加载中...
@@ -604,531 +442,82 @@ function Admin() {
                       ) : error ? (
                         <tr>
                           <td
-                            colSpan={9}
+                            colSpan={6}
                             className="px-6 py-8 text-center text-red-500"
                           >
                             {error}
                           </td>
                         </tr>
-                      ) : jobs.length === 0 ? (
+                      ) : users.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={9}
+                            colSpan={6}
                             className="px-6 py-8 text-center text-neutral-500"
                           >
-                            暂无职位
+                            暂无用户
                           </td>
                         </tr>
                       ) : (
-                        jobs.map((job) => (
-                          <tr key={job._id}>
+                        users.map((user) => (
+                          <tr key={user._id}>
                             <td className="px-6 py-4">
-                              <div className="text-sm font-medium text-neutral-900">
-                                {job.title}
-                              </div>
-                              <div className="text-sm text-neutral-500">
-                                {job.type}
+                              <div className="flex items-center">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
+                                  <span className="font-semibold text-primary-600">
+                                    {user.username.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium text-neutral-900">
+                                    {user.username}
+                                  </div>
+                                  <div className="text-sm text-neutral-500">
+                                    {user.role === "admin"
+                                      ? "超级管理员"
+                                      : user.role === "hr"
+                                        ? (() => {
+                                            const team = teams.find(
+                                              (t) => t._id === user.team,
+                                            );
+                                            return team
+                                              ? `团队管理员 (${team.name})`
+                                              : "团队管理员 (无所属团队)";
+                                          })()
+                                        : "学生"}
+                                  </div>
+                                </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-sm">
-                              {job.department}
+                            <td className="px-6 py-4 text-sm text-neutral-900">
+                              {user.email}
                             </td>
-                            <td className="px-6 py-4 text-sm">{job.quota}</td>
-                            <td className="px-6 py-4 text-sm">
-                              {new Date(job.deadline).toLocaleDateString()}
+                            <td className="px-6 py-4 text-sm text-neutral-900">
+                              {(() => {
+                                const team = teams.find(
+                                  (t) => t._id === user.team,
+                                );
+                                return team ? team.name : "无";
+                              })()}
                             </td>
                             <td className="px-6 py-4 text-sm">
                               <span
-                                className={`rounded-full px-2 py-1 text-xs font-semibold ${job.status === "open" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
+                                className={`rounded-full px-2 py-1 text-xs font-semibold ${user.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
                               >
-                                {job.status === "open" ? "招聘中" : "已关闭"}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {job.aiQuestionBankName ||
-                                (job.aiQuestionBankId ? "已设置" : "未设置")}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <span
-                                className={`rounded-full px-2 py-1 text-xs font-semibold ${job.aiPreInterview ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
-                              >
-                                {job.aiPreInterview ? "是" : "否"}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {job.aiPreInterview
-                                ? job.aiPreInterviewScore || 60
-                                : "-"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <button
-                                type="button"
-                                className="mr-3 text-primary-600 hover:text-primary-900"
-                                onClick={() => {
-                                  // 填充表单
-                                  setCurrentJobId(job._id);
-                                  setJobForm({
-                                    title: job.title,
-                                    type: job.type,
-                                    department: job.department,
-                                    quota: job.quota,
-                                    salary: job.salary || "",
-                                    requirements: {
-                                      ...job.requirements,
-                                      skills: Array.isArray(
-                                        job.requirements?.skills,
-                                      )
-                                        ? job.requirements.skills
-                                        : [],
-                                    },
-                                    responsibilities:
-                                      job.responsibilities || [],
-                                    benefits: job.benefits || [],
-                                    status: job.status,
-                                    deadline: new Date(job.deadline)
-                                      .toISOString()
-                                      .split("T")[0],
-                                    teamId: job.teamId,
-                                    interviewType:
-                                      job.interviewType || "online",
-                                    aiQuestionBankId:
-                                      job.aiQuestionBankId || "",
-                                    aiPreInterview: job.aiPreInterview || false,
-                                    aiPreInterviewScore:
-                                      job.aiPreInterviewScore || 60,
-                                  });
-                                  setModal("job");
-                                }}
-                              >
-                                编辑
-                              </button>
-                              <button
-                                type="button"
-                                className={
-                                  job.status === "open"
-                                    ? "text-red-600 hover:text-red-900"
-                                    : "text-green-600 hover:text-green-900"
-                                }
-                                onClick={async () => {
-                                  try {
-                                    if (job.status === "open") {
-                                      // 关闭职位
-                                      await positionApi.updatePosition(
-                                        job._id,
-                                        { status: "closed" },
-                                      );
-                                      window.message.success("职位已关闭");
-                                    } else {
-                                      // 重新开放职位
-                                      await positionApi.updatePosition(
-                                        job._id,
-                                        { status: "open" },
-                                      );
-                                      window.message.success("职位已重新开放");
-                                    }
-                                    // 重新获取职位列表
-                                    fetchJobs();
-                                  } catch (err: any) {
-                                    window.message.error(
-                                      err.message || "操作失败",
-                                    );
-                                  }
-                                }}
-                              >
-                                {job.status === "open" ? "关闭" : "重新开放"}
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activeTab === "candidates" && (
-            <section>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-800">
-                  候选人管理
-                </h2>
-                <button
-                  type="button"
-                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => {
-                    // 重置表单，设置团队ID为当前用户的团队ID
-                    setCandidateForm({
-                      name: "",
-                      phone: "",
-                      email: "",
-                      grade: "",
-                      major: "",
-                      positionId: "",
-                      teamId: currentUser?.team || "",
-                      resume: null,
-                    });
-                    openModal("candidate");
-                  }}
-                >
-                  导入候选人
-                </button>
-              </div>
-
-              <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-                <div className="border-b border-neutral-200 p-4">
-                  <div className="flex items-center space-x-4">
-                    <input
-                      type="text"
-                      placeholder="搜索候选人"
-                      className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                    <select className="rounded-lg border border-neutral-300 px-4 py-2">
-                      {[
-                        "全部状态",
-                        "简历筛选",
-                        "初试",
-                        "复试",
-                        "已录用",
-                        "已拒绝",
-                      ].map((item) => (
-                        <option key={item}>{item}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-neutral-50">
-                      <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
-                        {[
-                          "候选人",
-                          "年级",
-                          "专业",
-                          "应聘职位",
-                          "投递时间",
-                          "状态",
-                          "操作",
-                        ].map((item) => (
-                          <th key={item} className="px-6 py-3">
-                            {item}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-200">
-                      {isLoadingCandidates ? (
-                        <tr>
-                          <td
-                            colSpan={8}
-                            className="px-6 py-8 text-center text-neutral-500"
-                          >
-                            加载中...
-                          </td>
-                        </tr>
-                      ) : errorCandidates ? (
-                        <tr>
-                          <td
-                            colSpan={8}
-                            className="px-6 py-8 text-center text-red-500"
-                          >
-                            {errorCandidates}
-                          </td>
-                        </tr>
-                      ) : candidates.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={8}
-                            className="px-6 py-8 text-center text-neutral-500"
-                          >
-                            暂无候选人
-                          </td>
-                        </tr>
-                      ) : (
-                        candidates.map((candidate) => (
-                          <tr key={candidate._id}>
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-medium text-neutral-900">
-                                {candidate.name || candidate.studentId}{" "}
-                              </div>
-                              <div className="text-sm text-neutral-500">
-                                {candidate.email || candidate.studentId}{" "}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {candidate.grade || "-"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {candidate.major || "-"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {candidate.positionName || candidate.positionId}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {new Date(
-                                candidate.appliedAt,
-                              ).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <span
-                                className={`rounded-full px-2 py-1 text-xs font-semibold ${candidate.status === "pending" ? "bg-yellow-100 text-yellow-800" : candidate.status === "screening" ? "bg-blue-100 text-blue-800" : candidate.status === "interview" ? "bg-purple-100 text-purple-800" : candidate.status === "offer" ? "bg-green-100 text-green-800" : candidate.status === "已通过预面试" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
-                              >
-                                {candidate.status === "pending"
-                                  ? "待处理"
-                                  : candidate.status === "screening"
-                                    ? "简历筛选"
-                                    : candidate.status === "interview"
-                                      ? "面试中"
-                                      : candidate.status === "offer"
-                                        ? "已录用"
-                                        : candidate.status === "已通过预面试"
-                                          ? "已通过预面试"
-                                          : "已拒绝"}
+                                {user.status === "active" ? "活跃" : "未活跃"}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-sm">
                               <button
                                 type="button"
                                 className="mr-3 text-primary-600 hover:text-primary-900"
-                                onClick={() => {
-                                  setCurrentCandidate(candidate);
-                                  setViewModal(true);
-                                }}
-                              >
-                                查看
-                              </button>
-                              <button
-                                type="button"
-                                className="text-green-600 hover:text-green-900"
-                              >
-                                安排面试
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activeTab === "interviews" && (
-            <section>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-800">
-                  AI面试中心
-                </h2>
-                <button
-                  type="button"
-                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => openModal("interview")}
-                >
-                  创建面试
-                </button>
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-2">
-                {interviewPrograms.map((card) => (
-                  <div
-                    key={card.title}
-                    className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
-                  >
-                    <h3 className="mb-4 text-lg font-semibold text-neutral-800">
-                      {card.title}
-                    </h3>
-                    <div className="mb-3 text-4xl font-bold text-primary-600">
-                      {card.count}
-                    </div>
-                    <p className="text-sm text-neutral-500">{card.note}</p>
-                    <div className="mt-6 flex h-48 items-end gap-3">
-                      {[45, 72, 60, 80, 68].map((value, index) => (
-                        <div
-                          key={`${card.title}-${index}`}
-                          className="flex flex-1 flex-col items-center"
-                        >
-                          <div
-                            className="w-full rounded-t-md bg-primary-400"
-                            style={{ height: `${value}%` }}
-                          />
-                          <span className="mt-2 text-xs text-neutral-500">
-                            {index + 1}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {activeTab === "questions" && (
-            <section>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-800">
-                  面试题库
-                </h2>
-                <button
-                  type="button"
-                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => {
-                    // 重置表单
-                    setCurrentQuestionBankId(null);
-                    setQuestionBankForm({
-                      title: "",
-                      description: "",
-                      category: "",
-                      questionCount: 0,
-                      createdAt: new Date().toISOString().split("T")[0],
-                      questions: [],
-                    });
-                    openModal("questionBank");
-                  }}
-                >
-                  添加题库
-                </button>
-              </div>
-
-              <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-                <div className="border-b border-neutral-200 p-4">
-                  <div className="flex items-center space-x-4">
-                    <input
-                      type="text"
-                      placeholder="搜索题库"
-                      className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                    <select className="rounded-lg border border-neutral-300 px-4 py-2">
-                      <option>全部分类</option>
-                      <option>技术类</option>
-                      <option>行为类</option>
-                      <option>专业知识</option>
-                      <option>项目经验</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-neutral-50">
-                      <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
-                        {[
-                          "题库名称",
-                          "描述",
-                          "分类",
-                          "题目数量",
-                          "创建时间",
-                          "操作",
-                        ].map((item) => (
-                          <th key={item} className="px-6 py-3">
-                            {item}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-200">
-                      {isLoadingQuestionBanks ? (
-                        <tr>
-                          <td
-                            colSpan={6}
-                            className="px-6 py-10 text-center text-neutral-500"
-                          >
-                            加载中...
-                          </td>
-                        </tr>
-                      ) : errorQuestionBanks ? (
-                        <tr>
-                          <td
-                            colSpan={6}
-                            className="px-6 py-10 text-center text-red-500"
-                          >
-                            {errorQuestionBanks}
-                          </td>
-                        </tr>
-                      ) : questionBanks.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={6}
-                            className="px-6 py-10 text-center text-neutral-500"
-                          >
-                            暂无面试题库
-                          </td>
-                        </tr>
-                      ) : (
-                        questionBanks.map((bank) => (
-                          <tr key={bank._id}>
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-medium text-neutral-900">
-                                {bank.title}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-neutral-500">
-                              {bank.type || "无类型"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
-                                {bank.category}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {bank.questions.length}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {
-                                new Date(bank.createdAt)
-                                  .toISOString()
-                                  .split("T")[0]
-                              }
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <button
-                                type="button"
-                                className="mr-3 text-primary-600 hover:text-primary-900"
-                                onClick={() => {
-                                  // 填充表单
-                                  setCurrentQuestionBankId(bank._id);
-                                  setQuestionBankForm({
-                                    title: bank.title,
-                                    description: bank.description || "",
-                                    category: bank.category,
-                                    questionCount: bank.questions.length,
-                                    createdAt: new Date(bank.createdAt)
-                                      .toISOString()
-                                      .split("T")[0],
-                                    questions: bank.questions.map(
-                                      (q, index) => ({
-                                        id: `q-${index}`,
-                                        content: q,
-                                      }),
-                                    ),
-                                  });
-                                  openModal("questionBank");
-                                }}
+                                onClick={() => openEditModal(user)}
                               >
                                 编辑
                               </button>
                               <button
                                 type="button"
                                 className="text-red-600 hover:text-red-900"
-                                onClick={async () => {
-                                  if (
-                                    window.confirm("确定要删除这个题库吗？")
-                                  ) {
-                                    try {
-                                      await questionBankApi.deleteQuestionBank(
-                                        bank._id,
-                                      );
-                                      window.message.success("题库删除成功");
-                                      fetchQuestionBanks();
-                                    } catch (err: any) {
-                                      console.error("删除题库错误:", err);
-                                      window.message.error(
-                                        err.message || "删除题库失败",
-                                      );
-                                    }
-                                  }
-                                }}
+                                onClick={() => handleDeleteUser(user._id)}
                               >
                                 删除
                               </button>
@@ -1142,21 +531,368 @@ function Admin() {
               </div>
             </section>
           )}
+
+          {activeTab === "team" && (
+            <section>
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-neutral-800">
+                  团队管理
+                </h2>
+                <button
+                  type="button"
+                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
+                  onClick={() => setModal("team")}
+                >
+                  创建团队
+                </button>
+              </div>
+
+              {isLoading ? (
+                <div className="flex h-64 items-center justify-center">
+                  <p className="text-neutral-500">加载中...</p>
+                </div>
+              ) : error ? (
+                <div className="flex h-64 items-center justify-center">
+                  <p className="text-red-500">{error}</p>
+                </div>
+              ) : teams.length === 0 ? (
+                <div className="flex h-64 items-center justify-center">
+                  <p className="text-neutral-500">暂无团队</p>
+                </div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {teams.map((team) => (
+                    <div
+                      key={team._id}
+                      className="flex flex-col rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
+                    >
+                      <div className="mb-4 flex items-start justify-between">
+                        <h3 className="text-lg font-semibold text-neutral-800">
+                          {team.name}
+                        </h3>
+                        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
+                          {Array.isArray(team.members)
+                            ? `${team.members.length} 人`
+                            : "0 人"}
+                        </span>
+                      </div>
+                      <p className="mb-4 text-sm text-neutral-600">
+                        {team.description}
+                      </p>
+                      <div className="mb-4">
+                        <p className="text-sm text-neutral-500">
+                          总负责人: {team.leader || "无"}
+                        </p>
+                        <p className="text-sm text-neutral-500">
+                          联系方式:{" "}
+                          {typeof team.contact === "object"
+                            ? team.contact.phone || "无"
+                            : team.contact || "无"}
+                        </p>
+                      </div>
+                      <div className="mb-4 flex items-center space-x-2">
+                        {team.members &&
+                          team.members.map((member, index) => {
+                            // 检查member是否为对象
+                            const memberName =
+                              typeof member === "object" && member.username
+                                ? member.username
+                                : member;
+                            return (
+                              <div
+                                key={index}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100"
+                              >
+                                <span className="font-semibold text-primary-600">
+                                  {memberName.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                      <div className="mt-auto flex justify-end space-x-2">
+                        <button
+                          type="button"
+                          className="rounded-lg border border-neutral-300 px-3 py-1 text-sm text-neutral-700 hover:bg-neutral-50"
+                          onClick={() => openEditTeamModal(team)}
+                        >
+                          编辑
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-red-300 px-3 py-1 text-sm text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteTeam(team._id)}
+                        >
+                          删除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeTab === "stats" && (
+            <section>
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-neutral-800">
+                  数据统计
+                </h2>
+                <select className="rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                  {["最近7天", "最近30天", "最近90天", "自定义"].map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {charts.map((chart) => (
+                  <div
+                    key={chart.title}
+                    className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
+                  >
+                    <h3 className="mb-4 text-lg font-semibold text-neutral-800">
+                      {chart.title}
+                    </h3>
+                    <div className="flex h-80 items-end gap-3">
+                      {chart.values.map((value, index) => (
+                        <div
+                          key={`${chart.title}-${index}`}
+                          className="flex flex-1 flex-col items-center"
+                        >
+                          <div
+                            className="w-full rounded-t-md bg-primary-400"
+                            style={{ height: `${value}%` }}
+                          />
+                          <span className="mt-2 text-xs text-neutral-500">
+                            {index + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {activeTab === "config" && (
+            <section>
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-neutral-800">
+                  系统配置
+                </h2>
+                <button
+                  type="button"
+                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
+                >
+                  保存配置
+                </button>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  <h3 className="mb-4 text-lg font-semibold text-neutral-800">
+                    基本设置
+                  </h3>
+                  <div className="space-y-4">
+                    <input
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-2"
+                      defaultValue="AI招聘平台"
+                    />
+                    <input
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-2"
+                      defaultValue="contact@aihire.com"
+                    />
+                    <select className="w-full rounded-lg border border-neutral-300 px-4 py-2">
+                      <option>简体中文</option>
+                      <option>English</option>
+                    </select>
+                    <select className="w-full rounded-lg border border-neutral-300 px-4 py-2">
+                      <option>Asia/Shanghai (UTC+8)</option>
+                      <option>America/New_York (UTC-5)</option>
+                      <option>Europe/London (UTC+0)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  <h3 className="mb-4 text-lg font-semibold text-neutral-800">
+                    安全设置
+                  </h3>
+                  <div className="space-y-4">
+                    <label className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-neutral-700">
+                        启用两步验证
+                      </span>
+                      <input
+                        type="checkbox"
+                        defaultChecked
+                        className="h-4 w-4 accent-primary-500"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-neutral-700">
+                        密码复杂度要求
+                      </span>
+                      <input
+                        type="checkbox"
+                        defaultChecked
+                        className="h-4 w-4 accent-primary-500"
+                      />
+                    </label>
+                    <input
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-2"
+                      defaultValue="90"
+                    />
+                    <input
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-2"
+                      defaultValue="5"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
         </main>
       </div>
+
+      {userModal !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-neutral-800">
+                {userModal === "add" ? "添加用户" : "编辑用户"}
+              </h3>
+              <button
+                type="button"
+                className="text-neutral-500 hover:text-neutral-800"
+                onClick={() => setUserModal(null)}
+              >
+                关闭
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-neutral-700">
+                  用户名
+                </label>
+                <input
+                  type="text"
+                  value={userForm.username}
+                  onChange={(e) =>
+                    setUserForm({ ...userForm, username: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  placeholder="请输入用户名"
+                />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-neutral-700">
+                  邮箱地址
+                </label>
+                <input
+                  type="email"
+                  value={userForm.email}
+                  onChange={(e) =>
+                    setUserForm({ ...userForm, email: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  placeholder="请输入邮箱地址"
+                />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-neutral-700">
+                  角色
+                </label>
+                <select
+                  value={userForm.role}
+                  onChange={(e) =>
+                    setUserForm({ ...userForm, role: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                >
+                  <option value="student">学生</option>
+                  <option value="hr">团队管理员</option>
+                  <option value="admin">超级管理员</option>
+                </select>
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-neutral-700">
+                  所属团队
+                </label>
+                <select
+                  value={userForm.team}
+                  onChange={(e) =>
+                    setUserForm({ ...userForm, team: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                >
+                  <option value="">无</option>
+                  {teams.map((team) => (
+                    <option key={team._id} value={team._id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {userModal === "edit" && (
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-neutral-700">
+                    状态
+                  </label>
+                  <select
+                    value={userForm.status}
+                    onChange={(e) =>
+                      setUserForm({ ...userForm, status: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  >
+                    <option value="active">活跃</option>
+                    <option value="disabled">未活跃</option>
+                  </select>
+                </div>
+              )}
+              {error && (
+                <div className="rounded-lg bg-red-50 p-4 text-red-600">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                className="rounded-lg border border-neutral-300 px-4 py-2"
+                onClick={() => setUserModal(null)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-primary-500 px-4 py-2 text-white disabled:bg-primary-400 disabled:cursor-not-allowed"
+                onClick={userModal === "add" ? handleAddUser : handleEditUser}
+                disabled={isLoading}
+              >
+                {isLoading ? "处理中..." : "确认"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modal !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-neutral-800">
-                {modal === "job"
-                  ? "发布新职位"
-                  : modal === "candidate"
-                    ? "导入候选人"
-                    : modal === "interview"
-                      ? "创建面试"
-                      : "添加题库"}
+                {modal === "user"
+                  ? "添加用户"
+                  : currentTeamId
+                    ? "编辑团队"
+                    : "创建团队"}
               </h3>
               <button
                 type="button"
@@ -1167,703 +903,153 @@ function Admin() {
               </button>
             </div>
 
-            {modal === "job" && (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
+            {modal === "user" ? (
+              <div className="space-y-4">
                 <input
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="职位名称"
-                  value={jobForm.title}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, title: e.target.value })
-                  }
+                  placeholder="用户姓名"
                 />
                 <input
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="部门"
-                  value={jobForm.department}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, department: e.target.value })
-                  }
+                  placeholder="邮箱地址"
                 />
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={jobForm.type}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, type: e.target.value })
-                  }
-                >
-                  <option value="full-time">全职</option>
-                  <option value="part-time">兼职</option>
-                  <option value="intern">实习</option>
+                <select className="w-full rounded-lg border border-neutral-300 px-4 py-3">
+                  <option>学生</option>
+                  <option>团队管理员</option>
+                  <option>超级管理员</option>
                 </select>
-                <input
-                  type="number"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="招聘人数"
-                  value={jobForm.quota}
-                  onChange={(e) =>
-                    setJobForm({
-                      ...jobForm,
-                      quota: parseInt(e.target.value) || 1,
-                    })
-                  }
-                />
-                <input
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="薪资（如：10k-20k）"
-                  value={jobForm.salary}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, salary: e.target.value })
-                  }
-                />
-                <textarea
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  rows={3}
-                  placeholder="职位描述"
-                  value={jobForm.requirements.description}
-                  onChange={(e) =>
-                    setJobForm({
-                      ...jobForm,
-                      requirements: {
-                        ...jobForm.requirements,
-                        description: e.target.value,
-                      },
-                    })
-                  }
-                />
-                <input
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="技能标签（多个标签用逗号分隔）"
-                  value={jobForm.requirements.skills.join(",")}
-                  onChange={(e) =>
-                    setJobForm({
-                      ...jobForm,
-                      requirements: {
-                        ...jobForm.requirements,
-                        skills: e.target.value
-                          .split(/[,，]/)
-                          .map((s) => s.trim())
-                          .filter((s) => s),
-                      },
-                    })
-                  }
-                />
-                <textarea
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  rows={3}
-                  placeholder="任职要求"
-                  value={jobForm.requirements.experience}
-                  onChange={(e) =>
-                    setJobForm({
-                      ...jobForm,
-                      requirements: {
-                        ...jobForm.requirements,
-                        experience: e.target.value,
-                      },
-                    })
-                  }
-                />
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={jobForm.deadline}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, deadline: e.target.value })
-                  }
-                />
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={jobForm.status}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, status: e.target.value })
-                  }
-                >
-                  <option value="open">招聘中</option>
-                  <option value="closed">已关闭</option>
-                </select>
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={jobForm.interviewType}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, interviewType: e.target.value })
-                  }
-                >
-                  <option value="online">线上面试</option>
-                  <option value="offline">线下面试</option>
-                </select>
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={jobForm.aiQuestionBankId}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, aiQuestionBankId: e.target.value })
-                  }
-                >
-                  <option value="">选择AI试题</option>
-                  {questionBanks.map((bank) => (
-                    <option key={bank._id} value={bank._id}>
-                      {bank.title}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex items-center space-x-2">
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-neutral-700">
+                    团队名称
+                  </label>
                   <input
-                    type="checkbox"
-                    id="aiPreInterview"
-                    className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
-                    checked={jobForm.aiPreInterview}
+                    type="text"
+                    value={teamForm.name}
                     onChange={(e) =>
-                      setJobForm({
-                        ...jobForm,
-                        aiPreInterview: e.target.checked,
+                      setTeamForm({ ...teamForm, name: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    placeholder="请输入团队名称"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-neutral-700">
+                    部门
+                  </label>
+                  <select
+                    value={teamForm.department}
+                    onChange={(e) =>
+                      setTeamForm({ ...teamForm, department: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  >
+                    <option value="">请选择部门</option>
+                    <option value="产品部">产品部</option>
+                    <option value="技术部">技术部</option>
+                    <option value="设计部">设计部</option>
+                    <option value="市场部">市场部</option>
+                    <option value="人力资源部">人力资源部</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-neutral-700">
+                    团队描述
+                  </label>
+                  <textarea
+                    value={teamForm.description}
+                    onChange={(e) =>
+                      setTeamForm({ ...teamForm, description: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    rows={4}
+                    placeholder="请输入团队描述"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-neutral-700">
+                    团队Logo
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        // 这里可以添加文件上传逻辑
+                        // 暂时将文件路径设置为文件名
+                        setTeamForm({
+                          ...teamForm,
+                          logo: e.target.files[0].name,
+                        });
+                      }
+                    }}
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  />
+                  {teamForm.logo && (
+                    <p className="mt-2 text-sm text-neutral-500">
+                      已选择文件: {teamForm.logo}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-neutral-700">
+                    总负责人
+                  </label>
+                  <select
+                    value={teamForm.leaderId}
+                    onChange={(e) =>
+                      setTeamForm({ ...teamForm, leaderId: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  >
+                    <option value="">请选择总负责人</option>
+                    {teamAdmins.map((admin) => (
+                      <option key={admin._id} value={admin._id}>
+                        {admin.username} ({admin.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-neutral-700">
+                    联系方式
+                  </label>
+                  <input
+                    type="text"
+                    value={teamForm.contact.phone}
+                    onChange={(e) =>
+                      setTeamForm({
+                        ...teamForm,
+                        contact: {
+                          ...teamForm.contact,
+                          phone: e.target.value,
+                        },
                       })
                     }
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    placeholder="请输入手机号"
                   />
-                  <label
-                    htmlFor="aiPreInterview"
-                    className="text-sm font-medium text-neutral-700"
-                  >
-                    启用AI预面试
-                  </label>
                 </div>
-                {jobForm.aiPreInterview && (
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      AI预面试最低分
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                      value={jobForm.aiPreInterviewScore}
-                      onChange={(e) =>
-                        setJobForm({
-                          ...jobForm,
-                          aiPreInterviewScore: parseInt(e.target.value) || 0,
-                        })
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {modal === "candidate" && (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="姓名"
-                  value={candidateForm.name}
-                  onChange={(e) =>
-                    setCandidateForm({ ...candidateForm, name: e.target.value })
-                  }
-                />
-                <input
-                  type="tel"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="手机号"
-                  value={candidateForm.phone}
-                  onChange={(e) =>
-                    setCandidateForm({
-                      ...candidateForm,
-                      phone: e.target.value,
-                    })
-                  }
-                />
-                <input
-                  type="email"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="邮箱"
-                  value={candidateForm.email}
-                  onChange={(e) =>
-                    setCandidateForm({
-                      ...candidateForm,
-                      email: e.target.value,
-                    })
-                  }
-                />
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="年级"
-                  value={candidateForm.grade}
-                  onChange={(e) =>
-                    setCandidateForm({
-                      ...candidateForm,
-                      grade: e.target.value,
-                    })
-                  }
-                />
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="专业"
-                  value={candidateForm.major}
-                  onChange={(e) =>
-                    setCandidateForm({
-                      ...candidateForm,
-                      major: e.target.value,
-                    })
-                  }
-                />
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={candidateForm.positionId}
-                  onChange={(e) => {
-                    setCandidateForm({
-                      ...candidateForm,
-                      positionId: e.target.value,
-                    });
-                  }}
-                >
-                  <option value="">选择职位</option>
-                  {jobs.map((job) => (
-                    <option key={job._id} value={job._id}>
-                      {job.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {modal === "questionBank" && (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="题库名称"
-                  value={questionBankForm.title}
-                  onChange={(e) =>
-                    setQuestionBankForm({
-                      ...questionBankForm,
-                      title: e.target.value,
-                    })
-                  }
-                />
-                <textarea
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  rows={3}
-                  placeholder="题库描述"
-                  value={questionBankForm.description}
-                  onChange={(e) =>
-                    setQuestionBankForm({
-                      ...questionBankForm,
-                      description: e.target.value,
-                    })
-                  }
-                />
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={questionBankForm.category}
-                  onChange={(e) =>
-                    setQuestionBankForm({
-                      ...questionBankForm,
-                      category: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">选择分类</option>
-                  <option value="技术类">技术类</option>
-                  <option value="行为类">行为类</option>
-                  <option value="专业知识">专业知识</option>
-                  <option value="项目经验">项目经验</option>
-                </select>
-
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={questionBankForm.createdAt}
-                  onChange={(e) =>
-                    setQuestionBankForm({
-                      ...questionBankForm,
-                      createdAt: e.target.value,
-                    })
-                  }
-                />
-
-                {/* 面试题目管理 */}
-                <div>
-                  <div className="mb-4 flex items-center justify-between">
-                    <h4 className="text-lg font-semibold text-neutral-800">
-                      面试题目
-                    </h4>
-                  </div>
-                  <div className="mb-4 space-y-2">
-                    <input
-                      type="text"
-                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                      placeholder="输入题目内容"
-                      value={questionForm.content}
-                      onChange={(e) =>
-                        setQuestionForm({
-                          ...questionForm,
-                          content: e.target.value,
-                        })
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="w-full rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                      onClick={() => {
-                        if (questionForm.content.trim()) {
-                          // 添加题目
-                          const newQuestion = {
-                            id: `q-${Date.now()}`,
-                            content: questionForm.content,
-                          };
-                          setQuestionBankForm({
-                            ...questionBankForm,
-                            questions: [
-                              ...questionBankForm.questions,
-                              newQuestion,
-                            ],
-                          });
-                          // 重置题目表单
-                          setQuestionForm({
-                            content: "",
-                          });
-                        }
-                      }}
-                    >
-                      添加题目
-                    </button>
-                  </div>
-                  <div className="rounded-lg border border-neutral-200">
-                    {questionBankForm.questions.length === 0 ? (
-                      <div className="p-4 text-center text-neutral-500">
-                        暂无题目，输入题目内容后点击添加题目按钮
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-neutral-200">
-                        {questionBankForm.questions.map((question, index) => (
-                          <div key={question.id} className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <div className="text-sm font-medium text-neutral-900">
-                                  {index + 1}. {question.content}
-                                </div>
-                              </div>
-                              <div className="flex space-x-2">
-                                <button
-                                  type="button"
-                                  className="text-primary-600 hover:text-primary-900"
-                                >
-                                  编辑
-                                </button>
-                                <button
-                                  type="button"
-                                  className="text-red-600 hover:text-red-900"
-                                  onClick={() => {
-                                    setQuestionBankForm({
-                                      ...questionBankForm,
-                                      questions:
-                                        questionBankForm.questions.filter(
-                                          (q) => q.id !== question.id,
-                                        ),
-                                    });
-                                  }}
-                                >
-                                  删除
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {modal === "interview" && (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
-                <select className="w-full rounded-lg border border-neutral-300 px-4 py-3">
-                  <option>技术面试</option>
-                  <option>产品面试</option>
-                  <option>综合面试</option>
-                </select>
-                <select className="w-full rounded-lg border border-neutral-300 px-4 py-3">
-                  <option>选择候选人</option>
-                  {isLoadingCandidates ? (
-                    <option>加载中...</option>
-                  ) : (
-                    candidates.map((candidate) => (
-                      <option key={candidate._id} value={candidate._id}>
-                        {candidate.name || candidate.studentId}
-                      </option>
-                    ))
-                  )}
-                </select>
-                <select className="w-full rounded-lg border border-neutral-300 px-4 py-3">
-                  <option>选择面试官</option>
-                  <option>王面试官</option>
-                </select>
-                <textarea
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  rows={4}
-                  placeholder="备注信息"
-                />
               </div>
             )}
 
             <div className="mt-6 flex justify-end space-x-3">
               <button
-                onClick={() => {
-                  setModal(null);
-                }}
-                className="rounded-lg border border-neutral-300 px-6 py-2.5 font-medium text-neutral-700 hover:bg-neutral-100"
+                type="button"
+                className="rounded-lg border border-neutral-300 px-4 py-2"
+                onClick={() => setModal(null)}
               >
                 取消
               </button>
               <button
-                onClick={async () => {
-                  try {
-                    if (modal === "candidate") {
-                      // 导入候选人
-                      const formData = new FormData();
-                      formData.append("name", candidateForm.name);
-                      formData.append("phone", candidateForm.phone);
-                      formData.append("email", candidateForm.email);
-                      formData.append("grade", candidateForm.grade);
-                      formData.append("major", candidateForm.major);
-                      formData.append("positionId", candidateForm.positionId);
-                      formData.append("teamId", candidateForm.teamId);
-                      if (candidateForm.resume) {
-                        formData.append("resume", candidateForm.resume);
-                      }
-
-                      console.log("发送的请求数据:", formData);
-                      await applicationApi.importCandidate(formData);
-                      window.message.success("候选人导入成功");
-                      // 重新获取候选人列表
-                      fetchCandidates();
-                      // 重置表单
-                      setCandidateForm({
-                        name: "",
-                        phone: "",
-                        email: "",
-                        grade: "",
-                        major: "",
-                        positionId: "",
-                        teamId: "",
-                        resume: null,
-                      });
-                    } else if (modal === "questionBank") {
-                      // 保存题库
-                      // 获取用户信息
-                      const userStr = localStorage.getItem("user");
-                      const user = userStr ? JSON.parse(userStr) : null;
-                      // 准备表单数据
-                      const formData = {
-                        title: questionBankForm.title,
-                        type: "essay", // 默认为简答题
-                        category: questionBankForm.category,
-                        teamId: currentUser?.team || user?._id || "", // 使用当前用户的team或用户ID
-                        questions: questionBankForm.questions.map(
-                          (q) => q.content,
-                        ), // 转换为字符串数组
-                      };
-                      if (currentQuestionBankId) {
-                        // 编辑题库
-                        await questionBankApi.updateQuestionBank(
-                          currentQuestionBankId,
-                          formData,
-                        );
-                        window.message.success("题库更新成功");
-                      } else {
-                        // 创建题库
-                        await questionBankApi.createQuestionBank(formData);
-                        window.message.success("题库创建成功");
-                      }
-                      // 重新获取面试题库列表
-                      fetchQuestionBanks();
-                    } else {
-                      // 获取用户信息
-                      const userStr = localStorage.getItem("user");
-                      const user = userStr ? JSON.parse(userStr) : null;
-                      // 准备表单数据
-                      const formData = {
-                        ...jobForm,
-                        // 添加创建人信息
-                        createdBy: user?._id || "660a0b6c4f1a2b3c4d5e6f70", // 使用有效的默认ObjectId
-                        // 确保teamId有值且格式正确
-                        teamId: currentUser?.team || "", // 使用当前用户的team，不使用硬编码的默认值
-                      };
-                      if (currentJobId) {
-                        // 编辑职位
-                        await positionApi.updatePosition(
-                          currentJobId,
-                          formData,
-                        );
-                        window.message.success("职位更新成功");
-                      } else {
-                        // 创建职位
-                        await positionApi.createPosition(formData);
-                        window.message.success("职位创建成功");
-                      }
-                      // 重新获取职位列表
-                      fetchJobs();
-                    }
-                    // 关闭模态框
-                    setModal(null);
-                  } catch (err: any) {
-                    // 解析错误信息
-                    let errorMessage = "操作失败";
-                    if (err.response && err.response.data) {
-                      errorMessage =
-                        err.response.data.message ||
-                        err.response.data.error ||
-                        errorMessage;
-                    } else if (err.message) {
-                      errorMessage = err.message;
-                    }
-                    window.message.error(errorMessage);
-                  }
-                }}
-                className="rounded-lg bg-primary-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-primary-600"
-              >
-                确认
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 查看候选人弹窗 */}
-      {viewModal && currentCandidate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-neutral-900">
-                候选人详情
-              </h3>
-              <button
                 type="button"
-                className="text-neutral-500 hover:text-neutral-900"
-                onClick={() => setViewModal(false)}
+                className="rounded-lg bg-primary-500 px-4 py-2 text-white disabled:bg-primary-400 disabled:cursor-not-allowed"
+                onClick={handleCreateTeam}
+                disabled={isLoading}
               >
-                &times;
-              </button>
-            </div>
-            <div className="mb-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  姓名
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.name || currentCandidate.studentId}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  手机号
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.phone || "-"}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  邮箱
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.email || currentCandidate.studentId}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  年级
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.grade || "-"}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  专业
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.major || "-"}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  应聘职位
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.positionName || currentCandidate.positionId}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  状态
-                </label>
-                <div className="text-sm">
-                  <span
-                    className={`rounded-full px-2 py-1 text-xs font-semibold ${currentCandidate.status === "pending" ? "bg-yellow-100 text-yellow-800" : currentCandidate.status === "screening" ? "bg-blue-100 text-blue-800" : currentCandidate.status === "interview" ? "bg-purple-100 text-purple-800" : currentCandidate.status === "offer" ? "bg-green-100 text-green-800" : currentCandidate.status === "已通过预面试" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
-                  >
-                    {currentCandidate.status === "pending"
-                      ? "待处理"
-                      : currentCandidate.status === "screening"
-                        ? "简历筛选"
-                        : currentCandidate.status === "interview"
-                          ? "面试中"
-                          : currentCandidate.status === "offer"
-                            ? "已录用"
-                            : currentCandidate.status === "已通过预面试"
-                              ? "已通过预面试"
-                              : "已拒绝"}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  投递时间
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.appliedAt
-                    ? new Date(currentCandidate.appliedAt).toLocaleDateString()
-                    : "-"}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  简历文件
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.resumeFileUrl ? (
-                    <a
-                      href={`http://localhost:3000${currentCandidate.resumeFileUrl}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      查看简历
-                    </a>
-                  ) : currentCandidate.resumeId ? (
-                    <a
-                      href={`http://localhost:3000/uploads/${encodeURIComponent(currentCandidate.resumeId)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      查看简历
-                    </a>
-                  ) : (
-                    "-"
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <button
-                type="button"
-                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-                onClick={() => setViewModal(false)}
-              >
-                关闭
+                {isLoading ? "处理中..." : "确认"}
               </button>
             </div>
           </div>
@@ -1873,4 +1059,4 @@ function Admin() {
   );
 }
 
-export default Admin;
+export default Team;

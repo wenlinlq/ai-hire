@@ -1,12 +1,8 @@
-import { ReactNode, useEffect, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Navigate, useLocation, Outlet } from "react-router-dom";
 import userApi from "../api/userApi";
 
-interface ProtectedRouteProps {
-  children: ReactNode;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+const ProtectedRoute: React.FC = () => {
   const location = useLocation();
   const [isChecked, setIsChecked] = useState(false);
   const isLoggedIn = userApi.isLoggedIn();
@@ -29,8 +25,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 如果用户已登录，渲染子组件
-  return <>{children}</>;
+  // 如果用户已登录，渲染子路由
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

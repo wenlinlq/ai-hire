@@ -25,14 +25,6 @@ const ResumeAnalyze = lazy(() => import("../page/resume"));
 
 const router = createBrowserRouter([
   {
-    path: "/",
-    element: (
-      <Suspense fallback={null}>
-        <Home />
-      </Suspense>
-    ),
-  },
-  {
     path: "/login",
     element: (
       <Suspense fallback={null}>
@@ -41,145 +33,129 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/hall",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <Hall />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/hall/:id",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <JobDetail />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/interview",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <InterviewPreparation />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/interview/conversation",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <InterviewConversation />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/interview/summary",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <InterviewSummary />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-
-  {
-    path: "/ai-interview/:id",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <AIInterview />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/ai-interview",
-    element: <Navigate to="/" replace />,
-  },
-  {
-    path: "/resume",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <ResumeAnalyze />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-
-  {
-    path: "/notifications",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <Notifications />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/notifications/:id",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <NotificationDetail />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-
-  {
-    path: "/profile",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <Profile />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/admin",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <Admin />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/team",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <Team />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/ai-chat",
-    element: (
-      <ProtectedRoute>
-        <Suspense fallback={null}>
-          <AIChat />
-        </Suspense>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "*",
-    element: <Navigate to="/" replace />,
+    element: <ProtectedRoute />,
+    children: [
+      {
+        path: "/",
+        element: (
+          <Suspense fallback={null}>
+            <Home />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/hall",
+        element: (
+          <Suspense fallback={null}>
+            <Hall />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/hall/:id",
+        element: (
+          <Suspense fallback={null}>
+            <JobDetail />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/interview",
+        element: (
+          <Suspense fallback={null}>
+            <InterviewPreparation />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/interview/conversation",
+        element: (
+          <Suspense fallback={null}>
+            <InterviewConversation />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/interview/summary",
+        element: (
+          <Suspense fallback={null}>
+            <InterviewSummary />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/ai-interview/:id",
+        element: (
+          <Suspense fallback={null}>
+            <AIInterview />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/ai-interview",
+        element: <Navigate to="/" replace />,
+      },
+      {
+        path: "/resume",
+        element: (
+          <Suspense fallback={null}>
+            <ResumeAnalyze />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/notifications",
+        element: (
+          <Suspense fallback={null}>
+            <Notifications />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/notifications/:id",
+        element: (
+          <Suspense fallback={null}>
+            <NotificationDetail />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/profile",
+        element: (
+          <Suspense fallback={null}>
+            <Profile />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/admin",
+        element: (
+          <Suspense fallback={null}>
+            <Admin />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/team",
+        element: (
+          <Suspense fallback={null}>
+            <Team />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/ai-chat",
+        element: (
+          <Suspense fallback={null}>
+            <AIChat />
+          </Suspense>
+        ),
+      },
+      {
+        path: "*",
+        element: <Navigate to="/" replace />,
+      },
+    ],
   },
 ]);
 

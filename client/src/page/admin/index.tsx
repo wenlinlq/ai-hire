@@ -4,7 +4,7 @@ import userApi from "../../api/userApi";
 import teamApi from "../../api/teamApi";
 import type { User } from "../../api/userApi";
 
-type TeamTab = "user" | "team" | "stats" | "config";
+type TeamTab = "dashboard" | "user" | "team" | "stats" | "config";
 type ModalType = "user" | "team" | null;
 type UserModalType = "add" | "edit" | null;
 
@@ -34,7 +34,7 @@ const charts = [
 function Team() {
   const [activeTab, setActiveTab] = useState<TeamTab>(() => {
     const savedTab = localStorage.getItem("teamActiveTab");
-    return (savedTab as TeamTab) || "user";
+    return (savedTab as TeamTab) || "dashboard";
   });
 
   // 监听标签变化，保存到localStorage
@@ -150,9 +150,9 @@ function Team() {
 
   // 初始化数据
   useEffect(() => {
-    if (activeTab === "user") {
+    if (activeTab === "dashboard" || activeTab === "user") {
       fetchUsers();
-      fetchTeams(); // 获取团队列表，用于用户编辑弹框
+      fetchTeams(); // 获取团队列表，用于用户编辑弹框和仪表盘显示
     } else if (activeTab === "team") {
       fetchTeams();
       fetchTeamAdmins();
@@ -351,6 +351,7 @@ function Team() {
           </div>
           <ul className="space-y-1">
             {[
+              ["dashboard", "仪表盘"],
               ["user", "用户管理"],
               ["team", "团队管理"],
               ["stats", "数据统计"],
@@ -390,6 +391,263 @@ function Team() {
         </header>
 
         <main className="flex-1 p-6">
+          {activeTab === "dashboard" && (
+            <section>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-neutral-800">仪表盘</h2>
+              </div>
+
+              {/* 关键指标卡片 */}
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-neutral-500">
+                      总用户数
+                    </h3>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 text-primary-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold text-neutral-800">
+                    {users.length}
+                  </p>
+                  <p className="mt-2 text-sm text-green-600">+12% 较上月</p>
+                </div>
+
+                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-neutral-500">
+                      团队数量
+                    </h3>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 text-blue-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold text-neutral-800">
+                    {teams.length}
+                  </p>
+                  <p className="mt-2 text-sm text-green-600">+8% 较上月</p>
+                </div>
+
+                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-neutral-500">
+                      活跃用户
+                    </h3>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 text-green-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 10V3L4 14h7v7l9-11h-7z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold text-neutral-800">
+                    {users.filter((user) => user.status === "active").length}
+                  </p>
+                  <p className="mt-2 text-sm text-green-600">+15% 较上月</p>
+                </div>
+
+                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-neutral-500">
+                      平均团队规模
+                    </h3>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 text-purple-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold text-neutral-800">
+                    {teams.length > 0
+                      ? Math.round(users.length / teams.length)
+                      : 0}
+                  </p>
+                  <p className="mt-2 text-sm text-neutral-500">人/团队</p>
+                </div>
+              </div>
+
+              {/* 最近活动和团队概览 */}
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* 最近活动 */}
+                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-neutral-800 mb-4">
+                    最近活动
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-start">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-100">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 text-primary-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-neutral-800">
+                          张三 创建了新用户
+                        </p>
+                        <p className="text-xs text-neutral-500">2小时前</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 text-blue-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-neutral-800">
+                          李四 创建了新团队
+                        </p>
+                        <p className="text-xs text-neutral-500">昨天</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-100">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 text-green-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-neutral-800">
+                          王五 更新了用户状态
+                        </p>
+                        <p className="text-xs text-neutral-500">2天前</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 团队概览 */}
+                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-neutral-800 mb-4">
+                    团队概览
+                  </h3>
+                  <div className="space-y-4">
+                    {teams.slice(0, 3).map((team) => (
+                      <div
+                        key={team._id}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
+                            <span className="font-semibold text-primary-600">
+                              {team.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-neutral-800">
+                              {team.name}
+                            </p>
+                            <p className="text-xs text-neutral-500">
+                              {Array.isArray(team.members)
+                                ? `${team.members.length} 成员`
+                                : "0 成员"}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            team.members && team.members.length > 0
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {team.members && team.members.length > 0
+                            ? "活跃"
+                            : "无成员"}
+                        </span>
+                      </div>
+                    ))}
+                    {teams.length === 0 && (
+                      <p className="text-sm text-neutral-500 text-center py-4">
+                        暂无团队数据
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
           {activeTab === "user" && (
             <section>
               <div className="mb-6">

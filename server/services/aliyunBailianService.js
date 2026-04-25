@@ -450,8 +450,8 @@ ${prompt}
 要求：
 1. 问题要专业、有深度，能够考察候选人的真实能力
 2. 问题要与${domain}领域紧密相关
-3. 如果是面试题，问题要适合一对一交流
-4. 如果是笔试题，问题要适合书面回答，可能包含代码或设计任务
+3. 如果是面试题，问题要适合一对一交流，应该是概念性问题，不需要编写代码或设计任务
+4. 如果是笔试题，问题要适合书面回答，必须包含代码或设计任务
 5. 只生成1个问题，不要生成多个问题
 6. 问题要具体、明确，避免过于宽泛
 7. 直接返回问题内容，不要包含任何其他文本
@@ -556,19 +556,19 @@ ${prompt}
       const domain = typeMap[type] || "技术";
 
       const questionTypeMap = {
-        interview: "面试",
-        written: "笔试",
+        interview: "面试题",
+        written: "笔试题",
       };
-      const questionType = questionTypeMap[subType] || "面试";
+      const questionType = questionTypeMap[subType] || "面试题";
 
-      let prompt = `请为${domain}岗位生成1个${questionType}问题。\n\n`;
+      let prompt = `请为${domain}岗位生成1个${questionType}。\n\n`;
 
       prompt += `
 要求：
 1. 问题要专业、有深度，能够考察候选人的真实能力
 2. 问题要与${domain}领域紧密相关
-3. 如果是面试题，问题要适合一对一交流
-4. 如果是笔试题，问题要适合书面回答，可能包含代码或设计任务
+3. 如果是面试题，问题要适合一对一交流，应该是概念性问题，不需要编写代码或设计任务
+4. 如果是笔试题，问题要适合书面回答，必须包含代码或设计任务
 5. 只生成1个问题，不要生成多个问题
 6. 问题要具体、明确，避免过于宽泛
 7. 直接返回问题内容，不要包含任何其他文本
@@ -673,10 +673,14 @@ ${prompt}
     }
   }
 
-  // 分析面试问答并生成评分和总结
-  async analyzeInterviewQnA(questions, answers, type) {
+  // 分析面试问答并生成评分和总结（按类型）
+  async analyzeInterviewQnAByType(questions, answers, type) {
     try {
-      console.log("Analyzing interview Q&A:", { questions, answers, type });
+      console.log("Analyzing interview Q&A by type:", {
+        questions,
+        answers,
+        type,
+      });
 
       const typeMap = {
         frontend: "前端开发",

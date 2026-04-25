@@ -506,7 +506,7 @@ class AiPreInterviewController {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const analysis = await aliyunBailianService.analyzeInterviewQnA(
+      const analysis = await aliyunBailianService.analyzeInterviewQnAByType(
         questions,
         answers,
         type,

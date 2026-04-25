@@ -271,7 +271,12 @@ const InterviewConversation = () => {
       setTimeout(() => {
         const interviewerMessage: Message = {
           sender: "interviewer",
-          content: getNextQuestion(type, subType, updatedMessages.length),
+          content: getNextQuestion(
+            type,
+            subType,
+            updatedMessages.length,
+            updatedMessages,
+          ),
           timestamp: new Date().toLocaleTimeString(),
           id: `msg-${Date.now()}-interviewer`,
         };
@@ -286,6 +291,7 @@ const InterviewConversation = () => {
     type: InterviewType,
     subType: InterviewSubType | null,
     questionIndex: number,
+    updatedMessages?: Message[],
   ): string => {
     // 只设置1个问题，所以回答完第一个问题后就结束面试
     if (questionIndex < 1) {
@@ -296,16 +302,15 @@ const InterviewConversation = () => {
       const questions: string[] = [];
       const answers: string[] = [];
 
-      for (let i = 1; i < messages.length; i += 2) {
-        if (messages[i] && messages[i].sender === "interviewer") {
-          questions.push(messages[i].content);
-        }
-        if (
-          i + 1 < messages.length &&
-          messages[i + 1] &&
-          messages[i + 1].sender === "candidate"
-        ) {
-          answers.push(messages[i + 1].content);
+      // 使用传入的 updatedMessages 或 messages 状态
+      const currentMessages = updatedMessages || messages;
+
+      // 正确遍历消息数组，收集问题和回答
+      for (let i = 0; i < currentMessages.length; i++) {
+        if (currentMessages[i].sender === "interviewer") {
+          questions.push(currentMessages[i].content);
+        } else if (currentMessages[i].sender === "candidate") {
+          answers.push(currentMessages[i].content);
         }
       }
 

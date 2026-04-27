@@ -26,13 +26,6 @@ const initialUserForm: UserFormState = {
   status: "active",
 };
 
-const charts = [
-  { title: "用户活跃度", values: [68, 74, 81, 76, 88, 92, 86] },
-  { title: "团队分布", values: [35, 55, 22, 41] },
-  { title: "功能使用频率", values: [92, 77, 65, 58, 81] },
-  { title: "系统性能", values: [99, 97, 98, 96, 99] },
-] as const;
-
 function Team() {
   const [activeTab, setActiveTab] = useState<TeamTab>(() => {
     const savedTab = localStorage.getItem("teamActiveTab");
@@ -374,7 +367,6 @@ function Team() {
               ["dashboard", "仪表盘"],
               ["user", "用户管理"],
               ["team", "团队管理"],
-              ["stats", "数据统计"],
               ["config", "系统配置"],
             ].map(([key, label]) => (
               <li key={key}>
@@ -808,8 +800,6 @@ function Team() {
                   </p>
                 </div>
               </div>
-
-              {/* 待处理事项区和快捷操作入口 */}
               <div className="grid gap-6 md:grid-cols-2 mb-6">
                 {/* 待处理事项 */}
                 <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
@@ -1210,50 +1200,6 @@ function Team() {
                   ))}
                 </div>
               )}
-            </section>
-          )}
-
-          {activeTab === "stats" && (
-            <section>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-800">
-                  数据统计
-                </h2>
-                <select className="rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                  {["最近7天", "最近30天", "最近90天", "自定义"].map((item) => (
-                    <option key={item}>{item}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                {charts.map((chart) => (
-                  <div
-                    key={chart.title}
-                    className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
-                  >
-                    <h3 className="mb-4 text-lg font-semibold text-neutral-800">
-                      {chart.title}
-                    </h3>
-                    <div className="flex h-80 items-end gap-3">
-                      {chart.values.map((value, index) => (
-                        <div
-                          key={`${chart.title}-${index}`}
-                          className="flex flex-1 flex-col items-center"
-                        >
-                          <div
-                            className="w-full rounded-t-md bg-primary-400"
-                            style={{ height: `${value}%` }}
-                          />
-                          <span className="mt-2 text-xs text-neutral-500">
-                            {index + 1}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </section>
           )}
 

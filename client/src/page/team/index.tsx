@@ -11,8 +11,15 @@ type AdminTab =
   | "jobs"
   | "candidates"
   | "interviews"
-  | "questions";
-type AdminModal = "job" | "candidate" | "interview" | "questionBank" | null;
+  | "questions"
+  | "notifications";
+type AdminModal =
+  | "job"
+  | "candidate"
+  | "interview"
+  | "questionBank"
+  | "notification"
+  | null;
 
 const dashboardStats = [
   {
@@ -243,6 +250,17 @@ function Admin() {
     resume: null,
   });
 
+  // 通知表单状态
+  const [notificationForm, setNotificationForm] = useState({
+    type: "",
+    trigger: "",
+    content: "",
+  });
+  // 当前编辑的通知ID
+  const [currentNotificationId, setCurrentNotificationId] = useState<
+    string | null
+  >(null);
+
   // 查看候选人弹窗状态
   const [viewModal, setViewModal] = useState(false);
   // 当前查看的候选人信息
@@ -449,6 +467,7 @@ function Admin() {
               ["candidates", "候选人管理"],
               ["interviews", "AI面试中心"],
               ["questions", "面试题库"],
+              ["notifications", "消息通知管理"],
             ].map(([key, label]) => (
               <li key={key}>
                 <button
@@ -1218,6 +1237,28 @@ function Admin() {
                               >
                                 {job.status === "open" ? "关闭" : "重新开放"}
                               </button>
+                              <button
+                                type="button"
+                                className="ml-3 text-red-600 hover:text-red-900"
+                                onClick={async () => {
+                                  try {
+                                    if (
+                                      window.confirm("确定要删除这个职位吗？")
+                                    ) {
+                                      await positionApi.deletePosition(job._id);
+                                      window.message.success("职位已删除");
+                                      // 重新获取职位列表
+                                      fetchJobs();
+                                    }
+                                  } catch (err: any) {
+                                    window.message.error(
+                                      err.message || "删除失败",
+                                    );
+                                  }
+                                }}
+                              >
+                                删除
+                              </button>
                             </td>
                           </tr>
                         ))
@@ -1384,6 +1425,48 @@ function Admin() {
                                 className="text-green-600 hover:text-green-900"
                               >
                                 安排面试
+                              </button>
+                              <button
+                                type="button"
+                                className="ml-3 text-green-600 hover:text-green-900"
+                                onClick={async () => {
+                                  try {
+                                    await applicationApi.updateApplicationStatus(
+                                      candidate._id,
+                                      "offer",
+                                    );
+                                    window.message.success("候选人已录用");
+                                    // 重新获取候选人列表
+                                    fetchCandidates();
+                                  } catch (err: any) {
+                                    window.message.error(
+                                      err.message || "操作失败",
+                                    );
+                                  }
+                                }}
+                              >
+                                录用
+                              </button>
+                              <button
+                                type="button"
+                                className="ml-3 text-red-600 hover:text-red-900"
+                                onClick={async () => {
+                                  try {
+                                    await applicationApi.updateApplicationStatus(
+                                      candidate._id,
+                                      "rejected",
+                                    );
+                                    window.message.success("候选人已拒绝");
+                                    // 重新获取候选人列表
+                                    fetchCandidates();
+                                  } catch (err: any) {
+                                    window.message.error(
+                                      err.message || "操作失败",
+                                    );
+                                  }
+                                }}
+                              >
+                                拒绝
                               </button>
                             </td>
                           </tr>
@@ -1623,6 +1706,112 @@ function Admin() {
               </div>
             </section>
           )}
+
+          {activeTab === "notifications" && (
+            <section>
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-neutral-800">
+                  消息通知管理
+                </h2>
+                <button
+                  className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+                  onClick={() => {
+                    setCurrentNotificationId(null);
+                    setNotificationForm({ type: "", trigger: "", content: "" });
+                    setModal("notification");
+                  }}
+                >
+                  新建通知
+                </button>
+              </div>
+
+              {/* 通知类型列表 */}
+              <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm mb-6">
+                <h3 className="text-lg font-semibold text-neutral-800 mb-4">
+                  通知类型列表
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-neutral-50">
+                      <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
+                        <th className="px-6 py-3">通知类型</th>
+                        <th className="px-6 py-3">触发时机</th>
+                        <th className="px-6 py-3">是否可编辑</th>
+                        <th className="px-6 py-3">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-200">
+                      {[
+                        {
+                          type: "简历通过筛选通知",
+                          trigger: "HR将状态改为'待面试'",
+                          editable: true,
+                        },
+                        {
+                          type: "简历未通过通知",
+                          trigger: "HR将状态改为'已拒绝'",
+                          editable: true,
+                        },
+                        {
+                          type: "面试邀请通知",
+                          trigger: "HR安排面试后",
+                          editable: true,
+                        },
+                        {
+                          type: "面试提醒通知",
+                          trigger: "面试前N小时自动发送",
+                          editable: true,
+                        },
+                        {
+                          type: "面试结果通知",
+                          trigger: "面试后HR填写结果",
+                          editable: true,
+                        },
+                        {
+                          type: "录用通知",
+                          trigger: "HR将状态改为'已录取'",
+                          editable: true,
+                        },
+                        {
+                          type: "感谢信/拒绝信",
+                          trigger: "最终未录取",
+                          editable: true,
+                        },
+                      ].map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 text-sm font-medium text-neutral-900">
+                            {item.type}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-neutral-500">
+                            {item.trigger}
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            <span className="text-green-600">✅</span>
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            <button
+                              className="text-primary-600 hover:text-primary-900"
+                              onClick={() => {
+                                setCurrentNotificationId(index.toString());
+                                setNotificationForm({
+                                  type: item.type,
+                                  trigger: item.trigger,
+                                  content: "",
+                                });
+                                setModal("notification");
+                              }}
+                            >
+                              编辑
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          )}
         </main>
       </div>
 
@@ -1637,7 +1826,11 @@ function Admin() {
                     ? "导入候选人"
                     : modal === "interview"
                       ? "创建面试"
-                      : "添加题库"}
+                      : modal === "notification"
+                        ? currentNotificationId
+                          ? "编辑通知"
+                          : "新建通知"
+                        : "添加题库"}
               </h3>
               <button
                 type="button"
@@ -2085,6 +2278,45 @@ function Admin() {
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
                   rows={4}
                   placeholder="备注信息"
+                />
+              </div>
+            )}
+
+            {modal === "notification" && (
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
+                <input
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  placeholder="通知类型"
+                  value={notificationForm.type}
+                  onChange={(e) =>
+                    setNotificationForm({
+                      ...notificationForm,
+                      type: e.target.value,
+                    })
+                  }
+                />
+                <input
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  placeholder="触发时机"
+                  value={notificationForm.trigger}
+                  onChange={(e) =>
+                    setNotificationForm({
+                      ...notificationForm,
+                      trigger: e.target.value,
+                    })
+                  }
+                />
+                <textarea
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  rows={5}
+                  placeholder="通知内容"
+                  value={notificationForm.content}
+                  onChange={(e) =>
+                    setNotificationForm({
+                      ...notificationForm,
+                      content: e.target.value,
+                    })
+                  }
                 />
               </div>
             )}

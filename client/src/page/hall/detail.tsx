@@ -5,6 +5,7 @@ import teamApi from "../../api/teamApi";
 import userApi from "../../api/userApi";
 import { deliveryApi } from "../../api/deliveryApi";
 import favoriteApi from "../../api/favoriteApi";
+import resumeApi from "../../api/resumeApi";
 
 interface Job {
   _id: string;
@@ -106,16 +107,22 @@ function JobDetail() {
     try {
       setApplying(true);
 
-      // 这里需要获取用户的默认简历ID
-      // 假设用户已经上传了简历，并且有一个默认简历
-      // 实际项目中，这里应该从用户的简历列表中获取默认简历
-      const resumeId = "60d0fe4f5311236168a109ca"; // 示例简历ID
+      // 获取用户的当前简历ID
+      const currentUser = userApi.getCurrentUser();
+      const resume = await resumeApi.getCurrentResume();
+
+      if (!resume) {
+        alert("请先上传简历再投递");
+        navigate("/resume");
+        return;
+      }
+
+      const resumeId = resume._id;
 
       // 检查职位是否需要AI预面试
       const hasAiPreInterview = (job as any).aiPreInterview || false;
 
       // 创建投递记录
-      const currentUser = userApi.getCurrentUser();
       await deliveryApi.createDelivery({
         userId: currentUser._id,
         jobId: job._id,

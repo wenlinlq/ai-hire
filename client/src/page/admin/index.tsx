@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { LogoMark } from "../../components/site";
 import userApi from "../../api/userApi";
 import teamApi from "../../api/teamApi";
+import positionApi from "../../api/positionApi";
 import type { User } from "../../api/userApi";
 import ReactECharts from "echarts-for-react";
 
@@ -83,6 +84,9 @@ function Team() {
   // 团队列表（用于用户编辑弹框）
   const [userTeams, setUserTeams] = useState<any[]>([]);
 
+  // 职位列表
+  const [positions, setPositions] = useState<any[]>([]);
+
   // 获取用户列表
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -149,11 +153,26 @@ function Team() {
     }
   };
 
+  // 获取职位列表
+  const fetchPositions = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const positionList = await positionApi.getPositions();
+      setPositions(positionList);
+    } catch (err: any) {
+      setError(err.message || "获取职位列表失败");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 初始化数据
   useEffect(() => {
     if (activeTab === "dashboard" || activeTab === "user") {
       fetchUsers();
       fetchTeams(); // 获取团队列表，用于用户编辑弹框和仪表盘显示
+      fetchPositions(); // 获取职位列表，用于仪表盘显示
     } else if (activeTab === "team") {
       fetchTeams();
       fetchTeamAdmins();
@@ -512,7 +531,15 @@ function Team() {
                       </svg>
                     </div>
                   </div>
-                  <p className="text-3xl font-bold text-neutral-800">128</p>
+                  <p className="text-3xl font-bold text-neutral-800">
+                    {
+                      positions.filter((position) => {
+                        const now = new Date();
+                        const deadline = new Date(position.deadline);
+                        return deadline > now;
+                      }).length
+                    }
+                  </p>
                   <p className="mt-2 text-sm text-neutral-500">
                     全平台开放岗位总数
                   </p>
@@ -540,7 +567,18 @@ function Team() {
                       </svg>
                     </div>
                   </div>
-                  <p className="text-3xl font-bold text-neutral-800">523</p>
+                  <p className="text-3xl font-bold text-neutral-800">
+                    {positions
+                      .filter((position) => {
+                        const now = new Date();
+                        const deadline = new Date(position.deadline);
+                        return deadline > now;
+                      })
+                      .reduce(
+                        (total, position) => total + (position.applyCount || 0),
+                        0,
+                      )}
+                  </p>
                   <p className="mt-2 text-sm text-neutral-500">
                     累计简历投递次数
                   </p>

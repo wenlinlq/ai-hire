@@ -29,6 +29,9 @@ class DeliveryController {
       // 创建投递记录
       const delivery = await deliveryModel.createDelivery(deliveryData);
 
+      // 增加岗位投递次数
+      await positionModel.incrementApplyCount(jobId);
+
       // 获取职位信息，用于获取团队ID
       const position = await positionModel.findPositionById(jobId);
       let team = null;

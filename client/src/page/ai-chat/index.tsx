@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { SiteNav } from "../../components/site";
 import aiChatApi from "../../api/aiChatApi";
 
 interface Message {
@@ -102,6 +103,7 @@ const AIChatPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-700">
+      <SiteNav current="ai-chat" />
       <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-neutral-800 mb-2">

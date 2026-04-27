@@ -181,32 +181,6 @@ function Hall() {
               </div>
             </div>
 
-            {[
-              [
-                "职位类型",
-                jobType,
-                setJobType,
-                ["全部类型", "全职", "兼职", "实习", "远程"],
-              ],
-            ].map(([label, value, setter, options]) => (
-              <div key={label as string} className="md:w-48">
-                <label className="mb-2 block text-sm font-medium text-neutral-600">
-                  {label as string}
-                </label>
-                <select
-                  value={value as string}
-                  onChange={(event) =>
-                    (setter as (value: string) => void)(event.target.value)
-                  }
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 focus:border-transparent focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                >
-                  {(options as string[]).map((item) => (
-                    <option key={item}>{item}</option>
-                  ))}
-                </select>
-              </div>
-            ))}
-
             <div className="flex items-end md:w-32">
               <button
                 type="button"

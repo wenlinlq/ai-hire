@@ -11,7 +11,7 @@ const slides = [
   {
     title: "AI驱动的智能招聘平台",
     description: "让人才与机会精准匹配，开启职业新篇章",
-    buttonLabel: "立即体验",
+
     image:
       "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&h=500&fit=crop",
     alt: "团队协作",
@@ -22,7 +22,7 @@ const slides = [
   {
     title: "智能简历解析",
     description: "AI深度分析，挖掘你的核心竞争力",
-    buttonLabel: "上传简历",
+
     image:
       "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=500&fit=crop",
     alt: "AI技术",
@@ -33,7 +33,7 @@ const slides = [
   {
     title: "AI模拟面试",
     description: "真实场景演练，提升面试成功率",
-    buttonLabel: "开始练习",
+
     image:
       "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&h=500&fit=crop",
     alt: "面试场景",
@@ -63,9 +63,9 @@ const features = [
     path: "M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z",
   },
   {
-    title: "简历优化",
+    title: "AI智能问答",
     description:
-      "AI智能诊断简历问题，提供个性化优化建议，让你的简历脱颖而出，提高面试邀约率",
+      "随时提问，有问必答——AI助手全天候在线，基于对话记忆为你提供个性化招新指引",
     cardClass: "bg-neutral-100",
     iconClass: "bg-neutral-600",
     linkClass: "text-neutral-600 hover:text-neutral-700",
@@ -358,13 +358,6 @@ function Home() {
                       >
                         {slide.description}
                       </p>
-                      <button
-                        type="button"
-                        className={`rounded-lg px-8 py-3 text-lg font-semibold transition-colors ${slide.buttonClass} ${isActive ? "animate-fade-in-up" : ""}`}
-                        style={{ animationDelay: "0.4s" }}
-                      >
-                        {slide.buttonLabel}
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -458,7 +451,13 @@ function Home() {
                 </h3>
                 <p className="mb-6 text-neutral-600">{feature.description}</p>
                 <Link
-                  to={feature.title === "AI模拟面试" ? "/interview" : "/resume"}
+                  to={
+                    feature.title === "AI模拟面试"
+                      ? "/interview"
+                      : feature.title === "AI智能问答"
+                        ? "/ai-chat"
+                        : "/resume"
+                  }
                   className={`inline-flex items-center font-semibold ${feature.linkClass}`}
                 >
                   了解更多

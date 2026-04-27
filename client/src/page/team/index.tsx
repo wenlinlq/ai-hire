@@ -4,6 +4,7 @@ import positionApi from "../../api/positionApi";
 import applicationApi from "../../api/applicationApi";
 import userApi from "../../api/userApi";
 import * as questionBankApi from "../../api/questionBankApi";
+import { notificationTemplateApi } from "../../api/notificationApi";
 import ReactECharts from "echarts-for-react";
 
 type AdminTab =
@@ -250,6 +251,13 @@ function Admin() {
     resume: null,
   });
 
+  // 通知模板列表状态
+  const [notificationTemplates, setNotificationTemplates] = useState<any[]>([]);
+  // 通知模板加载状态
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState<boolean>(false);
+  // 通知模板错误状态
+  const [errorTemplates, setErrorTemplates] = useState<string | null>(null);
+
   // 通知表单状态
   const [notificationForm, setNotificationForm] = useState({
     type: "",
@@ -299,10 +307,30 @@ function Admin() {
 
   // 当用户信息变化时，获取面试题库列表
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser?.team) {
       fetchQuestionBanks();
+      fetchNotificationTemplates();
     }
   }, [currentUser]);
+
+  // 获取通知模板列表
+  const fetchNotificationTemplates = async () => {
+    if (!currentUser?.team) return;
+
+    setIsLoadingTemplates(true);
+    setErrorTemplates(null);
+    try {
+      const response = await notificationTemplateApi.getTeamTemplates(
+        currentUser.team,
+      );
+      setNotificationTemplates(response.data || []);
+    } catch (err: any) {
+      console.error("获取通知模板列表错误:", err);
+      setErrorTemplates(err.message || "获取通知模板列表失败");
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
 
   // 获取职位列表
   const fetchJobs = async () => {
@@ -1713,7 +1741,7 @@ function Admin() {
                 <h2 className="text-2xl font-bold text-neutral-800">
                   消息通知管理
                 </h2>
-                <button
+                {/* <button
                   className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
                   onClick={() => {
                     setCurrentNotificationId(null);
@@ -1722,7 +1750,7 @@ function Admin() {
                   }}
                 >
                   新建通知
-                </button>
+                </button> */}
               </div>
 
               {/* 通知类型列表 */}
@@ -1741,71 +1769,109 @@ function Admin() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200">
-                      {[
-                        {
-                          type: "简历通过筛选通知",
-                          trigger: "HR将状态改为'待面试'",
-                          editable: true,
-                        },
-                        {
-                          type: "简历未通过通知",
-                          trigger: "HR将状态改为'已拒绝'",
-                          editable: true,
-                        },
-                        {
-                          type: "面试邀请通知",
-                          trigger: "HR安排面试后",
-                          editable: true,
-                        },
-                        {
-                          type: "面试提醒通知",
-                          trigger: "面试前N小时自动发送",
-                          editable: true,
-                        },
-                        {
-                          type: "面试结果通知",
-                          trigger: "面试后HR填写结果",
-                          editable: true,
-                        },
-                        {
-                          type: "录用通知",
-                          trigger: "HR将状态改为'已录取'",
-                          editable: true,
-                        },
-                        {
-                          type: "感谢信/拒绝信",
-                          trigger: "最终未录取",
-                          editable: true,
-                        },
-                      ].map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 text-sm font-medium text-neutral-900">
-                            {item.type}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-neutral-500">
-                            {item.trigger}
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                            <span className="text-green-600">✅</span>
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                            <button
-                              className="text-primary-600 hover:text-primary-900"
-                              onClick={() => {
-                                setCurrentNotificationId(index.toString());
-                                setNotificationForm({
-                                  type: item.type,
-                                  trigger: item.trigger,
-                                  content: "",
-                                });
-                                setModal("notification");
-                              }}
-                            >
-                              编辑
-                            </button>
+                      {isLoadingTemplates ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="px-6 py-8 text-center text-neutral-500"
+                          >
+                            加载中...
                           </td>
                         </tr>
-                      ))}
+                      ) : errorTemplates ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="px-6 py-8 text-center text-red-500"
+                          >
+                            {errorTemplates}
+                          </td>
+                        </tr>
+                      ) : notificationTemplates.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="px-6 py-8 text-center text-neutral-500"
+                          >
+                            暂无通知模板
+                          </td>
+                        </tr>
+                      ) : (
+                        notificationTemplates.map((template) => (
+                          <tr key={template._id}>
+                            <td className="px-6 py-4 text-sm font-medium text-neutral-900">
+                              {template.name}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-neutral-500">
+                              {template.type === "resume_pass" &&
+                                "HR将状态改为'待面试'"}
+                              {template.type === "resume_reject" &&
+                                "HR将状态改为'已拒绝'"}
+                              {template.type === "interview_invite" &&
+                                "HR安排面试后"}
+                              {template.type === "interview_reminder" &&
+                                "面试前N小时自动发送"}
+                              {template.type === "interview_result" &&
+                                "面试后HR填写结果"}
+                              {template.type === "offer" &&
+                                "HR将状态改为'已录取'"}
+                              {template.type === "rejection" && "最终未录取"}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              <span
+                                className={
+                                  template.isDefault
+                                    ? "text-yellow-600"
+                                    : "text-green-600"
+                                }
+                              >
+                                {template.isDefault ? "系统默认" : "✅"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              <button
+                                className="text-primary-600 hover:text-primary-900 mr-3"
+                                onClick={() => {
+                                  setCurrentNotificationId(template._id);
+                                  setNotificationForm({
+                                    type: template.type,
+                                    name: template.name,
+                                    title: template.title,
+                                    content: template.content,
+                                  });
+                                  setModal("notification");
+                                }}
+                              >
+                                编辑
+                              </button>
+                              {!template.isDefault && (
+                                <button
+                                  className="text-red-600 hover:text-red-900"
+                                  onClick={async () => {
+                                    if (
+                                      window.confirm(
+                                        "确定要删除这个通知模板吗？",
+                                      )
+                                    ) {
+                                      try {
+                                        await notificationTemplateApi.deleteTemplate(
+                                          template._id,
+                                          { teamId: currentUser?.team },
+                                        );
+                                        fetchNotificationTemplates();
+                                      } catch (err) {
+                                        console.error("删除通知模板失败:", err);
+                                      }
+                                    }
+                                  }}
+                                >
+                                  删除
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -2286,23 +2352,155 @@ function Admin() {
               <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
                 <input
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="通知类型"
-                  value={notificationForm.type}
+                  placeholder="模板名称"
+                  value={notificationForm.name || ""}
+                  onChange={(e) =>
+                    setNotificationForm({
+                      ...notificationForm,
+                      name: e.target.value,
+                    })
+                  }
+                />
+                <select
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                  value={notificationForm.type || ""}
                   onChange={(e) =>
                     setNotificationForm({
                       ...notificationForm,
                       type: e.target.value,
                     })
                   }
-                />
+                >
+                  <option value="">选择通知类型</option>
+                  <option value="resume_pass">简历通过筛选通知</option>
+                  <option value="resume_reject">简历未通过通知</option>
+                  <option value="interview_invite">面试邀请通知</option>
+                  <option value="interview_reminder">面试提醒通知</option>
+                  <option value="interview_result">面试结果通知</option>
+                  <option value="offer">录用通知</option>
+                  <option value="rejection">感谢信/拒绝信</option>
+                </select>
+
+                {/* 变量提示 */}
+                {notificationForm.type && (
+                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+                    <h4 className="text-sm font-medium text-neutral-800 mb-2">
+                      可用变量：
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {notificationForm.type === "resume_pass" &&
+                        ["{studentName}", "{positionName}", "{teamName}"].map(
+                          (variable) => (
+                            <span
+                              key={variable}
+                              className="inline-block rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700"
+                            >
+                              {variable}
+                            </span>
+                          ),
+                        )}
+                      {notificationForm.type === "resume_reject" &&
+                        [
+                          "{studentName}",
+                          "{positionName}",
+                          "{teamName}",
+                          "{rejectReason}",
+                        ].map((variable) => (
+                          <span
+                            key={variable}
+                            className="inline-block rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700"
+                          >
+                            {variable}
+                          </span>
+                        ))}
+                      {notificationForm.type === "interview_invite" &&
+                        [
+                          "{studentName}",
+                          "{positionName}",
+                          "{teamName}",
+                          "{interviewTime}",
+                          "{interviewLocation}",
+                          "{interviewerName}",
+                        ].map((variable) => (
+                          <span
+                            key={variable}
+                            className="inline-block rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700"
+                          >
+                            {variable}
+                          </span>
+                        ))}
+                      {notificationForm.type === "interview_reminder" &&
+                        [
+                          "{studentName}",
+                          "{positionName}",
+                          "{teamName}",
+                          "{interviewTime}",
+                          "{interviewLocation}",
+                        ].map((variable) => (
+                          <span
+                            key={variable}
+                            className="inline-block rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700"
+                          >
+                            {variable}
+                          </span>
+                        ))}
+                      {notificationForm.type === "interview_result" &&
+                        [
+                          "{studentName}",
+                          "{positionName}",
+                          "{teamName}",
+                          "{interviewResult}",
+                          "{feedbackComment}",
+                        ].map((variable) => (
+                          <span
+                            key={variable}
+                            className="inline-block rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700"
+                          >
+                            {variable}
+                          </span>
+                        ))}
+                      {notificationForm.type === "offer" &&
+                        [
+                          "{studentName}",
+                          "{positionName}",
+                          "{teamName}",
+                          "{onboardingTime}",
+                          "{onboardingLocation}",
+                          "{contactPerson}",
+                        ].map((variable) => (
+                          <span
+                            key={variable}
+                            className="inline-block rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700"
+                          >
+                            {variable}
+                          </span>
+                        ))}
+                      {notificationForm.type === "rejection" &&
+                        ["{studentName}", "{teamName}", "{rejectReason}"].map(
+                          (variable) => (
+                            <span
+                              key={variable}
+                              className="inline-block rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700"
+                            >
+                              {variable}
+                            </span>
+                          ),
+                        )}
+                    </div>
+                    <p className="mt-2 text-xs text-neutral-500">
+                      提示：在标题和内容中使用这些变量，系统会自动替换为实际值
+                    </p>
+                  </div>
+                )}
+
                 <input
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="触发时机"
-                  value={notificationForm.trigger}
+                  placeholder="通知标题"
+                  value={notificationForm.title || ""}
                   onChange={(e) =>
                     setNotificationForm({
                       ...notificationForm,
-                      trigger: e.target.value,
+                      title: e.target.value,
                     })
                   }
                 />
@@ -2310,7 +2508,7 @@ function Admin() {
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
                   rows={5}
                   placeholder="通知内容"
-                  value={notificationForm.content}
+                  value={notificationForm.content || ""}
                   onChange={(e) =>
                     setNotificationForm({
                       ...notificationForm,
@@ -2333,7 +2531,41 @@ function Admin() {
               <button
                 onClick={async () => {
                   try {
-                    if (modal === "candidate") {
+                    if (modal === "notification") {
+                      // 保存通知模板
+                      if (!currentUser?.team) {
+                        alert("请先选择团队");
+                        return;
+                      }
+
+                      const templateData = {
+                        teamId: currentUser.team,
+                        type: notificationForm.type,
+                        name: notificationForm.name,
+                        title: notificationForm.title,
+                        content: notificationForm.content,
+                        variables: [], // 这里可以根据模板内容自动提取变量
+                        status: "active",
+                        createdBy: currentUser._id,
+                      };
+
+                      if (currentNotificationId) {
+                        // 编辑模式
+                        await notificationTemplateApi.updateTemplate(
+                          currentNotificationId,
+                          templateData,
+                        );
+                      } else {
+                        // 新建模式
+                        await notificationTemplateApi.createTemplate(
+                          templateData,
+                        );
+                      }
+
+                      // 重新获取通知模板列表
+                      fetchNotificationTemplates();
+                      setModal(null);
+                    } else if (modal === "candidate") {
                       // 导入候选人
                       const formData = new FormData();
                       formData.append("name", candidateForm.name);

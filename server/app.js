@@ -40,6 +40,7 @@ var deliveriesRouter = require("./routes/api/deliveries");
 var aiPreInterviewsRouter = require("./routes/api/aiPreInterviews");
 var interviewInvitationsRouter = require("./routes/api/interviewInvitations");
 var notificationsRouter = require("./routes/api/notifications");
+var notificationTemplatesRouter = require("./routes/api/notificationTemplates");
 var aiChatRouter = require("./routes/api/aiChat");
 
 var app = express();
@@ -77,6 +78,7 @@ app.use("/api/deliveries", deliveriesRouter);
 app.use("/api/aiPreInterviews", aiPreInterviewsRouter);
 app.use("/api/interviewInvitations", interviewInvitationsRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/notification-templates", notificationTemplatesRouter);
 app.use("/api/aiChat", aiChatRouter);
 
 // catch 404 and forward to error handler

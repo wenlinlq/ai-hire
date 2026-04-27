@@ -70,6 +70,18 @@ async function startServer() {
     const notificationModel = require("../models/notificationModel");
     await notificationModel.initializeIndexes();
 
+    // 导入通知模板模型并初始化索引
+    const notificationTemplateModel = require("../models/notificationTemplateModel");
+    await notificationTemplateModel.initializeIndexes();
+
+    // 导入通知日志模型并初始化索引
+    const notificationLogModel = require("../models/notificationLogModel");
+    await notificationLogModel.initializeIndexes();
+
+    // 初始化默认通知模板
+    const initNotificationTemplates = require("../scripts/initNotificationTemplates");
+    await initNotificationTemplates();
+
     console.log("Database indexes initialized successfully");
 
     // 启动服务器

@@ -1677,20 +1677,149 @@ function Admin() {
                               <button
                                 type="button"
                                 className="ml-3 text-green-600 hover:text-green-900"
-                                onClick={async () => {
-                                  try {
-                                    await applicationApi.updateApplicationStatus(
-                                      candidate._id,
-                                      "offer",
-                                    );
-                                    window.message.success("候选人已录用");
-                                    // 重新获取候选人列表
-                                    fetchCandidates();
-                                  } catch (err: any) {
-                                    window.message.error(
-                                      err.message || "操作失败",
-                                    );
-                                  }
+                                onClick={() => {
+                                  // 显示录用信息收集弹框
+                                  const onboardingTime = prompt(
+                                    "请输入入职时间（格式：YYYY-MM-DD）:",
+                                  );
+                                  if (!onboardingTime) return;
+
+                                  const onboardingLocation =
+                                    prompt("请输入入职地点:") || "";
+                                  const contactPerson =
+                                    prompt("请输入联系人:") ||
+                                    currentUser?.username ||
+                                    "";
+
+                                  // 执行录用逻辑
+                                  (async () => {
+                                    try {
+                                      // 更新候选人状态为已录用
+                                      await applicationApi.updateApplication(
+                                        candidate._id,
+                                        { status: "offer" },
+                                      );
+
+                                      // 发送录用通知
+                                      if (
+                                        candidate.studentId &&
+                                        currentUser?.team
+                                      ) {
+                                        try {
+                                          const templateResponse =
+                                            await notificationTemplateApi.getTemplateByType(
+                                              currentUser.team,
+                                              "offer",
+                                            );
+                                          const template =
+                                            templateResponse.data;
+
+                                          // 替换模板中的变量
+                                          let title =
+                                            template.title || "录用通知";
+                                          let content =
+                                            template.content ||
+                                            `恭喜您被录用为${candidate.positionName || candidate.positionId}岗位成员！`;
+
+                                          // 替换变量
+                                          title = title
+                                            .replace(
+                                              /{studentName}/g,
+                                              candidate.name || "",
+                                            )
+                                            .replace(
+                                              /{positionName}/g,
+                                              candidate.positionName ||
+                                                candidate.positionId,
+                                            )
+                                            .replace(
+                                              /{teamName}/g,
+                                              currentUser?.teamName || "",
+                                            )
+                                            .replace(
+                                              /{onboardingTime}/g,
+                                              onboardingTime,
+                                            )
+                                            .replace(
+                                              /{onboardingLocation}/g,
+                                              onboardingLocation,
+                                            )
+                                            .replace(
+                                              /{contactPerson}/g,
+                                              contactPerson,
+                                            );
+
+                                          content = content
+                                            .replace(
+                                              /{studentName}/g,
+                                              candidate.name || "",
+                                            )
+                                            .replace(
+                                              /{positionName}/g,
+                                              candidate.positionName ||
+                                                candidate.positionId,
+                                            )
+                                            .replace(
+                                              /{teamName}/g,
+                                              currentUser?.teamName || "",
+                                            )
+                                            .replace(
+                                              /{onboardingTime}/g,
+                                              onboardingTime,
+                                            )
+                                            .replace(
+                                              /{onboardingLocation}/g,
+                                              onboardingLocation,
+                                            )
+                                            .replace(
+                                              /{contactPerson}/g,
+                                              contactPerson,
+                                            );
+
+                                          // 发送通知
+                                          await notificationApi.sendNotification(
+                                            {
+                                              userId: candidate.studentId,
+                                              type: "offer",
+                                              title: title,
+                                              content: content,
+                                              relatedId: candidate.positionId,
+                                              teamName:
+                                                currentUser?.teamName || "",
+                                            },
+                                          );
+                                        } catch (templateError) {
+                                          console.warn(
+                                            "获取通知模板失败，使用默认模板:",
+                                            templateError,
+                                          );
+                                          // 如果获取模板失败，使用默认内容
+                                          await notificationApi.sendNotification(
+                                            {
+                                              userId: candidate.studentId,
+                                              type: "offer",
+                                              title: "录用通知",
+                                              content: `恭喜您被录用为${candidate.positionName || candidate.positionId}岗位成员！\n\n入职信息如下：\n报到时间：${onboardingTime}\n报到地点：${onboardingLocation}\n联系人：${contactPerson}`,
+                                              relatedId: candidate.positionId,
+                                              teamName:
+                                                currentUser?.teamName || "",
+                                            },
+                                          );
+                                        }
+                                      }
+
+                                      window.message.success(
+                                        "候选人已录用，通知已发送",
+                                      );
+                                      // 重新获取候选人列表
+                                      fetchCandidates();
+                                    } catch (err: any) {
+                                      console.error("录用操作失败:", err);
+                                      window.message.error(
+                                        err.message || "操作失败",
+                                      );
+                                    }
+                                  })();
                                 }}
                               >
                                 录用
@@ -1698,20 +1827,152 @@ function Admin() {
                               <button
                                 type="button"
                                 className="ml-3 text-red-600 hover:text-red-900"
-                                onClick={async () => {
-                                  try {
-                                    await applicationApi.updateApplicationStatus(
-                                      candidate._id,
-                                      "rejected",
-                                    );
-                                    window.message.success("候选人已拒绝");
-                                    // 重新获取候选人列表
-                                    fetchCandidates();
-                                  } catch (err: any) {
-                                    window.message.error(
-                                      err.message || "操作失败",
-                                    );
-                                  }
+                                onClick={() => {
+                                  // 执行拒绝逻辑
+                                  (async () => {
+                                    try {
+                                      console.log(
+                                        "开始拒绝操作，候选人信息:",
+                                        candidate,
+                                      );
+                                      console.log("当前用户信息:", currentUser);
+
+                                      // 1. 更新候选人状态为已拒绝
+                                      console.log("开始更新候选人状态");
+                                      const updateResult =
+                                        await applicationApi.updateApplication(
+                                          candidate._id,
+                                          { status: "rejected" },
+                                        );
+                                      console.log(
+                                        "状态更新成功:",
+                                        updateResult,
+                                      );
+
+                                      // 2. 发送拒绝通知
+                                      if (
+                                        candidate.studentId &&
+                                        currentUser?.team
+                                      ) {
+                                        console.log("开始发送拒绝通知");
+                                        try {
+                                          const templateResponse =
+                                            await notificationTemplateApi.getTemplateByType(
+                                              currentUser.team,
+                                              "rejection",
+                                            );
+                                          const template =
+                                            templateResponse.data;
+                                          console.log(
+                                            "获取通知模板成功:",
+                                            template,
+                                          );
+
+                                          // 替换模板中的变量
+                                          let title =
+                                            template.title || "感谢您的申请";
+                                          let content =
+                                            template.content ||
+                                            `感谢您申请${candidate.positionName || candidate.positionId}岗位，很遗憾本次未能录用。`;
+
+                                          // 替换变量
+                                          title = title
+                                            .replace(
+                                              /\{studentName\}/g,
+                                              candidate.name || "",
+                                            )
+                                            .replace(
+                                              /\{positionName\}/g,
+                                              candidate.positionName ||
+                                                candidate.positionId,
+                                            )
+                                            .replace(
+                                              /\{teamName\}/g,
+                                              currentUser?.teamName || "",
+                                            );
+
+                                          content = content
+                                            .replace(
+                                              /\{studentName\}/g,
+                                              candidate.name || "",
+                                            )
+                                            .replace(
+                                              /\{positionName\}/g,
+                                              candidate.positionName ||
+                                                candidate.positionId,
+                                            )
+                                            .replace(
+                                              /\{teamName\}/g,
+                                              currentUser?.teamName || "",
+                                            );
+
+                                          // 发送通知
+                                          const notificationResult =
+                                            await notificationApi.sendNotification(
+                                              {
+                                                userId: candidate.studentId,
+                                                type: "rejection",
+                                                title: title,
+                                                content: content,
+                                                relatedId: candidate.positionId,
+                                                teamName:
+                                                  currentUser?.teamName || "",
+                                              },
+                                            );
+                                          console.log(
+                                            "通知发送成功:",
+                                            notificationResult,
+                                          );
+                                        } catch (templateError) {
+                                          console.warn(
+                                            "获取通知模板失败，使用默认模板:",
+                                            templateError,
+                                          );
+                                          // 如果获取模板失败，使用默认内容
+                                          try {
+                                            const notificationResult =
+                                              await notificationApi.sendNotification(
+                                                {
+                                                  userId: candidate.studentId,
+                                                  type: "rejection",
+                                                  title: "感谢您的申请",
+                                                  content: `感谢您申请${candidate.positionName || candidate.positionId}岗位，很遗憾本次未能录用。`,
+                                                  relatedId:
+                                                    candidate.positionId,
+                                                  teamName:
+                                                    currentUser?.teamName || "",
+                                                },
+                                              );
+                                            console.log(
+                                              "使用默认模板发送通知成功:",
+                                              notificationResult,
+                                            );
+                                          } catch (notificationError) {
+                                            console.warn(
+                                              "发送通知失败:",
+                                              notificationError,
+                                            );
+                                            // 发送通知失败不影响状态更新
+                                          }
+                                        }
+                                      } else {
+                                        console.warn(
+                                          "候选人没有studentId或当前用户没有团队信息，跳过发送通知",
+                                        );
+                                      }
+
+                                      window.message.success(
+                                        "候选人已拒绝，通知已发送",
+                                      );
+                                      // 3. 重新获取候选人列表
+                                      fetchCandidates();
+                                    } catch (err: any) {
+                                      console.error("拒绝操作失败:", err);
+                                      window.message.error(
+                                        err.message || "操作失败",
+                                      );
+                                    }
+                                  })();
                                 }}
                               >
                                 拒绝

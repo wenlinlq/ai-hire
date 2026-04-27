@@ -290,6 +290,12 @@ function Profile() {
 
     fetchInterviewData();
   }, []);
+        } catch (error) {
+          console.error("发送面试提醒失败:", error);
+        }
+      }
+    }
+  };
 
   // 获取通知数据
   useEffect(() => {

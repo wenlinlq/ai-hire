@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { SiteNav } from "../../components/site";
 import userApi from "../../api/userApi";
 import { notificationApi } from "../../api/notificationApi";
@@ -15,6 +15,7 @@ interface Notification {
 }
 
 function Notifications() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [loading, setLoading] = useState(false);
@@ -210,10 +211,27 @@ function Notifications() {
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-700">
-      <SiteNav current="profile" />
-
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 flex items-center gap-2 text-neutral-600 hover:text-neutral-800 transition-colors"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            返回
+          </button>
           <h1 className="text-3xl font-bold text-neutral-800">消息通知</h1>
           <p className="mt-2 text-neutral-600">
             查看您的系统通知、投递状态、面试邀请等信息

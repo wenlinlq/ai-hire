@@ -423,6 +423,27 @@ function Profile() {
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-700">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-neutral-600 hover:text-neutral-800 transition-colors"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            返回
+          </button>
+        </div>
         <div className="grid gap-8 lg:grid-cols-4">
           <div className="lg:col-span-1">
             <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm h-[calc(100vh-150px)]">

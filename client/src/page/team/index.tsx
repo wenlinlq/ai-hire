@@ -4,7 +4,11 @@ import positionApi from "../../api/positionApi";
 import applicationApi from "../../api/applicationApi";
 import userApi from "../../api/userApi";
 import * as questionBankApi from "../../api/questionBankApi";
-import { notificationTemplateApi } from "../../api/notificationApi";
+import {
+  notificationApi,
+  notificationTemplateApi,
+} from "../../api/notificationApi";
+import { interviewInvitationApi } from "../../api/interviewInvitationApi";
 import ReactECharts from "echarts-for-react";
 
 type AdminTab =
@@ -1451,6 +1455,222 @@ function Admin() {
                               <button
                                 type="button"
                                 className="text-green-600 hover:text-green-900"
+                                onClick={() => {
+                                  // 显示面试安排弹框
+                                  const scheduledTime = prompt(
+                                    "请输入面试时间（格式：YYYY-MM-DD HH:MM）:",
+                                  );
+                                  if (!scheduledTime) return;
+
+                                  const interviewType = (
+                                    prompt(
+                                      "请输入面试类型（online/offline）:",
+                                    ) || "online"
+                                  ).toLowerCase();
+                                  let meetingUrl = "";
+                                  let location = "";
+
+                                  if (interviewType === "online") {
+                                    meetingUrl =
+                                      prompt("请输入面试链接:") || "";
+                                  } else {
+                                    location =
+                                      prompt("请输入面试地点:") || "未设置";
+                                  }
+
+                                  // 执行安排面试逻辑
+                                  (async () => {
+                                    try {
+                                      console.log(
+                                        "开始安排面试，候选人信息:",
+                                        candidate,
+                                      );
+                                      console.log("当前用户信息:", currentUser);
+
+                                      // 1. 更新候选人状态为面试中
+                                      console.log("开始更新候选人状态");
+                                      const updateResult =
+                                        await applicationApi.updateApplication(
+                                          candidate._id,
+                                          { status: "interview" },
+                                        );
+                                      console.log(
+                                        "状态更新成功:",
+                                        updateResult,
+                                      );
+
+                                      // 2. 创建面试邀请记录
+                                      if (candidate.studentId) {
+                                        console.log("开始创建面试邀请记录");
+                                        const invitationResult =
+                                          await interviewInvitationApi.createInterviewInvitation(
+                                            {
+                                              deliveryId: candidate._id, // 使用候选人ID作为投递ID
+                                              userId: candidate.studentId,
+                                              interviewerId: currentUser?._id,
+                                              type: interviewType as
+                                                | "online"
+                                                | "offline",
+                                              scheduledTime: scheduledTime,
+                                              meetingUrl: meetingUrl,
+                                              location: location,
+                                            },
+                                          );
+                                        console.log(
+                                          "面试邀请创建成功:",
+                                          invitationResult,
+                                        );
+                                      } else {
+                                        console.warn(
+                                          "候选人没有studentId，跳过创建面试邀请",
+                                        );
+                                      }
+
+                                      // 3. 发送面试邀请通知
+                                      if (
+                                        candidate.studentId &&
+                                        currentUser?.team
+                                      ) {
+                                        console.log("开始发送面试邀请通知");
+                                        // 获取团队的面试邀请通知模板
+                                        try {
+                                          const templateResponse =
+                                            await notificationTemplateApi.getTemplateByType(
+                                              currentUser.team,
+                                              "interview_invite",
+                                            );
+                                          const template =
+                                            templateResponse.data;
+                                          console.log(
+                                            "获取通知模板成功:",
+                                            template,
+                                          );
+
+                                          // 替换模板中的变量
+                                          let title =
+                                            template.title || "面试邀请通知";
+                                          let content =
+                                            template.content ||
+                                            `您申请的${candidate.positionName || candidate.positionId}职位已安排面试，请留意查看面试详情。`;
+
+                                          // 替换变量
+                                          title = title
+                                            .replace(
+                                              /{studentName}/g,
+                                              candidate.name || "",
+                                            )
+                                            .replace(
+                                              /{positionName}/g,
+                                              candidate.positionName ||
+                                                candidate.positionId,
+                                            )
+                                            .replace(
+                                              /{teamName}/g,
+                                              currentUser?.teamName || "",
+                                            )
+                                            .replace(
+                                              /{interviewTime}/g,
+                                              scheduledTime,
+                                            )
+                                            .replace(
+                                              /{interviewLocation}/g,
+                                              interviewType === "online"
+                                                ? meetingUrl
+                                                : location,
+                                            )
+                                            .replace(
+                                              /{interviewerName}/g,
+                                              currentUser?.username || "",
+                                            );
+
+                                          content = content
+                                            .replace(
+                                              /{studentName}/g,
+                                              candidate.name || "",
+                                            )
+                                            .replace(
+                                              /{positionName}/g,
+                                              candidate.positionName ||
+                                                candidate.positionId,
+                                            )
+                                            .replace(
+                                              /{teamName}/g,
+                                              currentUser?.teamName || "",
+                                            )
+                                            .replace(
+                                              /{interviewTime}/g,
+                                              scheduledTime,
+                                            )
+                                            .replace(
+                                              /{interviewLocation}/g,
+                                              interviewType === "online"
+                                                ? meetingUrl
+                                                : location,
+                                            )
+                                            .replace(
+                                              /{interviewerName}/g,
+                                              currentUser?.username || "",
+                                            );
+
+                                          // 发送通知
+                                          const notificationResult =
+                                            await notificationApi.sendNotification(
+                                              {
+                                                userId: candidate.studentId,
+                                                type: "interview_invite",
+                                                title: title,
+                                                content: content,
+                                                relatedId: candidate.positionId,
+                                                teamName:
+                                                  currentUser?.teamName || "",
+                                              },
+                                            );
+                                          console.log(
+                                            "通知发送成功:",
+                                            notificationResult,
+                                          );
+                                        } catch (templateError) {
+                                          console.warn(
+                                            "获取通知模板失败，使用默认模板:",
+                                            templateError,
+                                          );
+                                          // 如果获取模板失败，使用默认内容
+                                          const notificationResult =
+                                            await notificationApi.sendNotification(
+                                              {
+                                                userId: candidate.studentId,
+                                                type: "interview_invite",
+                                                title: "面试邀请通知",
+                                                content: `您申请的${candidate.positionName || candidate.positionId}职位已安排面试，请留意查看面试详情。`,
+                                                relatedId: candidate.positionId,
+                                                teamName:
+                                                  currentUser?.teamName || "",
+                                              },
+                                            );
+                                          console.log(
+                                            "使用默认模板发送通知成功:",
+                                            notificationResult,
+                                          );
+                                        }
+                                      } else {
+                                        console.warn(
+                                          "候选人没有studentId或当前用户没有团队信息，跳过发送通知",
+                                        );
+                                      }
+
+                                      window.message.success(
+                                        "面试已安排，状态已更新为面试中",
+                                      );
+                                      // 4. 重新获取候选人列表
+                                      fetchCandidates();
+                                    } catch (err: any) {
+                                      console.error("安排面试失败:", err);
+                                      window.message.error(
+                                        err.message || "安排面试失败",
+                                      );
+                                    }
+                                  })();
+                                }}
                               >
                                 安排面试
                               </button>
@@ -1810,7 +2030,7 @@ function Admin() {
                               {template.type === "interview_invite" &&
                                 "HR安排面试后"}
                               {template.type === "interview_reminder" &&
-                                "面试前N小时自动发送"}
+                                "面试前1小时自动发送"}
                               {template.type === "interview_result" &&
                                 "面试后HR填写结果"}
                               {template.type === "offer" &&

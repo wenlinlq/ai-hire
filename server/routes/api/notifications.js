@@ -23,4 +23,7 @@ router.delete("/:notificationId", notificationController.deleteNotification);
 // 获取通知详情
 router.get("/:notificationId", notificationController.getNotificationById);
 
+// 发送通知
+router.post("/send", notificationController.sendNotification);
+
 module.exports = router;

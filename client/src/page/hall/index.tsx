@@ -142,7 +142,8 @@ function Hall() {
       `${job.title}${job.department}${job.requirements.skills.join("")}${job.requirements.description}`.includes(
         keyword.trim(),
       );
-    return keywordMatched;
+    const statusMatched = job.status === "open";
+    return keywordMatched && statusMatched;
   });
 
   return (

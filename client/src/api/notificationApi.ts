@@ -31,6 +31,11 @@ export const notificationApi = {
   getNotificationById: (notificationId: string) => {
     return api.get(`/notifications/${notificationId}`);
   },
+
+  // 发送通知
+  sendNotification: (notificationData: any) => {
+    return api.post(`/notifications/send`, notificationData);
+  },
 };
 
 // 通知模板相关API

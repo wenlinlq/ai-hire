@@ -117,8 +117,7 @@ class NotificationController {
         return res.status(400).json({ error: "Missing notificationId" });
       }
 
-      const notification =
-        await notificationModel.findNotificationById(notificationId);
+      const notification = await notificationModel.findNotificationById(notificationId);
       if (!notification) {
         return res.status(404).json({ error: "Notification not found" });
       }
@@ -126,6 +125,32 @@ class NotificationController {
       res.status(200).json({ success: true, data: notification });
     } catch (error) {
       console.error("Error getting notification by id:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  // 发送通知
+  async sendNotification(req, res) {
+    try {
+      const { userId, type, title, content, relatedId, teamName } = req.body;
+
+      if (!userId || !type || !title || !content) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const notificationData = {
+        userId,
+        type,
+        title,
+        content,
+        relatedId,
+        teamName
+      };
+
+      const notification = await notificationModel.createNotification(notificationData);
+      res.status(201).json({ success: true, data: notification });
+    } catch (error) {
+      console.error("Error sending notification:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   }

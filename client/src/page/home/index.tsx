@@ -265,8 +265,9 @@ function Home() {
         const teams = await teamApi.getTeams();
         console.log("获取团队数据成功:", teams);
 
-        // 为每个职位添加团队名称，获取前6个职位作为热门职位（服务器已按浏览量排序）
+        // 为每个职位添加团队名称，获取前6个开放的职位作为热门职位（服务器已按浏览量排序）
         const jobsWithTeamName = response
+          .filter((job) => job.status === "open")
           .map((job) => ({
             ...job,
             teamName:

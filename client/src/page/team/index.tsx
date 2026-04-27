@@ -231,6 +231,10 @@ function Admin() {
     useState<boolean>(false);
   // 候选人错误状态
   const [errorCandidates, setErrorCandidates] = useState<string | null>(null);
+  // 搜索关键词
+  const [searchKeyword, setSearchKeyword] = useState<string>("");
+  // 选中的状态
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
 
   // 仪表盘统计数据
   const [dashboardStats, setDashboardStats] = useState({
@@ -384,7 +388,10 @@ function Admin() {
   };
 
   // 获取候选人列表
-  const fetchCandidates = async () => {
+  const fetchCandidates = async (
+    searchKeywordParam: string = searchKeyword,
+    selectedStatusParam: string = selectedStatus,
+  ) => {
     setIsLoadingCandidates(true);
     setErrorCandidates(null);
     try {
@@ -397,8 +404,49 @@ function Admin() {
       } else {
         candidateList = await applicationApi.getApplications();
       }
+
       // 确保candidateList是一个数组
-      setCandidates(Array.isArray(candidateList) ? candidateList : []);
+      const candidatesArray = Array.isArray(candidateList) ? candidateList : [];
+
+      // 筛选候选人
+      const filteredCandidates = candidatesArray.filter((candidate) => {
+        // 状态筛选
+        if (selectedStatusParam) {
+          // 处理特殊状态值
+          if (selectedStatusParam === "rejected") {
+            // 已拒绝状态：包括rejected和其他未明确指定的状态
+            if (
+              candidate.status !== "rejected" &&
+              candidate.status !== "pending" &&
+              candidate.status !== "screening" &&
+              candidate.status !== "interview" &&
+              candidate.status !== "offer" &&
+              candidate.status !== "已通过预面试"
+            ) {
+              return true;
+            } else {
+              return false;
+            }
+          } else if (candidate.status !== selectedStatusParam) {
+            return false;
+          }
+        }
+
+        // 搜索关键词筛选
+        if (searchKeywordParam) {
+          const keyword = searchKeywordParam.toLowerCase();
+          return (
+            (candidate.name || "").toLowerCase().includes(keyword) ||
+            (candidate.email || "").toLowerCase().includes(keyword) ||
+            (candidate.positionName || "").toLowerCase().includes(keyword) ||
+            (candidate.major || "").toLowerCase().includes(keyword)
+          );
+        }
+
+        return true;
+      });
+
+      setCandidates(filteredCandidates);
     } catch (err: any) {
       setErrorCandidates(err.message || "获取候选人列表失败");
       // 发生错误时，确保candidates是一个空数组
@@ -1308,26 +1356,103 @@ function Admin() {
                 <h2 className="text-2xl font-bold text-neutral-800">
                   候选人管理
                 </h2>
-                <button
-                  type="button"
-                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => {
-                    // 重置表单，设置团队ID为当前用户的团队ID
-                    setCandidateForm({
-                      name: "",
-                      phone: "",
-                      email: "",
-                      grade: "",
-                      major: "",
-                      positionId: "",
-                      teamId: currentUser?.team || "",
-                      resume: null,
-                    });
-                    openModal("candidate");
-                  }}
-                >
-                  导入候选人
-                </button>
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    className="rounded-lg bg-red-500 px-4 py-2 text-white transition-colors hover:bg-red-600"
+                    onClick={() => {
+                      // 显示批量删除确认对话框
+                      const statusToDelete = prompt(
+                        "请输入要删除的候选人状态（例如：已拒绝、已录用、待处理、面试中、简历筛选、已通过预面试）:",
+                      );
+                      if (!statusToDelete) return;
+
+                      if (
+                        window.confirm(
+                          `确定要删除所有状态为"${statusToDelete}"的候选人吗？`,
+                        )
+                      ) {
+                        // 执行批量删除操作
+                        (async () => {
+                          try {
+                            // 状态映射：中文状态名称 -> 实际状态值
+                            const statusMap: Record<string, string> = {
+                              待处理: "pending",
+                              简历筛选: "screening",
+                              面试中: "interview",
+                              已录用: "offer",
+                              已通过预面试: "已通过预面试",
+                              已拒绝: "rejected",
+                            };
+
+                            // 获取实际状态值
+                            const actualStatus =
+                              statusMap[statusToDelete] || statusToDelete;
+
+                            // 筛选出要删除的候选人
+                            const candidatesToDelete = candidates.filter(
+                              (candidate) => candidate.status === actualStatus,
+                            );
+
+                            if (candidatesToDelete.length === 0) {
+                              window.message.info(
+                                `没有状态为"${statusToDelete}"的候选人`,
+                              );
+                              return;
+                            }
+
+                            // 逐个删除候选人
+                            let deletedCount = 0;
+                            for (const candidate of candidatesToDelete) {
+                              try {
+                                await applicationApi.deleteApplication(
+                                  candidate._id,
+                                );
+                                deletedCount++;
+                              } catch (error) {
+                                console.warn(
+                                  `删除候选人${candidate._id}失败:`,
+                                  error,
+                                );
+                              }
+                            }
+
+                            window.message.success(
+                              `成功删除${deletedCount}个候选人`,
+                            );
+                            // 重新获取候选人列表
+                            fetchCandidates();
+                          } catch (err: any) {
+                            console.error("批量删除失败:", err);
+                            window.message.error(err.message || "操作失败");
+                          }
+                        })();
+                      }
+                    }}
+                  >
+                    批量删除
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
+                    onClick={() => {
+                      // 重置表单，设置团队ID为当前用户的团队ID
+                      setCandidateForm({
+                        name: "",
+                        phone: "",
+                        email: "",
+                        grade: "",
+                        major: "",
+                        positionId: "",
+                        teamId: currentUser?.team || "",
+                        resume: null,
+                      });
+                      openModal("candidate");
+                    }}
+                  >
+                    导入候选人
+                  </button>
+                </div>
               </div>
 
               <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
@@ -1337,17 +1462,34 @@ function Admin() {
                       type="text"
                       placeholder="搜索候选人"
                       className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSearchKeyword(value);
+                        // 直接传递搜索关键词作为参数
+                        fetchCandidates(value, selectedStatus);
+                      }}
                     />
-                    <select className="rounded-lg border border-neutral-300 px-4 py-2">
+                    <select
+                      className="rounded-lg border border-neutral-300 px-4 py-2"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSelectedStatus(value);
+                        // 直接传递选中状态作为参数
+                        fetchCandidates(searchKeyword, value);
+                      }}
+                    >
                       {[
-                        "全部状态",
-                        "简历筛选",
-                        "初试",
-                        "复试",
-                        "已录用",
-                        "已拒绝",
+                        { value: "", label: "全部状态" },
+                        { value: "pending", label: "待处理" },
+                        { value: "screening", label: "简历筛选" },
+                        { value: "interview", label: "面试中" },
+                        { value: "offer", label: "已录用" },
+                        { value: "rejected", label: "已拒绝" },
+                        { value: "已通过预面试", label: "已通过预面试" },
                       ].map((item) => (
-                        <option key={item}>{item}</option>
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
                       ))}
                     </select>
                   </div>

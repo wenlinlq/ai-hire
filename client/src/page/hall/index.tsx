@@ -393,9 +393,49 @@ function Hall() {
                           {favoriteJobs[job._id] ? "已收藏" : "收藏"}
                         </button>
                         {deliveredJobs[job._id] ? (
-                          <span className="rounded-lg bg-neutral-100 px-4 py-2 text-sm text-neutral-600">
-                            等待结果
-                          </span>
+                          <button
+                            type="button"
+                            className="rounded-lg bg-green-500 px-4 py-2 text-sm text-white transition-colors hover:bg-green-600"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              const currentUser = userApi.getCurrentUser();
+                              if (!currentUser) {
+                                alert("请先登录");
+                                return;
+                              }
+
+                              try {
+                                const resumeId = "60d0fe4f5311236168a109ca";
+                                const hasAiPreInterview = job.aiPreInterview || false;
+
+                                await deliveryApi.createDelivery({
+                                  userId: currentUser._id,
+                                  jobId: job._id,
+                                  resumeId,
+                                  hasAiPreInterview,
+                                });
+
+                                setJobs((currentJobs) =>
+                                  currentJobs.map((currentJob) =>
+                                    currentJob._id === job._id
+                                      ? {
+                                          ...currentJob,
+                                          applyCount: currentJob.applyCount + 1,
+                                        }
+                                      : currentJob,
+                                  ),
+                                );
+
+                                alert("投递成功！");
+                                e.preventDefault();
+                              } catch (error) {
+                                console.error("投递失败:", error);
+                                alert("投递失败，请重试");
+                              }
+                            }}
+                          >
+                            再次投递
+                          </button>
                         ) : (
                           <button
                             type="button"
@@ -409,16 +449,9 @@ function Hall() {
                               }
 
                               try {
-                                // 这里需要获取用户的默认简历ID
-                                // 假设用户已经上传了简历，并且有一个默认简历
-                                // 实际项目中，这里应该从用户的简历列表中获取默认简历
-                                const resumeId = "60d0fe4f5311236168a109ca"; // 示例简历ID
+                                const resumeId = "60d0fe4f5311236168a109ca";
+                                const hasAiPreInterview = job.aiPreInterview || false;
 
-                                // 检查职位是否需要AI预面试
-                                const hasAiPreInterview =
-                                  job.aiPreInterview || false;
-
-                                // 创建投递记录
                                 const response =
                                   await deliveryApi.createDelivery({
                                     userId: currentUser._id,
@@ -427,13 +460,11 @@ function Hall() {
                                     hasAiPreInterview,
                                   });
 
-                                // 更新已投递职位状态
                                 setDeliveredJobs((current) => ({
                                   ...current,
                                   [job._id]: true,
                                 }));
 
-                                // 更新已投递数
                                 setJobs((currentJobs) =>
                                   currentJobs.map((currentJob) =>
                                     currentJob._id === job._id
@@ -446,8 +477,6 @@ function Hall() {
                                 );
 
                                 alert("投递成功！");
-
-                                // 禁用链接跳转
                                 e.preventDefault();
                               } catch (error) {
                                 console.error("投递失败:", error);

@@ -828,11 +828,14 @@ function Profile() {
                                           _id: r._id,
                                           name:
                                             r.fileUrl.split("/").pop() ||
-                                            "resume",
+                                              .split("/")
+                                              .pop() || "resume",
                                           uploadedAt: new Date(
                                             r.createdAt,
-                                          ).toLocaleString("zh-CN"),
                                           type: r.fileType.toUpperCase() as
+                                          type: (
+                                            r.fileType || ""
+                                          ).toUpperCase() as
                                             | "PDF"
                                             | "DOC"
                                             | "DOCX"

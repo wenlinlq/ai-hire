@@ -88,6 +88,9 @@
 | aiQuestionBankId         | ObjectId | 否   | AI试题库ID                           |
 | aiPreInterview           | Boolean  | 否   | 是否开启AI预面试，默认false          |
 | aiPreInterviewScore      | Number   | 否   | AI预面试最低分，默认60               |
+| aiResumeFilter           | Boolean  | 否   | 是否开启AI简历筛选，默认false        |
+| aiResumeFilterScore      | Number   | 否   | AI简历筛选最低分，默认60             |
+| aiResumeFilterSkills     | [String] | 否   | AI简历筛选技能要求列表               |
 | requirements             | Object   | 是   | 岗位要求                             |
 | requirements.skills      | [String] | 是   | 技能要求，如["Vue","React"]          |
 | requirements.experience  | String   | 否   | 经验要求                             |

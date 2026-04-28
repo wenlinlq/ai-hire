@@ -62,11 +62,19 @@ class PositionModel {
         // 面试方式
         interviewType: positionData.interviewType || "online",
         // AI试题
-        aiQuestionBankId: positionData.aiQuestionBankId ? this.getValidObjectId(positionData.aiQuestionBankId) : null,
+        aiQuestionBankId: positionData.aiQuestionBankId
+          ? this.getValidObjectId(positionData.aiQuestionBankId)
+          : null,
         // AI预面试
         aiPreInterview: positionData.aiPreInterview || false,
         // AI预面试最低分
         aiPreInterviewScore: positionData.aiPreInterviewScore || 60,
+        // AI简历筛选
+        aiResumeFilter: positionData.aiResumeFilter || false,
+        // AI简历筛选最低分
+        aiResumeFilterScore: positionData.aiResumeFilterScore || 60,
+        // AI简历筛选技能要求
+        aiResumeFilterSkills: positionData.aiResumeFilterSkills || [],
         // 岗位要求
         requirements: {
           skills: positionData.requirements?.skills || [],

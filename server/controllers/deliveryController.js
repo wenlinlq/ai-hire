@@ -38,8 +38,9 @@ class DeliveryController {
       if (position && position.teamId) {
         // 获取团队信息
         team = await teamModel.findTeamById(position.teamId);
-        if (team) {
-          // 将用户添加到团队的候选人列表中（如果还不在列表中）
+        
+        // 如果不需要AI预面试，直接将用户添加到团队的候选人列表中
+        if (!hasAiPreInterview) {
           if (!team.candidates) {
             team.candidates = [];
           }
@@ -63,7 +64,7 @@ class DeliveryController {
               studentId: userId, // 使用userId作为studentId
               resumeId: resumeId,
               teamId: position.teamId,
-              status: hasAiPreInterview ? "pending" : "screening",
+              status: "screening",
               // 从用户信息中获取姓名、邮箱、手机号
               name: user?.username || "",
               email: user?.email || "",

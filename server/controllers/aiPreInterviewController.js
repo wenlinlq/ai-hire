@@ -104,33 +104,59 @@ class AiPreInterviewController {
         aiScore: analysis.overall,
       });
 
-      // 更新对应的应用状态
+      // 如果通过了AI预面试，将用户添加到团队的候选人列表中
       if (analysis.overall >= minScore) {
-        const applicationModel = require("../models/applicationModel");
-        // 查找与该投递记录对应的应用记录（通过 userId 和 jobId 匹配）
-        const deliveries = await deliveryModel.findDeliveriesByUserId(
-          updatedInterview.userId,
-        );
-        for (const delivery of deliveries) {
-          if (delivery.jobId.toString() === updatedInterview.jobId.toString()) {
-            // 查找对应的应用记录
-            const applications =
-              await applicationModel.findApplicationsByPositionId(
-                delivery.jobId,
-              );
-            for (const application of applications) {
-              if (
-                application.studentId === updatedInterview.userId.toString()
-              ) {
-                // 更新应用状态为"已通过预面试"
-                await applicationModel.updateApplication(application._id, {
-                  status: "已通过预面试",
-                  aiScore: analysis.overall,
-                });
-                break;
+        // 获取职位信息，用于获取团队ID
+        const position = await positionModel.findPositionById(updatedInterview.jobId);
+        if (position && position.teamId) {
+          const teamModel = require("../models/teamModel");
+          const team = await teamModel.findTeamById(position.teamId);
+          
+          if (team) {
+            // 将用户添加到团队的候选人列表中（如果还不在列表中）
+            if (!team.candidates) {
+              team.candidates = [];
+            }
+            if (!team.candidates.includes(updatedInterview.userId)) {
+              team.candidates.push(updatedInterview.userId);
+              // 更新团队信息
+              await teamModel.updateTeam(team._id, {
+                candidates: team.candidates,
+              });
+            }
+
+            // 创建application记录，用于管理后台的候选人管理
+            try {
+              const userModel = require("../models/userModel");
+              const resumeModel = require("../models/resumeModel");
+              const applicationModel = require("../models/applicationModel");
+              
+              // 获取用户信息
+              const user = await userModel.findUserById(updatedInterview.userId);
+              // 获取简历信息
+              const resume = await resumeModel.getCurrentResume(updatedInterview.userId);
+
+              const applicationData = {
+                positionId: updatedInterview.jobId,
+                studentId: updatedInterview.userId,
+                resumeId: updatedInterview.resumeId,
+                teamId: position.teamId,
+                status: "已通过预面试",
+                aiScore: analysis.overall,
+                // 从用户信息中获取姓名、邮箱、手机号
+                name: user?.username || "",
+                email: user?.email || "",
+                phone: user?.phone || "",
+                // 从简历信息中获取简历文件URL
+                resumeFileUrl: resume?.fileUrl || "",
+              };
+              await applicationModel.createApplication(applicationData);
+            } catch (error) {
+              // 处理唯一索引冲突（用户已经报名过该岗位）
+              if (error.code !== 11000) {
+                console.error("Error creating application:", error);
               }
             }
-            break;
           }
         }
       }

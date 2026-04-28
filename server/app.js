@@ -27,6 +27,10 @@ const aiPreInterviewModel = require("./models/aiPreInterviewModel");
 const interviewInvitationModel = require("./models/interviewInvitationModel");
 // 导入通知模型
 const notificationModel = require("./models/notificationModel");
+// 导入筛选规则模型
+const filterRuleModel = require("./models/filterRuleModel");
+// 导入简历分析模型
+const resumeAnalysisModel = require("./models/resumeAnalysisModel");
 
 var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/api/users");
@@ -42,6 +46,8 @@ var interviewInvitationsRouter = require("./routes/api/interviewInvitations");
 var notificationsRouter = require("./routes/api/notifications");
 var notificationTemplatesRouter = require("./routes/api/notificationTemplates");
 var aiChatRouter = require("./routes/api/aiChat");
+var filterRulesRouter = require("./routes/api/filterRules");
+var resumeAnalysesRouter = require("./routes/api/resumeAnalyses");
 
 var app = express();
 
@@ -80,6 +86,8 @@ app.use("/api/interviewInvitations", interviewInvitationsRouter);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/notification-templates", notificationTemplatesRouter);
 app.use("/api/aiChat", aiChatRouter);
+app.use("/api/filterRules", filterRulesRouter);
+app.use("/api/resumeAnalyses", resumeAnalysesRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

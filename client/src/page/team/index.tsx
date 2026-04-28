@@ -114,6 +114,9 @@ interface JobFormState {
   aiQuestionBankId: string;
   aiPreInterview: boolean;
   aiPreInterviewScore: number;
+  aiResumeFilter: boolean;
+  aiResumeFilterScore: number;
+  aiResumeFilterSkills: string[];
 }
 
 const interviewPrograms = [
@@ -172,7 +175,15 @@ function Admin() {
     aiQuestionBankId: "",
     aiPreInterview: false,
     aiPreInterviewScore: 60,
+    aiResumeFilter: false,
+    aiResumeFilterScore: 60,
+    aiResumeFilterSkills: [],
   });
+  // 技能标签输入临时状态
+  const [skillsInput, setSkillsInput] = useState<string>("");
+  // AI简历筛选硬性技能标签输入临时状态
+  const [aiResumeFilterSkillsInput, setAiResumeFilterSkillsInput] =
+    useState<string>("");
   // 当前编辑的职位ID
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
 
@@ -1106,6 +1117,8 @@ function Admin() {
                   onClick={() => {
                     // 重置表单
                     setCurrentJobId(null);
+                    setSkillsInput("");
+                    setAiResumeFilterSkillsInput("");
                     setJobForm({
                       title: "",
                       type: "full-time",
@@ -1127,6 +1140,9 @@ function Admin() {
                       aiQuestionBankId: "",
                       aiPreInterview: false,
                       aiPreInterviewScore: 60,
+                      aiResumeFilter: false,
+                      aiResumeFilterScore: 60,
+                      aiResumeFilterSkills: [],
                     });
                     openModal("job");
                   }}
@@ -1161,8 +1177,9 @@ function Admin() {
                           "截止时间",
                           "状态",
                           "AI试题",
-                          "AI预面试",
                           "AI预面试最低分",
+                          "AI简历筛选最低分",
+                          "AI简历筛选关键词",
                           "操作",
                         ].map((item) => (
                           <th key={item} className="px-6 py-3">
@@ -1225,20 +1242,44 @@ function Admin() {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-sm">
-                              {job.aiQuestionBankName ||
-                                (job.aiQuestionBankId ? "已设置" : "未设置")}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <span
-                                className={`rounded-full px-2 py-1 text-xs font-semibold ${job.aiPreInterview ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
-                              >
-                                {job.aiPreInterview ? "是" : "否"}
-                              </span>
+                              {job.aiPreInterview
+                                ? job.aiQuestionBankName ||
+                                  (job.aiQuestionBankId ? "已设置" : "未设置")
+                                : "-"}
                             </td>
                             <td className="px-6 py-4 text-sm">
                               {job.aiPreInterview
                                 ? job.aiPreInterviewScore || 60
                                 : "-"}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {job.aiResumeFilter
+                                ? job.aiResumeFilterScore || 60
+                                : "-"}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {job.aiResumeFilterSkills &&
+                              job.aiResumeFilterSkills.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {job.aiResumeFilterSkills
+                                    .slice(0, 3)
+                                    .map((skill, index) => (
+                                      <span
+                                        key={index}
+                                        className="text-xs bg-blue-100 text-blue-800 rounded px-1.5 py-0.5"
+                                      >
+                                        {skill}
+                                      </span>
+                                    ))}
+                                  {job.aiResumeFilterSkills.length > 3 && (
+                                    <span className="text-xs text-neutral-500">
+                                      +{job.aiResumeFilterSkills.length - 3}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                "-"
+                              )}
                             </td>
                             <td className="px-6 py-4 text-sm">
                               <button
@@ -1247,6 +1288,19 @@ function Admin() {
                                 onClick={() => {
                                   // 填充表单
                                   setCurrentJobId(job._id);
+                                  const skillsValue = Array.isArray(
+                                    job.requirements?.skills,
+                                  )
+                                    ? job.requirements.skills.join(",")
+                                    : "";
+                                  const aiResumeFilterSkillsValue =
+                                    Array.isArray(job.aiResumeFilterSkills)
+                                      ? job.aiResumeFilterSkills.join(",")
+                                      : "";
+                                  setSkillsInput(skillsValue);
+                                  setAiResumeFilterSkillsInput(
+                                    aiResumeFilterSkillsValue,
+                                  );
                                   setJobForm({
                                     title: job.title,
                                     type: job.type,
@@ -1276,6 +1330,11 @@ function Admin() {
                                     aiPreInterview: job.aiPreInterview || false,
                                     aiPreInterviewScore:
                                       job.aiPreInterviewScore || 60,
+                                    aiResumeFilter: job.aiResumeFilter || false,
+                                    aiResumeFilterScore:
+                                      job.aiResumeFilterScore || 60,
+                                    aiResumeFilterSkills:
+                                      job.aiResumeFilterSkills || [],
                                   });
                                   setModal("job");
                                 }}
@@ -2119,6 +2178,33 @@ function Admin() {
                               >
                                 拒绝
                               </button>
+                              <button
+                                type="button"
+                                className="ml-3 text-red-600 hover:text-red-900"
+                                onClick={async () => {
+                                  if (
+                                    window.confirm(
+                                      `确定要删除候选人"${candidate.name || candidate.studentId}"吗？`,
+                                    )
+                                  ) {
+                                    try {
+                                      await applicationApi.deleteApplication(
+                                        candidate._id,
+                                      );
+                                      window.message.success("候选人已删除");
+                                      // 重新获取候选人列表
+                                      fetchCandidates();
+                                    } catch (err: any) {
+                                      console.error("删除候选人失败:", err);
+                                      window.message.error(
+                                        err.message || "删除失败",
+                                      );
+                                    }
+                                  }
+                                }}
+                              >
+                                删除
+                              </button>
                             </td>
                           </tr>
                         ))
@@ -2597,19 +2683,20 @@ function Admin() {
                 <input
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
                   placeholder="技能标签（多个标签用逗号分隔）"
-                  value={jobForm.requirements.skills.join(",")}
-                  onChange={(e) =>
+                  value={skillsInput}
+                  onChange={(e) => setSkillsInput(e.target.value)}
+                  onBlur={() => {
                     setJobForm({
                       ...jobForm,
                       requirements: {
                         ...jobForm.requirements,
-                        skills: e.target.value
+                        skills: skillsInput
                           .split(/[,，]/)
                           .map((s) => s.trim())
                           .filter((s) => s),
                       },
-                    })
-                  }
+                    });
+                  }}
                 />
                 <textarea
                   className="w-full rounded-lg border border-neutral-300 px-4 py-3"
@@ -2654,20 +2741,6 @@ function Admin() {
                   <option value="online">线上面试</option>
                   <option value="offline">线下面试</option>
                 </select>
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={jobForm.aiQuestionBankId}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, aiQuestionBankId: e.target.value })
-                  }
-                >
-                  <option value="">选择AI试题</option>
-                  {questionBanks.map((bank) => (
-                    <option key={bank._id} value={bank._id}>
-                      {bank.title}
-                    </option>
-                  ))}
-                </select>
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -2689,23 +2762,107 @@ function Admin() {
                   </label>
                 </div>
                 {jobForm.aiPreInterview && (
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      AI预面试最低分
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
+                  <div className="space-y-4">
+                    <select
                       className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                      value={jobForm.aiPreInterviewScore}
+                      value={jobForm.aiQuestionBankId}
                       onChange={(e) =>
                         setJobForm({
                           ...jobForm,
-                          aiPreInterviewScore: parseInt(e.target.value) || 0,
+                          aiQuestionBankId: e.target.value,
                         })
                       }
-                    />
+                    >
+                      <option value="">选择AI试题</option>
+                      {questionBanks.map((bank) => (
+                        <option key={bank._id} value={bank._id}>
+                          {bank.title}
+                        </option>
+                      ))}
+                    </select>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        AI预面试最低分
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                        value={jobForm.aiPreInterviewScore}
+                        onChange={(e) =>
+                          setJobForm({
+                            ...jobForm,
+                            aiPreInterviewScore: parseInt(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="aiResumeFilter"
+                    className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    checked={jobForm.aiResumeFilter}
+                    onChange={(e) =>
+                      setJobForm({
+                        ...jobForm,
+                        aiResumeFilter: e.target.checked,
+                      })
+                    }
+                  />
+                  <label
+                    htmlFor="aiResumeFilter"
+                    className="text-sm font-medium text-neutral-700"
+                  >
+                    启用AI筛选简历
+                  </label>
+                </div>
+                {jobForm.aiResumeFilter && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        AI简历筛选最低分
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                        value={jobForm.aiResumeFilterScore}
+                        onChange={(e) =>
+                          setJobForm({
+                            ...jobForm,
+                            aiResumeFilterScore: parseInt(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        硬性技能标签（用逗号分隔）
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                        placeholder="例如：Vue, React, Node.js"
+                        value={aiResumeFilterSkillsInput}
+                        onChange={(e) =>
+                          setAiResumeFilterSkillsInput(e.target.value)
+                        }
+                        onBlur={() => {
+                          setJobForm({
+                            ...jobForm,
+                            aiResumeFilterSkills: aiResumeFilterSkillsInput
+                              .split(/[,，]/)
+                              .map((s) => s.trim())
+                              .filter((s) => s),
+                          });
+                        }}
+                      />
+                    </div>
                   </div>
                 )}
               </div>

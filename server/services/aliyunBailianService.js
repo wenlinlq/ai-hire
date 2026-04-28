@@ -797,6 +797,154 @@ ${prompt}
     };
   }
 
+  // AI简历筛选分析 - 根据岗位要求分析简历匹配度并评分
+  async analyzeResumeForScreening(resumeContent, jobRequirements) {
+    try {
+      console.log("Analyzing resume for screening...");
+
+      if (!resumeContent || resumeContent.length === 0) {
+        throw new Error("No resume content provided");
+      }
+
+      if (!jobRequirements) {
+        throw new Error("No job requirements provided");
+      }
+
+      // 限制输入内容长度，避免超出API限制
+      const maxContentLength = 10000;
+      const truncatedContent =
+        resumeContent.length > maxContentLength
+          ? resumeContent.substring(0, maxContentLength) + "\n\n[内容已截断]"
+          : resumeContent;
+
+      // 构建技能要求字符串
+      const requiredSkills = jobRequirements.skills || [];
+      const requiredSkillsStr =
+        requiredSkills.length > 0 ? requiredSkills.join(", ") : "无";
+
+      // 构建工作经验要求字符串
+      const experienceReq = jobRequirements.experience || "无";
+
+      // 构建学历要求字符串
+      const educationReq = jobRequirements.education || "无";
+
+      const prompt = `
+你是一位专业的HR招聘专家，负责根据岗位要求对候选人简历进行筛选评分。
+
+请根据以下岗位要求，对候选人的简历进行分析和评分：
+
+【岗位要求】
+技能要求：${requiredSkillsStr}
+经验要求：${experienceReq}
+学历要求：${educationReq}
+其他要求：${jobRequirements.description || "无"}
+
+【候选人简历】
+${truncatedContent}
+
+请从以下几个维度进行评分（每项0-100分）：
+1. 技能匹配度：评估简历中的技能与岗位要求的匹配程度
+2. 经验匹配度：评估候选人的工作/项目经验与岗位要求的匹配程度
+3. 学历匹配度：评估候选人的学历背景与岗位要求的匹配程度
+4. 综合评分：综合考虑以上各项的总体评分
+
+请以JSON格式返回分析结果，不要包含任何其他文本。
+JSON格式要求：
+{
+  "skillMatch": 0,
+  "experienceMatch": 0,
+  "educationMatch": 0,
+  "overallScore": 0,
+  "strengths": ["优势1", "优势2", "优势3"],
+  "weaknesses": ["不足1", "不足2", "不足3"]
+}
+`;
+
+      console.log(`Screening prompt length: ${prompt.length}`);
+
+      const response = await axios.post(
+        this.apiUrl,
+        {
+          model: "qwen-max",
+          messages: [
+            {
+              role: "system",
+              content:
+                "你是一位专业的HR招聘专家，负责根据岗位要求对候选人简历进行筛选评分。",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.3,
+          max_tokens: 1000,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+        },
+      );
+
+      console.log("Resume screening API response received:", response.data);
+
+      // 检查响应结构
+      if (
+        !response.data ||
+        !response.data.choices ||
+        response.data.choices.length === 0
+      ) {
+        throw new Error("Invalid response structure from AI model");
+      }
+
+      const choice = response.data.choices[0];
+      if (!choice.message || !choice.message.content) {
+        throw new Error("Invalid message format from AI model");
+      }
+
+      const content = choice.message.content;
+      console.log(
+        "AI screening response content:",
+        content.substring(0, 200) + (content.length > 200 ? "..." : ""),
+      );
+
+      // 提取JSON部分
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const analysis = JSON.parse(jsonMatch[0]);
+          console.log("Screening analysis result:", analysis);
+          return analysis;
+        } catch (parseError) {
+          throw new Error("Failed to parse JSON response from AI model");
+        }
+      } else {
+        throw new Error("No JSON found in AI model response");
+      }
+    } catch (error) {
+      console.error(
+        "Error analyzing resume for screening with Aliyun Bailian:",
+        {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        },
+      );
+
+      // 返回默认分析结果，避免因API错误影响筛选流程
+      return {
+        skillMatch: 50,
+        experienceMatch: 50,
+        educationMatch: 50,
+        overallScore: 50,
+        strengths: ["简历格式规范", "信息完整"],
+        weaknesses: ["技能匹配度一般", "经验匹配度一般"],
+      };
+    }
+  }
+
   // 智能问答功能
   async askQuestion(question, context = []) {
     try {

@@ -107,11 +107,13 @@ class AiPreInterviewController {
       // 如果通过了AI预面试，将用户添加到团队的候选人列表中
       if (analysis.overall >= minScore) {
         // 获取职位信息，用于获取团队ID
-        const position = await positionModel.findPositionById(updatedInterview.jobId);
+        const position = await positionModel.findPositionById(
+          updatedInterview.jobId,
+        );
         if (position && position.teamId) {
           const teamModel = require("../models/teamModel");
           const team = await teamModel.findTeamById(position.teamId);
-          
+
           if (team) {
             // 将用户添加到团队的候选人列表中（如果还不在列表中）
             if (!team.candidates) {
@@ -130,11 +132,15 @@ class AiPreInterviewController {
               const userModel = require("../models/userModel");
               const resumeModel = require("../models/resumeModel");
               const applicationModel = require("../models/applicationModel");
-              
+
               // 获取用户信息
-              const user = await userModel.findUserById(updatedInterview.userId);
+              const user = await userModel.findUserById(
+                updatedInterview.userId,
+              );
               // 获取简历信息
-              const resume = await resumeModel.getCurrentResume(updatedInterview.userId);
+              const resume = await resumeModel.getCurrentResume(
+                updatedInterview.userId,
+              );
 
               const applicationData = {
                 positionId: updatedInterview.jobId,
@@ -349,10 +355,15 @@ class AiPreInterviewController {
 
         result = response.data;
 
+        // 适配 smartresume 返回的数据格式
+        const formattedResult = this.formatSmartResumeResult(result);
+
         // 保存分析结果到数据库
-        if (result.success && resumeId) {
-          await resumeModel.saveAnalysisResult(resumeId, result);
+        if (formattedResult.success && resumeId) {
+          await resumeModel.saveAnalysisResult(resumeId, formattedResult);
         }
+
+        result = formattedResult;
       }
 
       // 情况2：直接传入简历文本内容
@@ -379,7 +390,8 @@ class AiPreInterviewController {
           },
         );
 
-        result = response.data;
+        // 适配 smartresume 返回的数据格式
+        result = this.formatSmartResumeResult(response.data);
 
         // 清理临时文件
         fs.unlinkSync(tempFilePath);
@@ -400,7 +412,8 @@ class AiPreInterviewController {
           },
         );
 
-        result = response.data;
+        // 适配 smartresume 返回的数据格式
+        result = this.formatSmartResumeResult(response.data);
       }
 
       // 情况4：既没有 resumeId、resumeContent 也没有 file
@@ -435,6 +448,66 @@ class AiPreInterviewController {
         error: error.message || "简历解析失败",
       });
     }
+  }
+
+  // 适配 smartresume 返回的数据格式
+  formatSmartResumeResult(rawResult) {
+    if (!rawResult || typeof rawResult !== "object") {
+      return {
+        success: false,
+        extracted_data: {},
+        analysis: {},
+      };
+    }
+
+    // 如果已经是 ai-hire 期望的格式，直接返回
+    if (rawResult.success !== undefined && rawResult.extracted_data) {
+      return rawResult;
+    }
+
+    // 从 smartresume 返回的格式转换为 ai-hire 期望的格式
+    // 支持多种数据结构：
+    // 格式1: { basicInfo: {name, phone, email, school, major, degree, gradYear}, workExperience, skills, projects }
+    // 格式2: { name, education: {school, degree, major, graduation_year}, basicInfo: {phone, email}, workExperience, skills, projects }
+
+    const extracted_data = {
+      name: rawResult.name || rawResult.basicInfo?.name || "",
+      phone: rawResult.phone || rawResult.basicInfo?.phone || "",
+      email: rawResult.email || rawResult.basicInfo?.email || "",
+      education: {
+        school:
+          rawResult.education?.school || rawResult.basicInfo?.school || "",
+        major: rawResult.education?.major || rawResult.basicInfo?.major || "",
+        degree:
+          rawResult.education?.degree || rawResult.basicInfo?.degree || "",
+        gradYear:
+          rawResult.education?.graduation_year ||
+          rawResult.basicInfo?.gradYear ||
+          "",
+      },
+      skills: rawResult.skills || [],
+      projects: rawResult.projects || [],
+      experience: rawResult.workExperience || rawResult.experience || [],
+    };
+
+    // 构建分析结果
+    const analysis = {
+      total_score: rawResult.total_score || rawResult.matchScore || 0,
+      skill_score: rawResult.skill_score || 0,
+      experience_score: rawResult.experience_score || 0,
+      education_score: rawResult.education_score || 0,
+      strengths: rawResult.strengths || [],
+      weaknesses: rawResult.weaknesses || [],
+      suggestions: rawResult.suggestions || [],
+      match_score: rawResult.matchScore || 0,
+      job_fit: rawResult.jobFit || "",
+    };
+
+    return {
+      success: true,
+      extracted_data,
+      analysis,
+    };
   }
 
   // 优化简历

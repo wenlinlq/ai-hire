@@ -149,3 +149,4 @@ const positionApi = {
 };
 
 export default positionApi;
+export type { Position };

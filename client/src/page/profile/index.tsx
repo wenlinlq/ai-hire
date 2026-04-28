@@ -1,12 +1,11 @@
-import { ChangeEvent, useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
+import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import userApi from "../../api/userApi";
-import type { User } from "../../api/userApi";
 import favoriteApi from "../../api/favoriteApi";
 import positionApi from "../../api/positionApi";
 import type { Position } from "../../api/positionApi";
 import resumeApi from "../../api/resumeApi";
-import type { Resume } from "../../api/resumeApi";
 import { deliveryApi } from "../../api/deliveryApi";
 import { aiPreInterviewApi } from "../../api/aiPreInterviewApi";
 import { interviewInvitationApi } from "../../api/interviewInvitationApi";
@@ -828,11 +827,10 @@ function Profile() {
                                           _id: r._id,
                                           name:
                                             r.fileUrl.split("/").pop() ||
-                                              .split("/")
-                                              .pop() || "resume",
+                                            "resume",
                                           uploadedAt: new Date(
                                             r.createdAt,
-                                          type: r.fileType.toUpperCase() as
+                                          ).toLocaleString("zh-CN"),
                                           type: (
                                             r.fileType || ""
                                           ).toUpperCase() as

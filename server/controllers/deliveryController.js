@@ -6,6 +6,7 @@ const teamModel = require("../models/teamModel");
 const applicationModel = require("../models/applicationModel");
 const userModel = require("../models/userModel");
 const resumeModel = require("../models/resumeModel");
+const notificationTemplateModel = require("../models/notificationTemplateModel");
 const fs = require("fs");
 const path = require("path");
 const baiduDocumentService = require("../services/baiduDocumentService");
@@ -65,10 +66,12 @@ class DeliveryController {
           // 发送未通过通知
           await this.sendResumeScreeningNotification(
             userId,
+            position.teamId?.toString() || null,
             team?.name || "",
             delivery._id,
             false,
             0,
+            position.name || "",
           );
           // 获取更新后的投递记录
           const updatedDelivery = await deliveryModel.findDeliveryById(
@@ -92,10 +95,12 @@ class DeliveryController {
           // 发送未通过通知
           await this.sendResumeScreeningNotification(
             userId,
+            position.teamId?.toString() || null,
             team?.name || "",
             delivery._id,
             false,
             0,
+            position.name || "",
           );
           // 获取更新后的投递记录
           const updatedDelivery = await deliveryModel.findDeliveryById(
@@ -137,10 +142,12 @@ class DeliveryController {
             // 发送未通过通知
             await this.sendResumeScreeningNotification(
               userId,
+              position.teamId?.toString() || null,
               team?.name || "",
               delivery._id,
               false,
               0,
+              position.name || "",
             );
             // 获取更新后的投递记录
             const updatedDelivery = await deliveryModel.findDeliveryById(
@@ -191,19 +198,23 @@ class DeliveryController {
           // 发送通过通知
           await this.sendResumeScreeningNotification(
             userId,
+            position.teamId?.toString() || null,
             team?.name || "",
             delivery._id,
             true,
             overallScore,
+            position.name || "",
           );
         } else {
           // 未通过筛选，发送未通过通知
           await this.sendResumeScreeningNotification(
             userId,
+            position.teamId?.toString() || null,
             team?.name || "",
             delivery._id,
             false,
             overallScore,
+            position.name || "",
           );
         }
 
@@ -365,22 +376,77 @@ class DeliveryController {
     }
   }
 
-  // 发送简历筛选结果通知
+  // 发送简历筛选结果通知（使用团队通知模板）
   async sendResumeScreeningNotification(
     userId,
+    teamId,
     teamName,
     deliveryId,
     passed,
     score,
+    positionName = "",
   ) {
     try {
+      // 获取用户信息
+      const user = await userModel.findUserById(userId);
+      const studentName = user?.username || user?.name || "同学";
+
+      // 确定模板类型
+      const templateType = passed ? "resume_pass" : "resume_reject";
+
+      // 获取团队模板（优先使用团队自定义模板，没有则使用系统默认模板）
+      let template =
+        await notificationTemplateModel.findTemplateByTeamIdAndType(
+          teamId,
+          templateType,
+        );
+
+      // 如果没有团队模板，获取系统默认模板
+      if (!template) {
+        const defaultTemplates =
+          await notificationTemplateModel.findDefaultTemplates();
+        template = defaultTemplates.find((t) => t.type === templateType);
+      }
+
+      // 如果还是没有模板，使用默认消息
+      if (!template) {
+        await notificationModel.createNotification({
+          userId,
+          type: passed ? "resume_screening_passed" : "resume_screening_failed",
+          title: passed ? "简历筛选通过" : "简历筛选未通过",
+          content: passed
+            ? `恭喜！您的简历已通过${teamName}的AI筛选（得分：${score}分），已进入候选人列表`
+            : `很遗憾，您的简历未通过${teamName}的AI筛选（得分：${score}分），未达到最低要求`,
+          relatedId: deliveryId,
+          teamName: teamName,
+        });
+        return;
+      }
+
+      // 替换模板变量
+      let title = template.title;
+      let content = template.content;
+
+      const variables = {
+        studentName: studentName,
+        positionName: positionName || "岗位",
+        teamName: teamName || "团队",
+        rejectReason: passed ? "" : `（得分：${score}分，未达到最低要求）`,
+      };
+
+      // 替换所有变量
+      for (const [key, value] of Object.entries(variables)) {
+        const placeholder = `{${key}}`;
+        title = title.replace(new RegExp(placeholder, "g"), value);
+        content = content.replace(new RegExp(placeholder, "g"), value);
+      }
+
+      // 发送通知
       await notificationModel.createNotification({
         userId,
         type: passed ? "resume_screening_passed" : "resume_screening_failed",
-        title: passed ? "简历筛选通过" : "简历筛选未通过",
-        content: passed
-          ? `恭喜！您的简历已通过${teamName}的AI筛选（得分：${score}分），已进入候选人列表`
-          : `很遗憾，您的简历未通过${teamName}的AI筛选（得分：${score}分），未达到最低要求`,
+        title,
+        content,
         relatedId: deliveryId,
         teamName: teamName,
       });

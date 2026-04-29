@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import userApi from "../../api/userApi";
@@ -11,12 +11,7 @@ import { aiPreInterviewApi } from "../../api/aiPreInterviewApi";
 import { interviewInvitationApi } from "../../api/interviewInvitationApi";
 import { notificationApi } from "../../api/notificationApi";
 
-type ProfileTab =
-  | "profile"
-  | "resume"
-  | "myInterviews"
-  | "favorites"
-  | "interviews";
+type ProfileTab = "profile" | "resume" | "myInterviews" | "favorites";
 
 type ProfileForm = {
   name: string;
@@ -38,39 +33,6 @@ type ResumeItem = {
 type FavoriteJob = Position & {
   savedAt: string;
 };
-
-const interviewHistory = [
-  {
-    title: "技术面试模拟",
-    time: "2024-01-15 14:30 - 15:15",
-    score: 85,
-    details: [
-      { label: "专业知识", value: 90 },
-      { label: "表达能力", value: 80 },
-      { label: "应变能力", value: 85 },
-    ],
-  },
-  {
-    title: "综合面试模拟",
-    time: "2024-01-10 10:00 - 10:45",
-    score: 78,
-    details: [
-      { label: "专业知识", value: 75 },
-      { label: "表达能力", value: 82 },
-      { label: "应变能力", value: 77 },
-    ],
-  },
-  {
-    title: "产品面试模拟",
-    time: "2024-01-05 16:00 - 16:40",
-    score: 88,
-    details: [
-      { label: "专业知识", value: 84 },
-      { label: "表达能力", value: 91 },
-      { label: "应变能力", value: 89 },
-    ],
-  },
-] as const;
 
 function Profile() {
   // 从localStorage读取初始tab状态
@@ -109,14 +71,6 @@ function Profile() {
   const [countdown, setCountdown] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const averageScore = useMemo(
-    () =>
-      Math.round(
-        interviewHistory.reduce((sum, item) => sum + item.score, 0) /
-          interviewHistory.length,
-      ),
-    [],
-  );
 
   // 获取用户信息
   useEffect(() => {
@@ -477,7 +431,6 @@ function Profile() {
                   ["resume", "我的简历"],
                   ["myInterviews", "我的面试"],
                   ["favorites", "收藏岗位"],
-                  ["interviews", "历史模拟面试"],
                 ].map(([key, label]) => (
                   <button
                     key={key}
@@ -1271,90 +1224,6 @@ function Profile() {
                     ))}
                   </div>
                 )}
-              </div>
-            )}
-
-            {activeTab === "interviews" && (
-              <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm h-[calc(100vh-150px)] overflow-y-auto">
-                <div className="mb-6 flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-neutral-800">
-                    历史模拟面试
-                  </h2>
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-full bg-primary-50 px-4 py-2 text-sm font-medium text-primary-600">
-                      平均分 {averageScore}
-                    </div>
-                    <div className="relative">
-                      <button className="p-2 rounded-full hover:bg-neutral-100 transition-colors">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-6 text-neutral-600"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                          />
-                        </svg>
-                        {notificationCount > 0 && (
-                          <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-medium text-white">
-                            {notificationCount > 99 ? "99+" : notificationCount}
-                          </span>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  {interviewHistory.map((record) => (
-                    <div
-                      key={record.title}
-                      className="rounded-xl border border-neutral-200 p-6 transition-shadow hover:shadow-md"
-                    >
-                      <div className="mb-4 flex items-start justify-between">
-                        <div>
-                          <h3 className="mb-2 text-xl font-bold text-neutral-800">
-                            {record.title}
-                          </h3>
-                          <p className="text-neutral-600">{record.time}</p>
-                        </div>
-                        <div className="text-center">
-                          <span className="text-3xl font-bold text-primary-500">
-                            {record.score}
-                          </span>
-                          <p className="text-sm text-neutral-500">综合评分</p>
-                        </div>
-                      </div>
-                      <div className="mb-4 grid grid-cols-3 gap-4">
-                        {record.details.map((item) => (
-                          <div
-                            key={item.label}
-                            className="rounded-lg bg-neutral-50 p-3 text-center"
-                          >
-                            <p className="text-lg font-semibold text-neutral-800">
-                              {item.value}
-                            </p>
-                            <p className="text-sm text-neutral-500">
-                              {item.label}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          className="rounded-lg px-4 py-2 text-primary-600 transition-colors hover:bg-primary-50"
-                        >
-                          查看详情
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
           </div>

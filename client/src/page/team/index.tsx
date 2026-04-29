@@ -289,6 +289,10 @@ function Admin() {
 
   // 当前用户信息
   const [currentUser, setCurrentUser] = useState<any>(null);
+  // 下拉菜单显示状态
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  // 延迟隐藏定时器
+  const [menuTimeout, setMenuTimeout] = useState<number | null>(null);
 
   // 获取当前用户信息
   useEffect(() => {
@@ -574,15 +578,75 @@ function Admin() {
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-neutral-200 bg-white px-6">
           <h1 className="text-xl font-bold text-neutral-800">管理后台</h1>
-          <div className="flex items-center space-x-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
-              <span className="font-semibold text-primary-600">
-                {currentUser?.username?.charAt(0)?.toUpperCase() || "U"}
+          <div className="relative">
+            <div
+              className="flex items-center space-x-2 cursor-pointer hover:bg-neutral-100 rounded-lg px-2 py-1 transition-colors"
+              onMouseEnter={() => {
+                if (menuTimeout) clearTimeout(menuTimeout);
+                setShowUserMenu(true);
+              }}
+              onMouseLeave={() => {
+                const timeout = window.setTimeout(() => {
+                  setShowUserMenu(false);
+                }, 300);
+                setMenuTimeout(timeout);
+              }}
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
+                <span className="font-semibold text-primary-600">
+                  {currentUser?.username?.charAt(0)?.toUpperCase() || "U"}
+                </span>
+              </div>
+              <span className="text-sm font-medium text-neutral-700">
+                {currentUser?.username || "用户"}
               </span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-neutral-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
             </div>
-            <span className="text-sm font-medium text-neutral-700">
-              {currentUser?.username || "用户"}
-            </span>
+            {/* 下拉菜单 - 添加延迟消失效果 */}
+            <div
+              className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50 transition-opacity duration-150 ${showUserMenu ? "opacity-100 visible" : "opacity-0 invisible"}`}
+              onMouseEnter={() => {
+                if (menuTimeout) clearTimeout(menuTimeout);
+                setShowUserMenu(true);
+              }}
+              onMouseLeave={() => {
+                const timeout = window.setTimeout(() => {
+                  setShowUserMenu(false);
+                }, 300);
+                setMenuTimeout(timeout);
+              }}
+            >
+              <button
+                className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+                onClick={() => {
+                  window.location.href = "/profile";
+                }}
+              >
+                个人中心
+              </button>
+              <button
+                className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+                onClick={() => {
+                  userApi.logout();
+                  window.location.href = "/login";
+                }}
+              >
+                退出登录
+              </button>
+            </div>
           </div>
         </header>
 

@@ -301,7 +301,6 @@ function Hall() {
 
                       try {
                         if (favoriteJobs[job._id]) {
-                          // 取消收藏
                           await favoriteApi.removeFavorite(
                             currentUser._id,
                             job._id,
@@ -311,7 +310,6 @@ function Hall() {
                             [job._id]: false,
                           }));
                         } else {
-                          // 添加收藏
                           await favoriteApi.addFavorite(
                             currentUser._id,
                             job._id,
@@ -382,12 +380,38 @@ function Hall() {
                               ? "border-primary-500 bg-primary-50 text-primary-600"
                               : "border-primary-500 text-primary-600 hover:bg-primary-50"
                           }`}
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.preventDefault();
-                            setFavoriteJobs((current) => ({
-                              ...current,
-                              [job._id]: !current[job._id],
-                            }));
+                            const currentUser = userApi.getCurrentUser();
+                            if (!currentUser) {
+                              alert("请先登录");
+                              return;
+                            }
+
+                            try {
+                              if (favoriteJobs[job._id]) {
+                                await favoriteApi.removeFavorite(
+                                  currentUser._id,
+                                  job._id,
+                                );
+                                setFavoriteJobs((current) => ({
+                                  ...current,
+                                  [job._id]: false,
+                                }));
+                              } else {
+                                await favoriteApi.addFavorite(
+                                  currentUser._id,
+                                  job._id,
+                                );
+                                setFavoriteJobs((current) => ({
+                                  ...current,
+                                  [job._id]: true,
+                                }));
+                              }
+                            } catch (error) {
+                              console.error("操作收藏失败:", error);
+                              alert("操作收藏失败，请重试");
+                            }
                           }}
                         >
                           {favoriteJobs[job._id] ? "已收藏" : "收藏"}
@@ -406,7 +430,8 @@ function Hall() {
 
                               try {
                                 const resumeId = "60d0fe4f5311236168a109ca";
-                                const hasAiPreInterview = job.aiPreInterview || false;
+                                const hasAiPreInterview =
+                                  job.aiPreInterview || false;
 
                                 await deliveryApi.createDelivery({
                                   userId: currentUser._id,
@@ -450,7 +475,8 @@ function Hall() {
 
                               try {
                                 const resumeId = "60d0fe4f5311236168a109ca";
-                                const hasAiPreInterview = job.aiPreInterview || false;
+                                const hasAiPreInterview =
+                                  job.aiPreInterview || false;
 
                                 const response =
                                   await deliveryApi.createDelivery({

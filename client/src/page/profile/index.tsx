@@ -66,6 +66,9 @@ function Profile() {
   const [interviewLoading, setInterviewLoading] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [deliveredJobs, setDeliveredJobs] = useState<Record<string, boolean>>(
+    {},
+  );
   const [newPhone, setNewPhone] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [countdown, setCountdown] = useState(0);
@@ -148,6 +151,16 @@ function Profile() {
           }));
 
         setFavoriteJobs(favoriteJobsData);
+
+        const deliveriesData = await deliveryApi.getUserDeliveries(user._id);
+        const deliveredJobIds = (deliveriesData.data || []).map(
+          (delivery: any) => delivery.jobId,
+        );
+        const initialDeliveredJobs: Record<string, boolean> = {};
+        deliveredJobIds.forEach((jobId: string) => {
+          initialDeliveredJobs[jobId] = true;
+        });
+        setDeliveredJobs(initialDeliveredJobs);
       } catch (error) {
         console.error("获取收藏职位失败:", error);
       } finally {
@@ -1076,6 +1089,55 @@ function Profile() {
                     <button
                       type="button"
                       className="rounded-lg bg-primary-500 px-6 py-2 text-white transition-colors hover:bg-primary-600"
+                      onClick={async () => {
+                        const currentUser = userApi.getCurrentUser();
+                        if (!currentUser) {
+                          alert("请先登录");
+                          return;
+                        }
+
+                        if (resumes.length === 0) {
+                          alert("请先上传简历");
+                          return;
+                        }
+
+                        const resumeId = resumes[0]._id;
+                        const undeliveredJobs = favoriteJobs.filter(
+                          (job) => !deliveredJobs[job._id],
+                        );
+
+                        if (undeliveredJobs.length === 0) {
+                          alert("所有收藏岗位都已投递");
+                          return;
+                        }
+
+                        let successCount = 0;
+                        for (const job of undeliveredJobs) {
+                          try {
+                            const hasAiPreInterview =
+                              job.aiPreInterview || false;
+                            await deliveryApi.createDelivery({
+                              userId: currentUser._id,
+                              jobId: job._id,
+                              resumeId,
+                              hasAiPreInterview,
+                            });
+                            successCount++;
+                            setDeliveredJobs((current) => ({
+                              ...current,
+                              [job._id]: true,
+                            }));
+                          } catch (error) {
+                            console.error(`投递岗位 ${job.title} 失败:`, error);
+                          }
+                        }
+
+                        if (successCount > 0) {
+                          alert(`成功投递 ${successCount} 个岗位！`);
+                        } else {
+                          alert("投递失败，请重试");
+                        }
+                      }}
                     >
                       一键投递
                     </button>
@@ -1138,9 +1200,98 @@ function Profile() {
                             </span>
                           ))}
                         </div>
-                        <span className="text-sm text-neutral-500">
-                          收藏时间：{job.savedAt}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-neutral-500">
+                            收藏时间：{job.savedAt}
+                          </span>
+                          {deliveredJobs[job._id] ? (
+                            <button
+                              type="button"
+                              className="rounded-lg bg-green-500 px-4 py-2 text-sm text-white transition-colors hover:bg-green-600"
+                              onClick={async () => {
+                                const currentUser = userApi.getCurrentUser();
+                                if (!currentUser) {
+                                  alert("请先登录");
+                                  return;
+                                }
+
+                                try {
+                                  const resumeId =
+                                    resumes.length > 0 ? resumes[0]._id : "";
+                                  if (!resumeId) {
+                                    alert("请先上传简历");
+                                    return;
+                                  }
+
+                                  const hasAiPreInterview =
+                                    job.aiPreInterview || false;
+
+                                  await deliveryApi.createDelivery({
+                                    userId: currentUser._id,
+                                    jobId: job._id,
+                                    resumeId,
+                                    hasAiPreInterview,
+                                  });
+
+                                  setDeliveredJobs((current) => ({
+                                    ...current,
+                                    [job._id]: true,
+                                  }));
+
+                                  alert("投递成功！");
+                                } catch (error) {
+                                  console.error("投递失败:", error);
+                                  alert("投递失败，请重试");
+                                }
+                              }}
+                            >
+                              再次投递
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="rounded-lg bg-primary-500 px-4 py-2 text-sm text-white transition-colors hover:bg-primary-600"
+                              onClick={async () => {
+                                const currentUser = userApi.getCurrentUser();
+                                if (!currentUser) {
+                                  alert("请先登录");
+                                  return;
+                                }
+
+                                try {
+                                  const resumeId =
+                                    resumes.length > 0 ? resumes[0]._id : "";
+                                  if (!resumeId) {
+                                    alert("请先上传简历");
+                                    return;
+                                  }
+
+                                  const hasAiPreInterview =
+                                    job.aiPreInterview || false;
+
+                                  await deliveryApi.createDelivery({
+                                    userId: currentUser._id,
+                                    jobId: job._id,
+                                    resumeId,
+                                    hasAiPreInterview,
+                                  });
+
+                                  setDeliveredJobs((current) => ({
+                                    ...current,
+                                    [job._id]: true,
+                                  }));
+
+                                  alert("投递成功！");
+                                } catch (error) {
+                                  console.error("投递失败:", error);
+                                  alert("投递失败，请重试");
+                                }
+                              }}
+                            >
+                              立即投递
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

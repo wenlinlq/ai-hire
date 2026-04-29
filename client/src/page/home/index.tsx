@@ -515,7 +515,7 @@ function Home() {
                           : `收藏${job.title}`
                       }
                       className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 transition-colors hover:bg-primary-50"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         const currentUser = userApi.getCurrentUser();
@@ -526,8 +526,7 @@ function Home() {
 
                         try {
                           if (favoriteJobs[job._id]) {
-                            // 取消收藏
-                            favoriteApi.removeFavorite(
+                            await favoriteApi.removeFavorite(
                               currentUser._id,
                               job._id,
                             );
@@ -536,8 +535,7 @@ function Home() {
                               [job._id]: false,
                             }));
                           } else {
-                            // 添加收藏
-                            favoriteApi.addFavorite(currentUser._id, job._id);
+                            await favoriteApi.addFavorite(currentUser._id, job._id);
                             setFavoriteJobs((current) => ({
                               ...current,
                               [job._id]: true,

@@ -141,8 +141,24 @@ function JobDetail() {
     }
   };
 
-  const handleToggleFavorite = () => {
-    setIsFavorite(!isFavorite);
+  const handleToggleFavorite = async () => {
+    const currentUser = userApi.getCurrentUser();
+    if (!currentUser) {
+      alert("请先登录");
+      return;
+    }
+
+    try {
+      if (isFavorite) {
+        await favoriteApi.removeFavorite(currentUser._id, job!._id);
+      } else {
+        await favoriteApi.addFavorite(currentUser._id, job!._id);
+      }
+      setIsFavorite(!isFavorite);
+    } catch (error) {
+      console.error("操作收藏失败:", error);
+      alert("操作收藏失败，请重试");
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -493,6 +509,29 @@ function JobDetail() {
                   快速操作
                 </h2>
                 <div className="space-y-4">
+                  <button
+                    onClick={handleToggleFavorite}
+                    className={`w-full rounded-lg px-6 py-4 font-medium transition-colors flex items-center justify-center gap-2 ${
+                      isFavorite
+                        ? "bg-red-50 text-red-500 border border-red-200 hover:bg-red-100"
+                        : "bg-neutral-100 text-neutral-600 border border-neutral-300 hover:bg-neutral-200"
+                    }`}
+                  >
+                    <svg
+                      className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`}
+                      fill={isFavorite ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                        d="M11.995 21.147l-1.465-1.333C5.4 15.153 2 12.066 2 8.275 2 5.188 4.42 2.75 7.5 2.75c1.74 0 3.41.808 4.495 2.082C13.09 3.558 14.76 2.75 16.5 2.75c3.08 0 5.5 2.438 5.5 5.525 0 3.791-3.4 6.878-8.53 11.539l-1.475 1.333Z"
+                      />
+                    </svg>
+                    {isFavorite ? "已收藏" : "收藏职位"}
+                  </button>
                   {delivered ? (
                     <span className="w-full rounded-lg px-6 py-4 font-medium text-neutral-600 bg-neutral-100 text-center">
                       等待结果

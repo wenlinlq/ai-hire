@@ -25,7 +25,7 @@ type ProfileForm = {
 type ResumeItem = {
   name: string;
   uploadedAt: string;
-  type: "PDF" | "DOC" | "DOCX" | "JPG" | "PNG";
+  type: "PDF";
   _id: string;
   isActive: boolean;
 };
@@ -176,12 +176,7 @@ function Profile() {
           _id: resume._id,
           name: resume.fileUrl.split("/").pop() || "resume",
           uploadedAt: new Date(resume.createdAt).toLocaleString("zh-CN"),
-          type: resume.fileType.toUpperCase() as
-            | "PDF"
-            | "DOC"
-            | "DOCX"
-            | "JPG"
-            | "PNG",
+          type: "PDF",
           isActive: resume.isActive,
         }));
 
@@ -293,12 +288,7 @@ function Profile() {
           _id: resume._id,
           name: resume.fileUrl.split("/").pop() || "resume",
           uploadedAt: new Date(resume.createdAt).toLocaleString("zh-CN"),
-          type: resume.fileType.toUpperCase() as
-            | "PDF"
-            | "DOC"
-            | "DOCX"
-            | "JPG"
-            | "PNG",
+          type: "PDF",
           isActive: resume.isActive,
         }));
         setResumes(formattedResumes);
@@ -590,14 +580,14 @@ function Profile() {
                     点击或拖拽上传简历
                   </p>
                   <p className="text-sm text-neutral-500">
-                    支持 PDF、DOC、DOCX、JPG、PNG 格式，文件大小不超过 10MB
+                    支持 PDF 格式，文件大小不超过 10MB
                   </p>
                 </button>
                 <input
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  accept=".pdf"
                   onChange={handleUpload}
                 />
 

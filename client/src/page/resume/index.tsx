@@ -51,12 +51,170 @@ function ResumeAnalyze() {
       // 保存解析结果
       setResult(parsedData);
 
-      // 提取简历文本内容用于优化功能（如果有的话）
-      if (parsedData.extracted_data?.content) {
-        setResumeContent(parsedData.extracted_data.content);
-      } else if (parsedData.rawContent) {
-        setResumeContent(parsedData.rawContent);
+      // 提取简历文本内容用于优化功能
+      const data = parsedData.data || parsedData;
+      const extractedData = data.extracted_data || {};
+      const analysis = data.analysis || {};
+      const basicInfo = extractedData.basic_info || {};
+      const educationList = extractedData.education || [];
+      const workExperience = extractedData.work_experience || [];
+      const projects = extractedData.projects || [];
+      const skills = extractedData.skills || {};
+      const analysisSkills = analysis.skills || {};
+
+      // 构建完整的简历文本内容
+      let resumeText = "";
+
+      // 基本信息
+      resumeText += "=== 基本信息 ===\n";
+      resumeText += `姓名：${basicInfo.name || extractedData.name || "未识别"}\n`;
+      resumeText += `电话：${basicInfo.phone || extractedData.phone || "未识别"}\n`;
+      resumeText += `邮箱：${basicInfo.email || extractedData.email || "未识别"}\n`;
+      if (basicInfo.school) resumeText += `学校：${basicInfo.school}\n`;
+      if (basicInfo.major) resumeText += `专业：${basicInfo.major}\n`;
+      if (basicInfo.education) resumeText += `学历：${basicInfo.education}\n`;
+      if (basicInfo.work_years)
+        resumeText += `工作年限：${basicInfo.work_years}年\n`;
+      resumeText += "\n";
+
+      // 教育背景
+      resumeText += "=== 教育背景 ===\n";
+      if (educationList.length > 0) {
+        educationList.forEach((edu: any) => {
+          resumeText += `${edu.school || "未识别"} - ${edu.major || "未知专业"} (${edu.degreeLevel || edu.degree || "本科"})\n`;
+          if (edu.period) {
+            resumeText += `时间：${edu.period.startDate || ""} - ${edu.period.endDate || "至今"}\n`;
+          } else if (edu.startDate || edu.endDate) {
+            resumeText += `时间：${edu.startDate || ""} - ${edu.endDate || "至今"}\n`;
+          }
+          if (edu.description) resumeText += `描述：${edu.description}\n`;
+          resumeText += "\n";
+        });
+      } else {
+        resumeText += "暂无详细教育背景信息\n\n";
       }
+
+      // 工作经历
+      resumeText += "=== 工作经历 ===\n";
+      if (workExperience.length > 0) {
+        workExperience.forEach((work: any) => {
+          resumeText += `${work.companyName || work.company || "未识别公司"} - ${work.position || "未识别职位"}\n`;
+          if (work.period) {
+            resumeText += `时间：${work.period.startDate || ""} - ${work.period.endDate || "至今"}\n`;
+          } else if (work.startDate || work.endDate) {
+            resumeText += `时间：${work.startDate || ""} - ${work.endDate || "至今"}\n`;
+          }
+          if (work.jobDescription || work.description) {
+            resumeText += `职责描述：${work.jobDescription || work.description}\n`;
+          }
+          if (work.achievements && work.achievements.length > 0) {
+            resumeText += "主要成就：\n";
+            work.achievements.forEach((achievement: string, idx: number) => {
+              resumeText += `${idx + 1}. ${achievement}\n`;
+            });
+          }
+          resumeText += "\n";
+        });
+      } else {
+        resumeText += "暂无详细工作经历\n\n";
+      }
+
+      // 项目经验
+      resumeText += "=== 项目经验 ===\n";
+      if (projects.length > 0) {
+        projects.forEach((project: any) => {
+          resumeText += `${project.name || project.projectName || "未识别项目"}\n`;
+          if (project.period) {
+            resumeText += `时间：${project.period.startDate || ""} - ${project.period.endDate || "至今"}\n`;
+          } else if (project.startDate || project.endDate) {
+            resumeText += `时间：${project.startDate || ""} - ${project.endDate || "至今"}\n`;
+          }
+          if (project.role) resumeText += `角色：${project.role}\n`;
+          if (project.description || project.jobDescription) {
+            resumeText += `项目描述：${project.description || project.jobDescription}\n`;
+          }
+          if (project.responsibilities && project.responsibilities.length > 0) {
+            resumeText += "主要职责：\n";
+            project.responsibilities.forEach((resp: string, idx: number) => {
+              resumeText += `${idx + 1}. ${resp}\n`;
+            });
+          }
+          if (project.achievements && project.achievements.length > 0) {
+            resumeText += "项目成果：\n";
+            project.achievements.forEach((achievement: string, idx: number) => {
+              resumeText += `${idx + 1}. ${achievement}\n`;
+            });
+          }
+          if (project.technologies && project.technologies.length > 0) {
+            resumeText += `技术栈：${project.technologies.join("、")}\n`;
+          }
+          resumeText += "\n";
+        });
+      } else {
+        // 从analysis中提取项目相关信息
+        if (analysis.strengths && analysis.strengths.length > 0) {
+          resumeText += "项目亮点：\n";
+          analysis.strengths.forEach((strength: any, idx: number) => {
+            if (typeof strength === "string") {
+              resumeText += `${idx + 1}. ${strength}\n`;
+            } else if (strength.description) {
+              resumeText += `${idx + 1}. ${strength.title || ""}：${strength.description}\n`;
+            }
+          });
+        }
+        resumeText += "\n";
+      }
+
+      // 技能
+      resumeText += "=== 专业技能 ===\n";
+      const allTechSkills = [
+        ...(skills.tech_stack || []),
+        ...(analysisSkills.tech_stack || []),
+      ];
+      const allSoftSkills = [
+        ...(skills.soft_skills || []),
+        ...(analysisSkills.soft_skills || []),
+      ];
+
+      if (allTechSkills.length > 0) {
+        resumeText += `技术技能：${[...new Set(allTechSkills)].join("、")}\n`;
+      }
+      if (allSoftSkills.length > 0) {
+        resumeText += `软技能：${[...new Set(allSoftSkills)].join("、")}\n`;
+      }
+      if (skills.missing_skills && skills.missing_skills.length > 0) {
+        resumeText += `待提升技能：${skills.missing_skills.join("、")}\n`;
+      }
+      resumeText += "\n";
+
+      // 其他信息（从analysis中提取）
+      resumeText += "=== 简历评价 ===\n";
+      resumeText += `综合评分：${analysis.score || 0}/10\n`;
+      if (analysis.overall_comment) {
+        resumeText += `综合评价：${analysis.overall_comment}\n`;
+      }
+      if (analysis.strengths && analysis.strengths.length > 0) {
+        resumeText += "优点分析：\n";
+        analysis.strengths.forEach((strength: any, idx: number) => {
+          if (typeof strength === "string") {
+            resumeText += `${idx + 1}. ${strength}\n`;
+          } else {
+            resumeText += `${idx + 1}. ${strength.title || ""}：${strength.description || strength}\n`;
+          }
+        });
+      }
+      if (analysis.weaknesses && analysis.weaknesses.length > 0) {
+        resumeText += "\n待改进之处：\n";
+        analysis.weaknesses.forEach((weakness: any, idx: number) => {
+          if (typeof weakness === "string") {
+            resumeText += `${idx + 1}. ${weakness}\n`;
+          } else {
+            resumeText += `${idx + 1}. ${weakness.description || weakness}\n`;
+          }
+        });
+      }
+
+      setResumeContent(resumeText);
     } catch (error) {
       console.error("Error parsing resume:", error);
       alert("解析简历失败，请重试");
@@ -369,7 +527,8 @@ function ResumeAnalyze() {
                               </div>
 
                               {/* 推荐岗位 */}
-                              {(analysis.recommended_positions || []).length > 0 && (
+                              {(analysis.recommended_positions || []).length >
+                                0 && (
                                 <div className="mt-4">
                                   <span className="font-medium text-purple-700">
                                     推荐岗位：
@@ -390,7 +549,8 @@ function ResumeAnalyze() {
                               )}
 
                               {/* 面试问题 */}
-                              {(analysis.interview_questions || []).length > 0 && (
+                              {(analysis.interview_questions || []).length >
+                                0 && (
                                 <div className="mt-4">
                                   <span className="font-medium text-amber-700">
                                     面试预测问题：
@@ -446,7 +606,8 @@ function ResumeAnalyze() {
                               )}
 
                               {/* 长期建议 */}
-                              {(analysis.long_term_suggestions || []).length > 0 && (
+                              {(analysis.long_term_suggestions || []).length >
+                                0 && (
                                 <div className="mt-4">
                                   <span className="font-medium text-indigo-700">
                                     长期发展建议：

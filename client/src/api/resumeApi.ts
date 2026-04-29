@@ -142,11 +142,41 @@ const resumeApi = {
     resumeContent: string,
     prompt: string,
   ): Promise<string> => {
+    console.log("=== 前端 API 调用 optimizeResume ===");
+    console.log("=== 发送的 resumeContent 长度 ===", resumeContent.length);
+    console.log("=== 发送的 prompt ===", prompt);
+    console.log("=== 发送的 prompt 长度 ===", prompt.length);
+
     const response = await apiClient.post("/resumes/optimize", {
       resumeContent,
       prompt,
     });
-    return response.data.data;
+
+    console.log("=== API 响应 ===", response.data);
+
+    // 处理可能的多种返回格式
+    let optimizedContent = response.data.data;
+
+    // 如果返回的是对象，尝试提取 content 字段
+    if (typeof optimizedContent === "object" && optimizedContent !== null) {
+      optimizedContent =
+        optimizedContent.content ||
+        optimizedContent.optimized ||
+        JSON.stringify(optimizedContent);
+    }
+
+    // 如果是字符串，移除可能的 markdown 代码块标记
+    if (typeof optimizedContent === "string") {
+      optimizedContent = optimizedContent
+        .replace(/^```json\s*/, "")
+        .replace(/^```\s*/, "")
+        .replace(/\s*```$/, "")
+        .trim();
+    }
+
+    console.log("=== 处理后的优化内容长度 ===", optimizedContent.length);
+
+    return optimizedContent as string;
   },
 
   // 一键优化简历
@@ -154,7 +184,28 @@ const resumeApi = {
     const response = await apiClient.post("/resumes/optimize/one-click", {
       resumeContent,
     });
-    return response.data.data;
+
+    // 处理可能的多种返回格式
+    let optimizedContent = response.data.data;
+
+    // 如果返回的是对象，尝试提取 content 字段
+    if (typeof optimizedContent === "object" && optimizedContent !== null) {
+      optimizedContent =
+        optimizedContent.content ||
+        optimizedContent.optimized ||
+        JSON.stringify(optimizedContent);
+    }
+
+    // 如果是字符串，移除可能的 markdown 代码块标记
+    if (typeof optimizedContent === "string") {
+      optimizedContent = optimizedContent
+        .replace(/^```json\s*/, "")
+        .replace(/^```\s*/, "")
+        .replace(/\s*```$/, "")
+        .trim();
+    }
+
+    return optimizedContent as string;
   },
 };
 

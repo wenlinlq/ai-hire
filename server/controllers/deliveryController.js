@@ -159,24 +159,35 @@ class DeliveryController {
           filePath,
         );
 
-        // 调用本地smartresume服务分析简历（直接使用简历文件）
+        // 调用简历筛选服务分析简历（传递完整的职位对象，包含硬性条件）
         const screeningResult = await this.analyzeResumeForScreening(
           filePath,
-          position.requirements,
+          position,
         );
 
         const overallScore = screeningResult.overallScore || 0;
         const isPassed = overallScore >= aiResumeFilterScore;
 
-        // 更新投递记录的AI评分和状态
+        // 更新投递记录的AI评分、状态和筛选详情
         await deliveryModel.updateDelivery(delivery._id, {
           aiScore: overallScore,
           status: isPassed ? "in_candidate_pool" : "screening_failed",
+          aiScreening: {
+            passed: isPassed,
+            score: overallScore,
+            details: screeningResult,
+          },
         });
 
         if (isPassed) {
           // 通过筛选，添加到候选人列表
-          await this.addToCandidatePool(userId, position, team, resumeId);
+          await this.addToCandidatePool(
+            userId,
+            position,
+            team,
+            resumeId,
+            screeningResult,
+          );
           // 发送通过通知
           await this.sendResumeScreeningNotification(
             userId,
@@ -274,7 +285,13 @@ class DeliveryController {
   }
 
   // 添加用户到候选人池
-  async addToCandidatePool(userId, position, team, resumeId) {
+  async addToCandidatePool(
+    userId,
+    position,
+    team,
+    resumeId,
+    screeningResult = null,
+  ) {
     try {
       if (!team) return;
 
@@ -302,6 +319,14 @@ class DeliveryController {
         email: user?.email || "",
         phone: user?.phone || "",
         resumeFileUrl: resume?.fileUrl || "",
+        aiScore: screeningResult?.overallScore || null,
+        aiScreening: screeningResult
+          ? {
+              passed: true,
+              score: screeningResult.overallScore,
+              details: screeningResult,
+            }
+          : null,
       };
       await applicationModel.createApplication(applicationData);
     } catch (error) {

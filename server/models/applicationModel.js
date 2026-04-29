@@ -79,6 +79,8 @@ class ApplicationModel {
           weaknesses: [],
           summary: "",
         },
+        // AI筛选详情
+        aiScreening: applicationData.aiScreening || null,
         // HR人工评分
         hrScore: applicationData.hrScore || null,
         // HR评语

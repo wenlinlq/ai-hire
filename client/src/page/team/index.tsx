@@ -3459,8 +3459,8 @@ function Admin() {
       {/* 查看候选人弹窗 */}
       {viewModal && currentCandidate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="w-full max-w-xl max-h-[80vh] rounded-xl bg-white p-6 shadow-2xl flex flex-col">
+            <div className="mb-4 flex items-center justify-between flex-shrink-0">
               <h3 className="text-lg font-semibold text-neutral-900">
                 候选人详情
               </h3>
@@ -3472,7 +3472,7 @@ function Admin() {
                 &times;
               </button>
             </div>
-            <div className="mb-6 space-y-4">
+            <div className="flex-1 overflow-y-auto mb-6 space-y-4 scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   姓名
@@ -3581,6 +3581,144 @@ function Admin() {
                   )}
                 </div>
               </div>
+              {/* AI 筛选分析结果 */}
+              {((currentCandidate.aiScreening?.details?.strengths &&
+                currentCandidate.aiScreening.details.strengths.length > 0) ||
+                (currentCandidate.aiScreening?.details?.weaknesses &&
+                  currentCandidate.aiScreening.details.weaknesses.length > 0) ||
+                (currentCandidate.aiAnalysis?.strengths &&
+                  currentCandidate.aiAnalysis.strengths.length > 0) ||
+                (currentCandidate.aiAnalysis?.weaknesses &&
+                  currentCandidate.aiAnalysis.weaknesses.length > 0)) && (
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-3">
+                    AI 筛选分析
+                  </label>
+                  {/* 优势 / 通过原因 */}
+                  {((currentCandidate.aiScreening?.details?.strengths &&
+                    currentCandidate.aiScreening.details.strengths.length >
+                      0) ||
+                    (currentCandidate.aiAnalysis?.strengths &&
+                      currentCandidate.aiAnalysis.strengths.length > 0)) && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg
+                          className="w-4 h-4 text-green-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <span className="text-sm font-medium text-green-600">
+                          候选人优势
+                        </span>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-3 space-y-2">
+                        {(
+                          currentCandidate.aiScreening?.details?.strengths ||
+                          currentCandidate.aiAnalysis?.strengths ||
+                          []
+                        )
+                          .filter((item: any) => {
+                            if (typeof item === "string") return true;
+                            if (
+                              typeof item === "object" &&
+                              item !== null &&
+                              item.name
+                            ) {
+                              return true;
+                            }
+                            return false;
+                          })
+                          .map((item: any, index: number) => (
+                            <div
+                              key={index}
+                              className="flex items-start text-sm text-green-800"
+                            >
+                              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mt-1.5 mr-2 flex-shrink-0"></span>
+                              <span>
+                                {typeof item === "string" ? item : item.name}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* 不足 / 待改进项 */}
+                  {((currentCandidate.aiScreening?.details?.weaknesses &&
+                    currentCandidate.aiScreening.details.weaknesses.length >
+                      0) ||
+                    (currentCandidate.aiAnalysis?.weaknesses &&
+                      currentCandidate.aiAnalysis.weaknesses.length > 0)) && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg
+                          className="w-4 h-4 text-orange-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <span className="text-sm font-medium text-orange-600">
+                          待改进项
+                        </span>
+                      </div>
+                      <div className="bg-orange-50 rounded-lg p-3 space-y-2">
+                        {(
+                          currentCandidate.aiScreening?.details?.weaknesses ||
+                          currentCandidate.aiAnalysis?.weaknesses ||
+                          []
+                        )
+                          .filter((item: any) => {
+                            if (typeof item === "string") return true;
+                            if (
+                              typeof item === "object" &&
+                              item !== null &&
+                              item.name
+                            ) {
+                              return true;
+                            }
+                            return false;
+                          })
+                          .map((item: any, index: number) => (
+                            <div
+                              key={index}
+                              className="flex items-start text-sm text-orange-800"
+                            >
+                              <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mt-1.5 mr-2 flex-shrink-0"></span>
+                              <span>
+                                {typeof item === "string" ? item : item.name}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* AI分析摘要 */}
+                  {currentCandidate.aiAnalysis?.summary && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                      <div className="text-xs font-medium text-blue-600 mb-1">
+                        分析摘要
+                      </div>
+                      <p className="text-sm text-neutral-700">
+                        {currentCandidate.aiAnalysis.summary}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex justify-end">
               <button

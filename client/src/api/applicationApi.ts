@@ -47,6 +47,18 @@ export interface Application {
     weaknesses: string[];
     summary: string;
   };
+  aiScreening?: {
+    passed: boolean;
+    score: number;
+    details: {
+      skillMatch: number;
+      experienceMatch: number;
+      educationMatch: number;
+      overallScore: number;
+      strengths: string[];
+      weaknesses: string[];
+    };
+  };
   hrScore?: number;
   hrComment?: string;
   interviewId?: string;

@@ -352,13 +352,30 @@ const applicationController = {
         jobMap.set(job._id.toString(), job.title);
       });
 
-      // 为每个报名记录添加职位名称
-      const applicationsWithJobTitle = applications.map((application) => ({
-        ...application,
-        positionName:
-          jobMap.get(application.positionId.toString()) ||
-          application.positionId,
-      }));
+      // 获取每个 application 对应的 delivery 信息(包含 AI 筛选数据)
+      const deliveryModel = require("../models/deliveryModel");
+      const applicationIds = applications.map((app) => app._id);
+
+      // 为每个报名记录添加职位名称和 AI 筛选信息
+      const applicationsWithJobTitle = await Promise.all(
+        applications.map(async (application) => {
+          // 查找对应的 delivery 记录
+          const delivery = await deliveryModel.getCollection().findOne({
+            jobId: application.positionId,
+            userId: application.studentId,
+          });
+
+          return {
+            ...application,
+            positionName:
+              jobMap.get(application.positionId.toString()) ||
+              application.positionId,
+            // 添加 AI 筛选数据（从 delivery 中获取）
+            aiScreening: delivery?.aiScreening || application.aiScreening,
+            aiScore: delivery?.aiScore || application.aiScore,
+          };
+        }),
+      );
 
       res.status(200).json({
         success: true,

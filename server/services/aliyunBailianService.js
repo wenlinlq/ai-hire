@@ -797,6 +797,85 @@ ${prompt}
     };
   }
 
+  // 检查硬性条件
+  checkHardConditions(
+    resumeContent,
+    requiredSkills,
+    requiredEducation,
+    hardSkills,
+  ) {
+    const reasons = [];
+    const resumeLower = resumeContent.toLowerCase();
+    let passed = true;
+    let skillScore = 50;
+    let educationScore = 50;
+
+    // 检查硬性技能要求
+    if (hardSkills && hardSkills.length > 0) {
+      for (const skill of hardSkills) {
+        if (!resumeLower.includes(skill.toLowerCase())) {
+          reasons.push(`缺少硬性技能要求：${skill}`);
+          passed = false;
+          skillScore = 10;
+        }
+      }
+    }
+
+    // 检查学历要求
+    if (requiredEducation && requiredEducation !== "无") {
+      const hasBachelor =
+        resumeLower.includes("本科") ||
+        resumeLower.includes("学士") ||
+        resumeLower.includes("bachelor") ||
+        resumeLower.includes("bsc");
+      const hasMaster =
+        resumeLower.includes("硕士") ||
+        resumeLower.includes("研究生") ||
+        resumeLower.includes("master") ||
+        resumeLower.includes("msc");
+      const hasPhD =
+        resumeLower.includes("博士") ||
+        resumeLower.includes("phd") ||
+        resumeLower.includes("博士后");
+
+      // 判断学历等级
+      let candidateEducationLevel = 0; // 0: 无, 1: 本科, 2: 硕士, 3: 博士
+      if (hasPhD) candidateEducationLevel = 3;
+      else if (hasMaster) candidateEducationLevel = 2;
+      else if (hasBachelor) candidateEducationLevel = 1;
+
+      // 判断岗位要求的学历等级
+      let requiredEducationLevel = 0;
+      if (requiredEducation.includes("博士")) requiredEducationLevel = 3;
+      else if (
+        requiredEducation.includes("硕士") ||
+        requiredEducation.includes("研究生")
+      )
+        requiredEducationLevel = 2;
+      else if (requiredEducation.includes("本科")) requiredEducationLevel = 1;
+
+      if (candidateEducationLevel < requiredEducationLevel) {
+        reasons.push(
+          `学历不满足要求：要求${requiredEducation}，但简历中未体现`,
+        );
+        passed = false;
+        educationScore = 10;
+      } else if (candidateEducationLevel === 0 && requiredEducationLevel > 0) {
+        reasons.push(`简历中未提及学历信息，无法满足${requiredEducation}要求`);
+        passed = false;
+        educationScore = 20;
+      }
+    }
+
+    return {
+      passed,
+      reasons,
+      skillScore,
+      experienceScore: passed ? 50 : 10,
+      educationScore,
+    };
+  }
+
   // AI简历筛选分析 - 根据岗位要求分析简历匹配度并评分
   async analyzeResumeForScreening(resumeContent, jobRequirements) {
     try {
@@ -819,27 +898,75 @@ ${prompt}
 
       // 处理jobRequirements - 支持字符串或对象格式
       let jobDescription = "";
+      let requiredSkills = [];
+      let requiredEducation = "";
+      let hardSkills = []; // 硬性技能要求
+
       if (typeof jobRequirements === "string") {
         jobDescription = jobRequirements;
       } else {
-        // 构建技能要求字符串
-        const requiredSkills = jobRequirements.skills || [];
+        // 构建技能要求字符串 - 优先使用硬性技能要求
+        const skills1 = jobRequirements.skills || [];
+        const skills2 = jobRequirements.requirements?.skills || [];
+        const skills3 = jobRequirements.aiResumeFilterSkills || [];
+        // 合并所有技能，去重
+        requiredSkills = [...new Set([...skills1, ...skills2, ...skills3])];
         const requiredSkillsStr =
           requiredSkills.length > 0 ? requiredSkills.join(", ") : "无";
 
         // 构建工作经验要求字符串
-        const experienceReq = jobRequirements.experience || "无";
+        const experienceReq =
+          jobRequirements.experience ||
+          jobRequirements.requirements?.experience ||
+          "无";
 
         // 构建学历要求字符串
-        const educationReq = jobRequirements.education || "无";
+        requiredEducation =
+          jobRequirements.education ||
+          jobRequirements.requirements?.education ||
+          "无";
 
-        jobDescription = `技能要求：${requiredSkillsStr}\n经验要求：${experienceReq}\n学历要求：${educationReq}\n其他要求：${jobRequirements.description || "无"}`;
+        // 获取硬性技能要求 - 优先从职位模型的 aiResumeFilterSkills 字段获取
+        hardSkills =
+          jobRequirements.aiResumeFilterSkills ||
+          jobRequirements.hardSkills ||
+          [];
+
+        // 获取其他要求描述
+        const otherRequirements =
+          jobRequirements.description ||
+          jobRequirements.requirements?.description ||
+          "无";
+
+        jobDescription = `技能要求：${requiredSkillsStr}\n经验要求：${experienceReq}\n学历要求：${requiredEducation}\n其他要求：${otherRequirements}`;
+      }
+
+      // ============ 硬性条件检查 ============
+      const hardConditionResult = this.checkHardConditions(
+        resumeContent,
+        requiredSkills,
+        requiredEducation,
+        hardSkills,
+      );
+      if (!hardConditionResult.passed) {
+        console.log(
+          "Resume failed hard condition check:",
+          hardConditionResult.reason,
+        );
+        return {
+          skillMatch: hardConditionResult.skillScore || 10,
+          experienceMatch: hardConditionResult.experienceScore || 10,
+          educationMatch: hardConditionResult.educationScore || 10,
+          overallScore: 10,
+          strengths: ["简历格式规范", "信息完整"],
+          weaknesses: hardConditionResult.reasons || ["未满足硬性条件要求"],
+        };
       }
 
       const prompt = `
 你是一位专业的HR招聘专家，负责根据岗位要求对候选人简历进行筛选评分。
 
-请根据以下岗位要求，对候选人的简历进行分析和评分：
+请根据以下岗位要求，对候选人的简历进行详细分析和评分：
 
 【岗位要求】
 ${jobDescription}
@@ -852,6 +979,11 @@ ${truncatedContent}
 2. 经验匹配度：评估候选人的工作/项目经验与岗位要求的匹配程度
 3. 学历匹配度：评估候选人的学历背景与岗位要求的匹配程度
 4. 综合评分：综合考虑以上各项的总体评分
+
+【分析要求】
+请提供详细的分析结果，每个优势和不足点都需要具体说明，包含以下内容：
+- strengths（优势）：列出3-5条候选人的核心优势，每条不少于20字，具体说明候选人具备的哪些能力、经验或特质符合岗位要求
+- weaknesses（不足）：列出3-5条候选人的主要不足，每条不少于20字，具体说明候选人缺少哪些关键技能、经验或与岗位要求不匹配的地方
 
 请以JSON格式返回分析结果，不要包含任何其他文本。
 JSON格式要求：

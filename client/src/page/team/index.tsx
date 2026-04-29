@@ -15,7 +15,6 @@ type AdminTab =
   | "dashboard"
   | "jobs"
   | "candidates"
-  | "interviews"
   | "questions"
   | "notifications";
 type AdminModal =
@@ -118,11 +117,6 @@ interface JobFormState {
   aiResumeFilterScore: number;
   aiResumeFilterSkills: string[];
 }
-
-const interviewPrograms = [
-  { title: "技术面试任务", count: 28, note: "本周计划完成 12 场" },
-  { title: "评分分布", count: 86, note: "平均分稳定在 80 以上" },
-] as const;
 
 function Admin() {
   // 从localStorage读取标签页状态，如果没有则默认为dashboard
@@ -556,7 +550,6 @@ function Admin() {
               ["dashboard", "团队仪表盘"],
               ["jobs", "职位管理"],
               ["candidates", "候选人管理"],
-              ["interviews", "AI面试中心"],
               ["questions", "面试题库"],
               ["notifications", "消息通知管理"],
             ].map(([key, label]) => (
@@ -2212,56 +2205,6 @@ function Admin() {
                     </tbody>
                   </table>
                 </div>
-              </div>
-            </section>
-          )}
-
-          {activeTab === "interviews" && (
-            <section>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-800">
-                  AI面试中心
-                </h2>
-                <button
-                  type="button"
-                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => openModal("interview")}
-                >
-                  创建面试
-                </button>
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-2">
-                {interviewPrograms.map((card) => (
-                  <div
-                    key={card.title}
-                    className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
-                  >
-                    <h3 className="mb-4 text-lg font-semibold text-neutral-800">
-                      {card.title}
-                    </h3>
-                    <div className="mb-3 text-4xl font-bold text-primary-600">
-                      {card.count}
-                    </div>
-                    <p className="text-sm text-neutral-500">{card.note}</p>
-                    <div className="mt-6 flex h-48 items-end gap-3">
-                      {[45, 72, 60, 80, 68].map((value, index) => (
-                        <div
-                          key={`${card.title}-${index}`}
-                          className="flex flex-1 flex-col items-center"
-                        >
-                          <div
-                            className="w-full rounded-t-md bg-primary-400"
-                            style={{ height: `${value}%` }}
-                          />
-                          <span className="mt-2 text-xs text-neutral-500">
-                            {index + 1}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
               </div>
             </section>
           )}

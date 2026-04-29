@@ -64,7 +64,7 @@ router.post(
   "/parse",
   verifyToken,
   upload.single("resume"),
-  aiPreInterviewController.parseResume,
+  (req, res) => aiPreInterviewController.parseResume(req, res),
 );
 
 // 优化简历路由

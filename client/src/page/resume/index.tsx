@@ -367,6 +367,104 @@ function ResumeAnalyze() {
                                   {analysis.overall_comment || "暂无"}
                                 </p>
                               </div>
+
+                              {/* 推荐岗位 */}
+                              {(analysis.recommended_positions || []).length > 0 && (
+                                <div className="mt-4">
+                                  <span className="font-medium text-purple-700">
+                                    推荐岗位：
+                                  </span>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {(analysis.recommended_positions || []).map(
+                                      (position: string, index: number) => (
+                                        <span
+                                          key={index}
+                                          className="rounded bg-purple-50 px-3 py-1 text-sm text-purple-600"
+                                        >
+                                          {position}
+                                        </span>
+                                      ),
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* 面试问题 */}
+                              {(analysis.interview_questions || []).length > 0 && (
+                                <div className="mt-4">
+                                  <span className="font-medium text-amber-700">
+                                    面试预测问题：
+                                  </span>
+                                  <ul className="mt-2 ml-4 space-y-2">
+                                    {(analysis.interview_questions || []).map(
+                                      (item: any, index: number) => (
+                                        <li key={index} className="text-sm">
+                                          <span className="font-medium text-neutral-700">
+                                            Q{index + 1}：{item.question}
+                                          </span>
+                                          <p className="text-neutral-600 ml-2">
+                                            考察方向：{item.reason}
+                                          </p>
+                                        </li>
+                                      ),
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* 简历缺陷 */}
+                              {analysis.resume_defects && (
+                                <div className="mt-4">
+                                  <span className="font-medium text-red-700">
+                                    简历缺陷：
+                                  </span>
+                                  <p className="mt-2 text-sm text-neutral-700">
+                                    {analysis.resume_defects}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* 行动计划 */}
+                              {(analysis.action_plan || []).length > 0 && (
+                                <div className="mt-4">
+                                  <span className="font-medium text-emerald-700">
+                                    优化行动计划：
+                                  </span>
+                                  <ol className="mt-2 ml-4 space-y-1">
+                                    {(analysis.action_plan || []).map(
+                                      (action: string, index: number) => (
+                                        <li
+                                          key={index}
+                                          className="text-sm text-neutral-700"
+                                        >
+                                          {index + 1}. {action}
+                                        </li>
+                                      ),
+                                    )}
+                                  </ol>
+                                </div>
+                              )}
+
+                              {/* 长期建议 */}
+                              {(analysis.long_term_suggestions || []).length > 0 && (
+                                <div className="mt-4">
+                                  <span className="font-medium text-indigo-700">
+                                    长期发展建议：
+                                  </span>
+                                  <ul className="mt-2 ml-4 space-y-1">
+                                    {(analysis.long_term_suggestions || []).map(
+                                      (suggestion: string, index: number) => (
+                                        <li
+                                          key={index}
+                                          className="text-sm text-neutral-700"
+                                        >
+                                          • {suggestion}
+                                        </li>
+                                      ),
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
                             </div>
                           )}
                         </>

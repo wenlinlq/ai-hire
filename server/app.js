@@ -100,9 +100,19 @@ app.use(function (err, req, res, next) {
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render("error");
+  // 如果是 API 请求，返回 JSON 格式的错误
+  if (req.path.startsWith("/api/")) {
+    res.status(err.status || 500);
+    res.json({
+      success: false,
+      error: err.message || "Internal server error",
+      stack: req.app.get("env") === "development" ? err.stack : undefined,
+    });
+  } else {
+    // render the error page
+    res.status(err.status || 500);
+    res.render("error");
+  }
 });
 
 module.exports = app;

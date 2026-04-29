@@ -399,10 +399,19 @@ class AiPreInterviewController {
 
       // 情况3：直接上传文件
       else if (file) {
+        console.log(
+          "[DEBUG] parseResume - 收到上传文件:",
+          file.originalname,
+          file.path,
+        );
         // 调用 Python 分析服务
         const formData = new FormData();
         formData.append("file", fs.createReadStream(file.path));
 
+        console.log(
+          "[DEBUG] parseResume - 正在调用 Python 分析服务:",
+          `${ANALYSIS_SERVICE_URL}/analyze`,
+        );
         const response = await axios.post(
           `${ANALYSIS_SERVICE_URL}/analyze`,
           formData,
@@ -411,9 +420,34 @@ class AiPreInterviewController {
             timeout: 300000,
           },
         );
+        console.log(
+          "[DEBUG] parseResume - Python 服务响应成功，状态码:",
+          response.status,
+        );
+        console.log(
+          "[DEBUG] parseResume - 响应数据类型:",
+          typeof response.data,
+        );
+        console.log(
+          "[DEBUG] parseResume - 响应数据长度:",
+          JSON.stringify(response.data).length,
+        );
+        // 如果是字符串，显示前500字符
+        if (typeof response.data === "string") {
+          console.log(
+            "[DEBUG] parseResume - 响应数据前500字符:",
+            response.data.substring(0, Math.min(500, response.data.length)),
+          );
+        } else {
+          console.log(
+            "[DEBUG] parseResume - 响应数据摘要:",
+            JSON.stringify(response.data).substring(0, 500),
+          );
+        }
 
         // 适配 smartresume 返回的数据格式
         result = this.formatSmartResumeResult(response.data);
+        console.log("[DEBUG] parseResume - 格式化结果成功:", result.success);
       }
 
       // 情况4：既没有 resumeId、resumeContent 也没有 file
@@ -443,15 +477,39 @@ class AiPreInterviewController {
         });
       }
 
+      console.error("Error parsing resume - full stack:", error);
       res.status(500).json({
         success: false,
         error: error.message || "简历解析失败",
+        stack: error.stack,
       });
     }
   }
 
   // 适配 smartresume 返回的数据格式
   formatSmartResumeResult(rawResult) {
+    // 如果 rawResult 是字符串，尝试解析为 JSON
+    if (typeof rawResult === "string") {
+      try {
+        // 移除可能的 Markdown 代码块标记
+        const cleanedString = rawResult
+          .replace(/^```json\s*/, "")
+          .replace(/\s*```$/, "")
+          .trim();
+        rawResult = JSON.parse(cleanedString);
+      } catch (error) {
+        console.error(
+          "[DEBUG] formatSmartResumeResult - 无法解析字符串为JSON:",
+          error.message,
+        );
+        return {
+          success: false,
+          extracted_data: {},
+          analysis: {},
+        };
+      }
+    }
+
     if (!rawResult || typeof rawResult !== "object") {
       return {
         success: false,
@@ -465,42 +523,58 @@ class AiPreInterviewController {
       return rawResult;
     }
 
-    // 从 smartresume 返回的格式转换为 ai-hire 期望的格式
-    // 支持多种数据结构：
-    // 格式1: { basicInfo: {name, phone, email, school, major, degree, gradYear}, workExperience, skills, projects }
-    // 格式2: { name, education: {school, degree, major, graduation_year}, basicInfo: {phone, email}, workExperience, skills, projects }
+    // smartresume 返回的格式：
+    // {
+    //   summary: { name, education, school, major, graduation_year, work_years },
+    //   skills: { tech_stack, soft_skills, missing_skills },
+    //   strengths: [{ title, description }],
+    //   weaknesses: [{ category, description, severity }],
+    //   optimization_suggestions: [{ issue, suggestion, example, priority }],
+    //   score: 7.5,
+    //   score_breakdown: { technical_skills, project_experience, resume_quality, potential },
+    //   recommended_positions: [...],
+    //   interview_questions: [...],
+    //   overall_comment: "...",
+    //   resume_defects: "...",
+    //   action_plan: [...]
+    // }
 
+    // 构建 extracted_data（提取的原始信息）
     const extracted_data = {
-      name: rawResult.name || rawResult.basicInfo?.name || "",
+      name: rawResult.summary?.name || rawResult.name || "",
       phone: rawResult.phone || rawResult.basicInfo?.phone || "",
       email: rawResult.email || rawResult.basicInfo?.email || "",
-      education: {
-        school:
-          rawResult.education?.school || rawResult.basicInfo?.school || "",
-        major: rawResult.education?.major || rawResult.basicInfo?.major || "",
-        degree:
-          rawResult.education?.degree || rawResult.basicInfo?.degree || "",
-        gradYear:
-          rawResult.education?.graduation_year ||
-          rawResult.basicInfo?.gradYear ||
-          "",
+      basic_info: {
+        name: rawResult.summary?.name || rawResult.name || "",
+        phone: rawResult.phone || "",
+        email: rawResult.email || "",
+        school: rawResult.summary?.school || "",
+        major: rawResult.summary?.major || "",
+        graduation_year: rawResult.summary?.graduation_year || "",
+        education: rawResult.summary?.education || "",
+        work_years: rawResult.summary?.work_years || 0,
       },
-      skills: rawResult.skills || [],
+      education: rawResult.education || [],
+      work_experience:
+        rawResult.work_experience || rawResult.workExperience || [],
       projects: rawResult.projects || [],
-      experience: rawResult.workExperience || rawResult.experience || [],
+      skills: rawResult.skills || [],
     };
 
-    // 构建分析结果
+    // 构建 analysis（AI 分析结果）
     const analysis = {
-      total_score: rawResult.total_score || rawResult.matchScore || 0,
-      skill_score: rawResult.skill_score || 0,
-      experience_score: rawResult.experience_score || 0,
-      education_score: rawResult.education_score || 0,
+      summary: rawResult.summary || {},
+      skills: rawResult.skills || {},
+      score: rawResult.score || 0,
+      score_breakdown: rawResult.score_breakdown || {},
       strengths: rawResult.strengths || [],
       weaknesses: rawResult.weaknesses || [],
-      suggestions: rawResult.suggestions || [],
-      match_score: rawResult.matchScore || 0,
-      job_fit: rawResult.jobFit || "",
+      optimization_suggestions: rawResult.optimization_suggestions || [],
+      recommended_positions: rawResult.recommended_positions || [],
+      interview_questions: rawResult.interview_questions || [],
+      overall_comment: rawResult.overall_comment || "",
+      resume_defects: rawResult.resume_defects || "",
+      action_plan: rawResult.action_plan || [],
     };
 
     return {

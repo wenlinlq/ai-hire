@@ -248,6 +248,59 @@ const InterviewConversation = () => {
     }
   };
 
+  // 默认面试问题库
+  const getDefaultQuestion = (
+    type: InterviewType,
+    subType: InterviewSubType | null,
+    questionNumber: number,
+  ): string => {
+    const questions: Record<InterviewType, string[]> = {
+      frontend: [
+        "请解释一下JavaScript中的闭包是什么，以及它的应用场景。",
+        "请描述React中的生命周期方法，以及在函数组件中如何使用hooks替代它们。",
+        "请解释CSS中的Flexbox布局，以及如何实现水平和垂直居中。",
+        "请描述浏览器的事件循环机制，以及宏任务和微任务的区别。",
+        "请解释HTTP和HTTPS的区别，以及HTTPS的工作原理。",
+        "请描述Vue中的响应式原理，以及Vue3相比Vue2的改进。",
+        "请解释Webpack的工作原理，以及如何进行代码分割优化。",
+        "请描述跨域问题的解决方案，以及CORS的工作原理。",
+        "请解释TypeScript中的泛型，以及它的应用场景。",
+        "请描述前端性能优化的常用方法，包括代码层面和资源层面。",
+      ],
+      backend: [
+        "请解释RESTful API的设计原则，以及如何设计一个良好的API接口。",
+        "请描述数据库事务的ACID特性，以及如何处理并发事务问题。",
+        "请解释JWT认证的工作原理，以及如何实现安全的用户认证。",
+        "请描述微服务架构的优缺点，以及服务间通信的常用方式。",
+        "请解释Redis的常用数据结构，以及它们的应用场景。",
+        "请描述消息队列的工作原理，以及常用的消息队列系统有哪些。",
+        "请解释Docker容器的工作原理，以及如何使用Docker部署应用。",
+        "请描述负载均衡的常用算法，以及如何实现高可用的服务架构。",
+        "请解释数据库索引的工作原理，以及如何优化SQL查询性能。",
+        "请描述分布式系统中的CAP理论，以及如何在实际项目中权衡。",
+      ],
+      ui: [
+        "请描述您的设计理念，以及如何平衡美观性和实用性。",
+        "请解释色彩理论在UI设计中的应用，以及如何选择合适的配色方案。",
+        "请描述响应式设计的原则，以及如何设计适配不同设备的界面。",
+        "请解释用户体验设计的流程，以及如何进行用户研究。",
+        "请描述设计系统的概念，以及如何构建和维护设计系统。",
+        "请解释无障碍设计的重要性，以及如何确保产品的可访问性。",
+        "请描述原型设计的常用工具和方法，以及如何进行交互设计。",
+        "请解释设计规范的重要性，以及如何制定设计规范。",
+        "请描述设计评审的流程，以及如何收集和处理反馈。",
+        "请描述设计趋势的变化，以及如何保持设计的创新性。",
+      ],
+    };
+
+    const questionList = questions[type] || questions.frontend;
+    const index = (questionNumber - 1) % questionList.length;
+    return questionList[index];
+  };
+
+  // 面试问题总数
+  const TOTAL_QUESTIONS = 10;
+
   const handleSendMessage = (e: FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim()) return;
@@ -264,84 +317,137 @@ const InterviewConversation = () => {
     setMessages(updatedMessages);
     setMessageInput("");
 
-    // 模拟AI面试官思考和回复
-    setTimeout(() => {
+    // 计算当前问题数量（面试官消息数 - 1个开场白）
+    const interviewerMessages = updatedMessages.filter(
+      (msg) => msg.sender === "interviewer",
+    );
+    const currentQuestionCount = interviewerMessages.length - 1; // 减去开场白
+
+    // 检查是否还有问题要问
+    if (currentQuestionCount < TOTAL_QUESTIONS) {
+      // 还有问题，调用API生成下一个问题
       setIsInterviewerTyping(true);
+      const questionMessageId = `msg-${Date.now()}-question`;
 
-      setTimeout(() => {
-        const interviewerMessage: Message = {
+      // 先添加一个空消息占位
+      setMessages((prev) => [
+        ...prev,
+        {
           sender: "interviewer",
-          content: getNextQuestion(
-            type,
-            subType,
-            updatedMessages.length,
-            updatedMessages,
-          ),
+          content: "",
           timestamp: new Date().toLocaleTimeString(),
-          id: `msg-${Date.now()}-interviewer`,
-        };
+          id: questionMessageId,
+        },
+      ]);
 
-        setMessages((prev) => [...prev, interviewerMessage]);
-        setIsInterviewerTyping(false);
-      }, 1500);
-    }, 500);
-  };
-
-  const getNextQuestion = (
-    type: InterviewType,
-    subType: InterviewSubType | null,
-    questionIndex: number,
-    updatedMessages?: Message[],
-  ): string => {
-    // 只设置1个问题，所以回答完第一个问题后就结束面试
-    if (questionIndex < 1) {
-      // 这里可以添加逻辑生成后续问题，但根据需求只设置1个问题
-      return "感谢您的回答。面试到此结束，我们会在后续联系您。";
-    } else {
-      // 提取问题和回答
-      const questions: string[] = [];
-      const answers: string[] = [];
-
-      // 使用传入的 updatedMessages 或 messages 状态
-      const currentMessages = updatedMessages || messages;
-
-      // 正确遍历消息数组，收集问题和回答
-      for (let i = 0; i < currentMessages.length; i++) {
-        if (currentMessages[i].sender === "interviewer") {
-          questions.push(currentMessages[i].content);
-        } else if (currentMessages[i].sender === "candidate") {
-          answers.push(currentMessages[i].content);
-        }
-      }
-
-      console.log("Interview questions:", questions);
-      console.log("Interview answers:", answers);
-
-      // 面试结束，跳转到总结页面
-      setTimeout(async () => {
-        try {
-          // 调用API分析面试问答
-          const response = await api.post("/aiPreInterviews/analyze-answers", {
+      // 调用流式API生成下一个问题
+      let generatedQuestion = "";
+      streamRequest(
+        "/aiPreInterviews/generate-question-stream",
+        { type, subType },
+        (content) => {
+          generatedQuestion += content;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === questionMessageId
+                ? { ...msg, content: generatedQuestion }
+                : msg,
+            ),
+          );
+        },
+        (error) => {
+          console.error("生成面试问题失败:", error);
+          generatedQuestion = getDefaultQuestion(
             type,
             subType,
-            questions,
-            answers,
-          });
+            currentQuestionCount + 1,
+          );
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === questionMessageId
+                ? { ...msg, content: generatedQuestion }
+                : msg,
+            ),
+          );
+          setIsInterviewerTyping(false);
+        },
+        () => {
+          if (!generatedQuestion) {
+            generatedQuestion = getDefaultQuestion(
+              type,
+              subType,
+              currentQuestionCount + 1,
+            );
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === questionMessageId
+                  ? { ...msg, content: generatedQuestion }
+                  : msg,
+              ),
+            );
+          }
+          setIsInterviewerTyping(false);
+        },
+      );
+    } else {
+      // 问题问完了，结束面试
+      setTimeout(() => {
+        setIsInterviewerTyping(true);
 
-          console.log("Analysis response:", response);
+        setTimeout(() => {
+          // 提取所有问题和回答
+          const questions: string[] = [];
+          const answers: string[] = [];
 
-          // 跳转到总结页面并传递分析结果
-          const analysis = response.data?.data || response.data;
-          navigate(`/interview/summary?type=${type}&subType=${subType}`, {
-            state: { analysis },
-          });
-        } catch (error) {
-          console.error("Error analyzing interview:", error);
-          // 如果API调用失败，仍然跳转到总结页面
-          navigate(`/interview/summary?type=${type}&subType=${subType}`);
-        }
-      }, 2000);
-      return "感谢您的回答。面试到此结束，我们会在后续联系您。";
+          // 跳过开场白，从第二个面试官消息开始
+          let isFirstInterviewer = true;
+          for (const msg of updatedMessages) {
+            if (msg.sender === "interviewer") {
+              if (isFirstInterviewer) {
+                isFirstInterviewer = false;
+                continue; // 跳过开场白
+              }
+              questions.push(msg.content);
+            } else if (msg.sender === "candidate") {
+              answers.push(msg.content);
+            }
+          }
+
+          const conclusionMessage: Message = {
+            sender: "interviewer",
+            content: "感谢您的回答。面试到此结束，我们会在后续联系您。",
+            timestamp: new Date().toLocaleTimeString(),
+            id: `msg-${Date.now()}-conclusion`,
+          };
+
+          setMessages((prev) => [...prev, conclusionMessage]);
+          setIsInterviewerTyping(false);
+
+          // 调用API分析面试
+          setTimeout(async () => {
+            try {
+              const response = await api.post(
+                "/aiPreInterviews/analyze-answers",
+                {
+                  type,
+                  subType,
+                  questions,
+                  answers,
+                },
+              );
+
+              console.log("Analysis response:", response);
+              const analysis = response.data?.data || response.data;
+              navigate(`/interview/summary?type=${type}&subType=${subType}`, {
+                state: { analysis },
+              });
+            } catch (error) {
+              console.error("Error analyzing interview:", error);
+              navigate(`/interview/summary?type=${type}&subType=${subType}`);
+            }
+          }, 2000);
+        }, 1500);
+      }, 500);
     }
   };
 

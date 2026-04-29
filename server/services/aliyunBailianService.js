@@ -800,7 +800,7 @@ ${prompt}
   // AI简历筛选分析 - 根据岗位要求分析简历匹配度并评分
   async analyzeResumeForScreening(resumeContent, jobRequirements) {
     try {
-      console.log("Analyzing resume for screening...");
+      console.log("Analyzing resume for screening with deepseek...");
 
       if (!resumeContent || resumeContent.length === 0) {
         throw new Error("No resume content provided");
@@ -817,16 +817,24 @@ ${prompt}
           ? resumeContent.substring(0, maxContentLength) + "\n\n[内容已截断]"
           : resumeContent;
 
-      // 构建技能要求字符串
-      const requiredSkills = jobRequirements.skills || [];
-      const requiredSkillsStr =
-        requiredSkills.length > 0 ? requiredSkills.join(", ") : "无";
+      // 处理jobRequirements - 支持字符串或对象格式
+      let jobDescription = "";
+      if (typeof jobRequirements === "string") {
+        jobDescription = jobRequirements;
+      } else {
+        // 构建技能要求字符串
+        const requiredSkills = jobRequirements.skills || [];
+        const requiredSkillsStr =
+          requiredSkills.length > 0 ? requiredSkills.join(", ") : "无";
 
-      // 构建工作经验要求字符串
-      const experienceReq = jobRequirements.experience || "无";
+        // 构建工作经验要求字符串
+        const experienceReq = jobRequirements.experience || "无";
 
-      // 构建学历要求字符串
-      const educationReq = jobRequirements.education || "无";
+        // 构建学历要求字符串
+        const educationReq = jobRequirements.education || "无";
+
+        jobDescription = `技能要求：${requiredSkillsStr}\n经验要求：${experienceReq}\n学历要求：${educationReq}\n其他要求：${jobRequirements.description || "无"}`;
+      }
 
       const prompt = `
 你是一位专业的HR招聘专家，负责根据岗位要求对候选人简历进行筛选评分。
@@ -834,10 +842,7 @@ ${prompt}
 请根据以下岗位要求，对候选人的简历进行分析和评分：
 
 【岗位要求】
-技能要求：${requiredSkillsStr}
-经验要求：${experienceReq}
-学历要求：${educationReq}
-其他要求：${jobRequirements.description || "无"}
+${jobDescription}
 
 【候选人简历】
 ${truncatedContent}
@@ -865,7 +870,7 @@ JSON格式要求：
       const response = await axios.post(
         this.apiUrl,
         {
-          model: "qwen-max",
+          model: "deepseek-v3",
           messages: [
             {
               role: "system",

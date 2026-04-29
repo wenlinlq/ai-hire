@@ -6,14 +6,10 @@ const teamModel = require("../models/teamModel");
 const applicationModel = require("../models/applicationModel");
 const userModel = require("../models/userModel");
 const resumeModel = require("../models/resumeModel");
-const axios = require("axios");
-const FormData = require("form-data");
 const fs = require("fs");
 const path = require("path");
-
-// 本地简历分析服务配置
-const ANALYSIS_SERVICE_URL =
-  process.env.ANALYSIS_SERVICE_URL || "http://localhost:8000";
+const baiduDocumentService = require("../services/baiduDocumentService");
+const aliyunBailianService = require("../services/aliyunBailianService");
 
 class DeliveryController {
   // 创建投递记录
@@ -368,39 +364,36 @@ class DeliveryController {
     }
   }
 
-  // 使用本地smartresume服务分析简历并进行筛选评分
+  // 使用百度智能云解析文档 + 阿里云百炼deepseek分析简历并进行筛选评分
   async analyzeResumeForScreening(filePath, jobRequirements) {
     try {
       console.log(
-        "Analyzing resume for screening with local smartresume service...",
+        "Analyzing resume for screening with Baidu + Aliyun service...",
       );
 
       if (!filePath || !fs.existsSync(filePath)) {
         throw new Error("Resume file not found");
       }
 
-      // 调用本地smartresume服务（直接使用简历文件）
-      const formData = new FormData();
-      formData.append("file", fs.createReadStream(filePath));
-
-      const response = await axios.post(
-        `${ANALYSIS_SERVICE_URL}/analyze`,
-        formData,
-        {
-          headers: { ...formData.getHeaders() },
-          timeout: 300000,
-          responseType: "text",
-        },
+      console.log("File path:", filePath);
+      console.log("Job requirements type:", typeof jobRequirements);
+      console.log(
+        "Job requirements:",
+        JSON.stringify(jobRequirements).substring(0, 200),
       );
 
-      // 处理响应数据
-      const responseText = response.data;
-      console.log("Screening response length:", responseText?.length || 0);
+      // 第一步：使用百度智能云解析文档获取文本内容
+      console.log("Step 1: Parsing document with Baidu...");
+      const resumeContent = await baiduDocumentService.parseDocument(filePath);
+      console.log(
+        "Resume parsed successfully, content length:",
+        resumeContent.length,
+      );
+      console.log("Resume content preview:", resumeContent.substring(0, 100));
 
-      // 检查响应是否为空
-      if (!responseText || responseText.trim().length === 0) {
+      if (!resumeContent || resumeContent.trim().length === 0) {
         console.warn(
-          "Empty response from smartresume service, using default scoring",
+          "Empty resume content after parsing, using fallback scoring",
         );
         return {
           skillMatch: 50,
@@ -412,82 +405,25 @@ class DeliveryController {
         };
       }
 
-      // 尝试解析JSON
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error(
-          "Failed to parse JSON response from smartresume:",
-          parseError.message,
+      // 第二步：使用阿里云百炼deepseek进行筛选分析
+      console.log("Step 2: Analyzing resume with Aliyun Bailian...");
+      const screeningResult =
+        await aliyunBailianService.analyzeResumeForScreening(
+          resumeContent,
+          jobRequirements,
         );
-        return {
-          skillMatch: 50,
-          experienceMatch: 50,
-          educationMatch: 50,
-          overallScore: 50,
-          strengths: ["简历格式规范", "信息完整"],
-          weaknesses: ["技能匹配度一般", "经验匹配度一般"],
-        };
-      }
 
-      console.log("Screening result from smartresume:", result);
+      console.log("Screening result:", JSON.stringify(screeningResult));
 
-      // 从分析结果中提取评分（检查 result.success 和 result.analysis）
-      if (result && result.success && result.analysis) {
-        const analysis = result.analysis;
-        // 返回评分结果
-        return {
-          skillMatch: analysis.skill_score || analysis.total_score || 0,
-          experienceMatch:
-            analysis.experience_score || analysis.total_score || 0,
-          educationMatch: analysis.education_score || analysis.total_score || 0,
-          overallScore: analysis.total_score || 0,
-          strengths: analysis.strengths || [],
-          weaknesses: analysis.weaknesses || [],
-        };
-      } else if (
-        result &&
-        (result.basicInfo || result.name || result.education)
-      ) {
-        // 处理 smartresume 直接返回的格式（没有 success 字段）
-        // 支持多种格式：{ basicInfo, workExperience } 或 { name, education, basicInfo }
-        const total_score = result.total_score || result.matchScore || 0;
-        return {
-          skillMatch: result.skill_score || total_score || 0,
-          experienceMatch: result.experience_score || total_score || 0,
-          educationMatch: result.education_score || total_score || 0,
-          overallScore: total_score,
-          strengths: result.strengths || ["简历格式规范", "信息完整"],
-          weaknesses: result.weaknesses || ["技能匹配度一般", "经验匹配度一般"],
-        };
-      } else {
-        // 如果没有分析结果或success为false，返回默认评分
-        console.warn(
-          "Invalid or unsuccessful response from smartresume, using default scoring",
-        );
-        return {
-          skillMatch: 50,
-          experienceMatch: 50,
-          educationMatch: 50,
-          overallScore: 50,
-          strengths: ["简历格式规范", "信息完整"],
-          weaknesses: ["技能匹配度一般", "经验匹配度一般"],
-        };
-      }
+      return screeningResult;
     } catch (error) {
       console.error("Error analyzing resume for screening:", {
         message: error.message,
         code: error.code,
+        stack: error.stack,
       });
 
       // 如果服务不可用，返回默认评分
-      if (error.code === "ECONNREFUSED") {
-        console.warn(
-          "Smartresume service not available, using default scoring",
-        );
-      }
-
       return {
         skillMatch: 50,
         experienceMatch: 50,

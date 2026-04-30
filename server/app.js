@@ -50,7 +50,12 @@ var filterRulesRouter = require("./routes/api/filterRules");
 var resumeAnalysesRouter = require("./routes/api/resumeAnalyses");
 
 var app = express();
-
+app.use(
+  cors({
+    origin: ["http://47.109.194.235:5173", "http://localhost:5173"],
+    credentials: true,
+  }),
+);
 // 配置CORS中间件
 app.use(
   cors({

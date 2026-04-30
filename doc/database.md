@@ -4,18 +4,23 @@
 
 ## 一、数据库设计概览
 
-| 集合名称              | 中文名称   | 说明                 |
-| :-------------------- | :--------- | :------------------- |
-| users                 | 用户表     | 所有系统用户         |
-| teams                 | 团队表     | 社团/实验室信息      |
-| positions             | 岗位表     | 招聘岗位/部门信息    |
-| deliveries            | 投递表     | 学生投递记录         |
-| resumes               | 简历表     | 学生简历及AI解析结果 |
-| favorites             | 收藏表     | 职位收藏记录         |
-| notifications         | 通知表     | 用户通知消息         |
-| interview_invitations | 面试邀请表 | 面试安排记录         |
-| questionBanks         | 面试题库表 | 面试题目管理         |
-| ai_pre_interviews     | AI预面试表 | AI模拟面试记录       |
+| 集合名称               | 中文名称   | 说明                 |
+| :--------------------- | :--------- | :------------------- |
+| users                  | 用户表     | 所有系统用户         |
+| teams                  | 团队表     | 社团/实验室信息      |
+| positions              | 岗位表     | 招聘岗位/部门信息    |
+| deliveries             | 投递表     | 学生投递记录         |
+| resumes                | 简历表     | 学生简历及AI解析结果 |
+| favorites              | 收藏表     | 职位收藏记录         |
+| notifications          | 通知表     | 用户通知消息         |
+| interview_invitations  | 面试邀请表 | 面试安排记录         |
+| questionBanks          | 面试题库表 | 面试题目管理         |
+| ai_pre_interviews      | AI预面试表 | AI模拟面试记录       |
+| applications           | 报名记录表 | 学生报名详细记录     |
+| resume_analysis        | 简历分析表 | AI简历分析结果       |
+| filter_rules           | 筛选规则表 | AI筛选规则配置       |
+| notification_templates | 通知模板表 | 通知消息模板         |
+| notification_logs      | 通知日志表 | 通知发送记录         |
 
 ---
 
@@ -272,6 +277,154 @@
 
 ---
 
+### 2.11 报名记录表 (applications)
+
+| 字段名                | 类型     | 必填 | 说明                                |
+| :-------------------- | :------- | :--- | :---------------------------------- |
+| \_id                  | ObjectId | 是   | 主键                                |
+| positionId            | ObjectId | 是   | 岗位ID，关联positions               |
+| studentId             | ObjectId | 是   | 学生ID，关联users                   |
+| resumeId              | ObjectId | 是   | 简历ID，关联resumes                 |
+| teamId                | ObjectId | 否   | 团队ID，关联teams                   |
+| status                | String   | 是   | 状态：pending / reviewed / accepted |
+| grade                 | String   | 否   | 年级                                |
+| major                 | String   | 否   | 专业                                |
+| name                  | String   | 否   | 姓名                                |
+| email                 | String   | 否   | 邮箱                                |
+| phone                 | String   | 否   | 手机号                              |
+| resumeFileUrl         | String   | 否   | 简历文件URL                         |
+| aiScore               | Number   | 否   | AI匹配度评分                        |
+| aiAnalysis            | Object   | 否   | AI分析结果                          |
+| aiAnalysis.strengths  | [String] | 否   | 优势列表                            |
+| aiAnalysis.weaknesses | [String] | 否   | 劣势列表                            |
+| aiAnalysis.summary    | String   | 否   | 总结                                |
+| aiScreening           | Object   | 否   | AI筛选详情                          |
+| hrScore               | Number   | 否   | HR人工评分                          |
+| hrComment             | String   | 否   | HR评语                              |
+| interviewId           | ObjectId | 否   | 面试ID                              |
+| appliedAt             | Date     | 是   | 报名时间                            |
+| updatedAt             | Date     | 是   | 更新时间                            |
+
+**索引设计**：
+
+- `positionId + studentId` 复合唯一索引
+- `status` 普通索引
+- `aiScore` 普通索引
+- `teamId` 普通索引
+
+---
+
+### 2.12 简历分析表 (resume_analysis)
+
+| 字段名           | 类型     | 必填 | 说明                                         |
+| :--------------- | :------- | :--- | :------------------------------------------- |
+| \_id             | ObjectId | 是   | 主键                                         |
+| resumeId         | ObjectId | 是   | 简历ID，关联resumes                          |
+| ruleId           | ObjectId | 否   | 使用的筛选规则ID，关联filter_rules           |
+| skillMatchScore  | Number   | 否   | 技能匹配评分                                 |
+| willingnessScore | Number   | 否   | 意愿度评分                                   |
+| experienceScore  | Number   | 否   | 经验评分                                     |
+| totalScore       | Number   | 否   | 综合总分                                     |
+| matchedSkills    | [String] | 否   | 匹配的技能列表                               |
+| missingSkills    | [String] | 否   | 缺失的技能列表                               |
+| bonusSignals     | [String] | 否   | 加分项                                       |
+| tags             | [String] | 否   | 标签列表                                     |
+| recommendation   | String   | 否   | 推荐意见：strong推荐/consider考虑/reject拒绝 |
+| explanation      | String   | 否   | 分析说明                                     |
+| createdAt        | Date     | 是   | 创建时间                                     |
+
+**索引设计**：
+
+- `resumeId` 普通索引
+- `ruleId` 普通索引
+- `totalScore` 普通索引
+- `recommendation` 普通索引
+
+---
+
+### 2.13 筛选规则表 (filter_rules)
+
+| 字段名            | 类型     | 必填 | 说明                                          |
+| :---------------- | :------- | :--- | :-------------------------------------------- |
+| \_id              | ObjectId | 是   | 主键                                          |
+| teamId            | ObjectId | 是   | 团队ID，关联teams                             |
+| positionId        | ObjectId | 否   | 岗位ID，关联positions（为空表示团队默认规则） |
+| name              | String   | 否   | 规则名称                                      |
+| requiredSkills    | [String] | 否   | 必需技能列表                                  |
+| requiredMajor     | [String] | 否   | 必需专业列表                                  |
+| requiredGrade     | [String] | 否   | 必需年级列表                                  |
+| bonusSkills       | [String] | 否   | 加分技能列表                                  |
+| bonusBehaviors    | [String] | 否   | 加分行为列表                                  |
+| weightSkill       | Number   | 否   | 技能权重，默认40                              |
+| weightWillingness | Number   | 否   | 意愿度权重，默认30                            |
+| weightExperience  | Number   | 否   | 经验权重，默认30                              |
+| mode              | String   | 否   | 筛选模式：balanced平衡/strict严格/loose宽松   |
+| minScore          | Number   | 否   | 最低分数线，默认60                            |
+| autoReject        | Boolean  | 否   | 是否自动拒绝，默认true                        |
+| status            | String   | 是   | 状态：active / inactive                       |
+| createdAt         | Date     | 是   | 创建时间                                      |
+| updatedAt         | Date     | 是   | 更新时间                                      |
+
+**索引设计**：
+
+- `teamId` 普通索引
+- `positionId` 普通索引
+- `status` 普通索引
+
+---
+
+### 2.14 通知模板表 (notification_templates)
+
+| 字段名    | 类型     | 必填 | 说明                                  |
+| :-------- | :------- | :--- | :------------------------------------ |
+| \_id      | ObjectId | 是   | 主键                                  |
+| teamId    | ObjectId | 否   | 团队ID，关联teams（为空表示系统模板） |
+| type      | String   | 是   | 模板类型                              |
+| name      | String   | 是   | 模板名称                              |
+| title     | String   | 是   | 通知标题                              |
+| content   | String   | 是   | 通知内容（支持变量替换）              |
+| variables | [String] | 否   | 变量列表                              |
+| isDefault | Boolean  | 否   | 是否为系统默认模板                    |
+| status    | String   | 是   | 状态：active / inactive               |
+| createdBy | ObjectId | 否   | 创建人ID，关联users                   |
+| createdAt | Date     | 是   | 创建时间                              |
+| updatedAt | Date     | 是   | 更新时间                              |
+
+**索引设计**：
+
+- `teamId + type` 复合索引
+
+---
+
+### 2.15 通知日志表 (notification_logs)
+
+| 字段名         | 类型     | 必填 | 说明                               |
+| :------------- | :------- | :--- | :--------------------------------- |
+| \_id           | ObjectId | 是   | 主键                               |
+| teamId         | ObjectId | 是   | 团队ID，关联teams                  |
+| templateId     | ObjectId | 是   | 模板ID，关联notification_templates |
+| type           | String   | 是   | 通知类型                           |
+| recipientId    | ObjectId | 是   | 接收人ID，关联users                |
+| recipientName  | String   | 否   | 接收人姓名                         |
+| recipientEmail | String   | 否   | 接收人邮箱                         |
+| title          | String   | 是   | 通知标题                           |
+| content        | String   | 是   | 通知内容                           |
+| deliveryId     | ObjectId | 否   | 关联投递ID                         |
+| interviewId    | ObjectId | 否   | 关联面试ID                         |
+| status         | String   | 是   | 状态：pending/sent/read/failed     |
+| sentAt         | Date     | 否   | 发送时间                           |
+| readAt         | Date     | 否   | 阅读时间                           |
+| errorMsg       | String   | 否   | 错误信息                           |
+| createdAt      | Date     | 是   | 创建时间                           |
+
+**索引设计**：
+
+- `teamId` 普通索引
+- `recipientId` 普通索引
+- `status` 普通索引
+
+---
+
 ## 三、ER关系图（文字版）
 
 ```
@@ -287,14 +440,30 @@ users (用户)
 
 teams (团队)
   ├── positions (岗位)         1:N
-  └── questionBanks (面试题库)  1:N
+  ├── questionBanks (面试题库)  1:N
+  ├── filter_rules (筛选规则)   1:N
+  └── notification_templates (通知模板) 1:N
 
 positions (岗位)
   └── deliveries (投递)        1:N
+  └── applications (报名)      1:N
 
 deliveries (投递)
   ├── resumes (简历)            1:1
   └── ai_pre_interviews (AI预面试)  1:1
+
+applications (报名)
+  ├── resumes (简历)            1:1
+  └── resume_analysis (简历分析)  1:1
+
+filter_rules (筛选规则)
+  └── resume_analysis (简历分析)  1:N
+
+notification_templates (通知模板)
+  └── notification_logs (通知日志)  1:N
+
+notification_logs (通知日志)
+  └── deliveries (投递)         1:N
 ```
 
 ---

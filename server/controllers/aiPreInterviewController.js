@@ -646,7 +646,7 @@ class AiPreInterviewController {
   // 生成面试问题（流式）
   async generateInterviewQuestionStream(req, res) {
     try {
-      const { type, subType } = req.body;
+      const { type, subType, questionNumber, askedQuestions } = req.body;
 
       if (!type || !subType) {
         return res.status(400).json({ error: "Missing type or subType" });
@@ -658,11 +658,13 @@ class AiPreInterviewController {
       res.setHeader("Connection", "keep-alive");
       res.setHeader("Access-Control-Allow-Origin", "*");
 
-      // 调用流式生成面试问题
+      // 调用流式生成面试问题，传递问题编号和已问问题列表
       await aliyunBailianService.generateInterviewQuestionStream(
         res,
         type,
         subType,
+        questionNumber,
+        askedQuestions,
       );
     } catch (error) {
       console.error("Error generating streaming interview question:", error);

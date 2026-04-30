@@ -344,7 +344,12 @@ const InterviewConversation = () => {
       let generatedQuestion = "";
       streamRequest(
         "/aiPreInterviews/generate-question-stream",
-        { type, subType },
+        { 
+          type, 
+          subType,
+          questionNumber: currentQuestionCount + 1,
+          askedQuestions: interviewerMessages.slice(1).map(m => m.content) // 排除开场白
+        },
         (content) => {
           generatedQuestion += content;
           setMessages((prev) =>

@@ -64,7 +64,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // 首次加载时获取通知数据
     fetchNotificationData();
+
+    // 定时刷新通知数据，每30秒更新一次
+    const interval = setInterval(() => {
+      fetchNotificationData();
+    }, 30000); // 30秒
+
+    // 清理定时器
+    return () => {
+      clearInterval(interval);
+    };
   }, [fetchNotificationData]);
 
   const refreshNotifications = useCallback(() => {

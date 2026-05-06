@@ -499,6 +499,58 @@ class AiPreInterviewController {
       throw new Error("请提供简历ID、简历内容或上传简历文件");
     }
 
+    // 如果 SmartResume 的分析失败（analysis 为 null 或空），使用阿里云百炼进行分析
+    if (
+      !result.analysis ||
+      Object.keys(result.analysis).length === 0 ||
+      result.analysis.score === undefined ||
+      result.analysis.score === 0
+    ) {
+      console.log("[INFO] SmartResume 分析失败，回退到阿里云百炼分析");
+
+      try {
+        // 使用阿里云百炼进行分析
+        const resumeText =
+          result.extracted_data?.basic_info?.name ||
+          "" +
+            "\n" +
+            result.extracted_data?.work_experience
+              ?.map(
+                (exp) =>
+                  exp.jobDescription || exp.responsibilities?.join("\n") || "",
+              )
+              .join("\n") +
+            "\n" +
+            result.extracted_data?.projects
+              ?.map(
+                (p) => p.name + "\n" + (p.responsibilities?.join("\n") || ""),
+              )
+              .join("\n");
+
+        const analysisResult =
+          await aliyunBailianService.analyzeResume(resumeText);
+
+        // 合并分析结果
+        result.analysis = {
+          score: analysisResult.analysis?.score
+            ? analysisResult.analysis.score / 10
+            : 0,
+          score_raw: analysisResult.analysis?.score || 0,
+          strengths: analysisResult.analysis?.strengths || [],
+          weaknesses: analysisResult.analysis?.improvements || [],
+          optimization_suggestions: analysisResult.analysis?.suggestions || [],
+          overall_comment: analysisResult.analysis?.overallComment || "",
+          interview_questions:
+            analysisResult.analysis?.interviewQuestions || [],
+          recommended_positions: [],
+          skills: analysisResult.analysis?.skills || {},
+        };
+      } catch (cloudError) {
+        console.error("[ERROR] 阿里云百炼回退分析也失败:", cloudError.message);
+        // 保持原有的空分析结果
+      }
+    }
+
     return result;
   }
 

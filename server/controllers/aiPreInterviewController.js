@@ -2,12 +2,19 @@ const aiPreInterviewModel = require("../models/aiPreInterviewModel");
 const deliveryModel = require("../models/deliveryModel");
 const notificationModel = require("../models/notificationModel");
 const aliyunBailianService = require("../services/aliyunBailianService");
+const baiduDocumentService = require("../services/baiduDocumentService");
 const axios = require("axios");
 const FormData = require("form-data");
 const fs = require("fs");
 const path = require("path");
 const resumeModel = require("../models/resumeModel"); // 需要引入简历模型
-// Python 分析服务配置（放在文件顶部）
+
+// 环境配置
+const NODE_ENV = process.env.NODE_ENV || "development";
+const USE_SMARTRESUME =
+  NODE_ENV === "development" || process.env.USE_SMARTRESUME === "true";
+
+// Python 分析服务配置（SmartResume）
 const ANALYSIS_SERVICE_URL =
   process.env.ANALYSIS_SERVICE_URL || "http://localhost:8000";
 
@@ -310,152 +317,28 @@ class AiPreInterviewController {
 
       let result;
 
-      // 情况1：通过 resumeId 分析已上传的简历文件
-      if (resumeId) {
-        // 获取简历信息
-        const resume = await resumeModel.getResumeById(resumeId);
-
-        if (!resume) {
-          return res.status(404).json({
-            success: false,
-            error: "简历不存在",
-          });
-        }
-
-        // 检查权限
-        if (resume.studentId && resume.studentId.toString() !== userId) {
-          return res.status(403).json({
-            success: false,
-            error: "无权访问此简历",
-          });
-        }
-
-        // 获取文件路径
-        const filePath = path.join(__dirname, "../..", resume.fileUrl);
-
-        if (!fs.existsSync(filePath)) {
-          return res.status(404).json({
-            success: false,
-            error: "简历文件不存在",
-          });
-        }
-
-        // 调用 Python 分析服务
-        const formData = new FormData();
-        formData.append("file", fs.createReadStream(filePath));
-
-        const response = await axios.post(
-          `${ANALYSIS_SERVICE_URL}/analyze`,
-          formData,
-          {
-            headers: { ...formData.getHeaders() },
-            timeout: 300000,
-          },
+      // 根据环境选择解析方式
+      if (USE_SMARTRESUME) {
+        // 开发环境：使用 SmartResume
+        result = await this.parseResumeWithSmartResume(
+          userId,
+          resumeId,
+          resumeContent,
+          file,
         );
-
-        result = response.data;
-
-        // 适配 smartresume 返回的数据格式
-        const formattedResult = this.formatSmartResumeResult(result);
-
-        // 保存分析结果到数据库
-        if (formattedResult.success && resumeId) {
-          await resumeModel.saveAnalysisResult(resumeId, formattedResult);
-        }
-
-        result = formattedResult;
+      } else {
+        // 线上环境：使用百度文档解析API + 阿里云百炼大模型API
+        result = await this.parseResumeWithCloudServices(
+          userId,
+          resumeId,
+          resumeContent,
+          file,
+        );
       }
 
-      // 情况2：直接传入简历文本内容
-      else if (resumeContent) {
-        // 创建临时文件
-        const tempDir = path.join(__dirname, "../../temp");
-        if (!fs.existsSync(tempDir)) {
-          fs.mkdirSync(tempDir, { recursive: true });
-        }
-
-        const tempFilePath = path.join(tempDir, `resume_${Date.now()}.txt`);
-        fs.writeFileSync(tempFilePath, resumeContent, "utf-8");
-
-        // 调用 Python 分析服务
-        const formData = new FormData();
-        formData.append("file", fs.createReadStream(tempFilePath));
-
-        const response = await axios.post(
-          `${ANALYSIS_SERVICE_URL}/analyze`,
-          formData,
-          {
-            headers: { ...formData.getHeaders() },
-            timeout: 300000,
-          },
-        );
-
-        // 适配 smartresume 返回的数据格式
-        result = this.formatSmartResumeResult(response.data);
-
-        // 清理临时文件
-        fs.unlinkSync(tempFilePath);
-      }
-
-      // 情况3：直接上传文件
-      else if (file) {
-        console.log(
-          "[DEBUG] parseResume - 收到上传文件:",
-          file.originalname,
-          file.path,
-        );
-        // 调用 Python 分析服务
-        const formData = new FormData();
-        formData.append("file", fs.createReadStream(file.path));
-
-        console.log(
-          "[DEBUG] parseResume - 正在调用 Python 分析服务:",
-          `${ANALYSIS_SERVICE_URL}/analyze`,
-        );
-        const response = await axios.post(
-          `${ANALYSIS_SERVICE_URL}/analyze`,
-          formData,
-          {
-            headers: { ...formData.getHeaders() },
-            timeout: 300000,
-          },
-        );
-        console.log(
-          "[DEBUG] parseResume - Python 服务响应成功，状态码:",
-          response.status,
-        );
-        console.log(
-          "[DEBUG] parseResume - 响应数据类型:",
-          typeof response.data,
-        );
-        console.log(
-          "[DEBUG] parseResume - 响应数据长度:",
-          JSON.stringify(response.data).length,
-        );
-        // 如果是字符串，显示前500字符
-        if (typeof response.data === "string") {
-          console.log(
-            "[DEBUG] parseResume - 响应数据前500字符:",
-            response.data.substring(0, Math.min(500, response.data.length)),
-          );
-        } else {
-          console.log(
-            "[DEBUG] parseResume - 响应数据摘要:",
-            JSON.stringify(response.data).substring(0, 500),
-          );
-        }
-
-        // 适配 smartresume 返回的数据格式
-        result = this.formatSmartResumeResult(response.data);
-        console.log("[DEBUG] parseResume - 格式化结果成功:", result.success);
-      }
-
-      // 情况4：既没有 resumeId、resumeContent 也没有 file
-      else {
-        return res.status(400).json({
-          success: false,
-          error: "请提供简历ID、简历内容或上传简历文件",
-        });
+      // 如果有 resumeId，保存分析结果到数据库
+      if (result.success && resumeId) {
+        await resumeModel.saveAnalysisResult(resumeId, result);
       }
 
       // 返回分析结果
@@ -469,7 +352,7 @@ class AiPreInterviewController {
     } catch (error) {
       console.error("Error parsing resume:", error.message);
 
-      if (error.code === "ECONNREFUSED") {
+      if (error.code === "ECONNREFUSED" && USE_SMARTRESUME) {
         return res.status(503).json({
           success: false,
           error:
@@ -484,6 +367,266 @@ class AiPreInterviewController {
         stack: error.stack,
       });
     }
+  }
+
+  // 使用 SmartResume 解析简历（开发环境）
+  async parseResumeWithSmartResume(userId, resumeId, resumeContent, file) {
+    let result;
+
+    // 情况1：通过 resumeId 分析已上传的简历文件
+    if (resumeId) {
+      // 获取简历信息
+      const resume = await resumeModel.getResumeById(resumeId);
+
+      if (!resume) {
+        throw new Error("简历不存在");
+      }
+
+      // 检查权限
+      if (resume.studentId && resume.studentId.toString() !== userId) {
+        throw new Error("无权访问此简历");
+      }
+
+      // 获取文件路径
+      const filePath = path.join(__dirname, "../..", resume.fileUrl);
+
+      if (!fs.existsSync(filePath)) {
+        throw new Error("简历文件不存在");
+      }
+
+      // 调用 Python 分析服务
+      const formData = new FormData();
+      formData.append("file", fs.createReadStream(filePath));
+
+      const response = await axios.post(
+        `${ANALYSIS_SERVICE_URL}/analyze`,
+        formData,
+        {
+          headers: { ...formData.getHeaders() },
+          timeout: 300000,
+        },
+      );
+
+      result = response.data;
+
+      // 适配 smartresume 返回的数据格式
+      result = this.formatSmartResumeResult(result);
+    }
+
+    // 情况2：直接传入简历文本内容
+    else if (resumeContent) {
+      // 创建临时文件
+      const tempDir = path.join(__dirname, "../../temp");
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const tempFilePath = path.join(tempDir, `resume_${Date.now()}.txt`);
+      fs.writeFileSync(tempFilePath, resumeContent, "utf-8");
+
+      // 调用 Python 分析服务
+      const formData = new FormData();
+      formData.append("file", fs.createReadStream(tempFilePath));
+
+      const response = await axios.post(
+        `${ANALYSIS_SERVICE_URL}/analyze`,
+        formData,
+        {
+          headers: { ...formData.getHeaders() },
+          timeout: 300000,
+        },
+      );
+
+      // 适配 smartresume 返回的数据格式
+      result = this.formatSmartResumeResult(response.data);
+
+      // 清理临时文件
+      fs.unlinkSync(tempFilePath);
+    }
+
+    // 情况3：直接上传文件
+    else if (file) {
+      console.log(
+        "[DEBUG] parseResume - 收到上传文件:",
+        file.originalname,
+        file.path,
+      );
+      // 调用 Python 分析服务
+      const formData = new FormData();
+      formData.append("file", fs.createReadStream(file.path));
+
+      console.log(
+        "[DEBUG] parseResume - 正在调用 Python 分析服务:",
+        `${ANALYSIS_SERVICE_URL}/analyze`,
+      );
+      const response = await axios.post(
+        `${ANALYSIS_SERVICE_URL}/analyze`,
+        formData,
+        {
+          headers: { ...formData.getHeaders() },
+          timeout: 300000,
+        },
+      );
+      console.log(
+        "[DEBUG] parseResume - Python 服务响应成功，状态码:",
+        response.status,
+      );
+      console.log("[DEBUG] parseResume - 响应数据类型:", typeof response.data);
+      console.log(
+        "[DEBUG] parseResume - 响应数据长度:",
+        JSON.stringify(response.data).length,
+      );
+      // 如果是字符串，显示前500字符
+      if (typeof response.data === "string") {
+        console.log(
+          "[DEBUG] parseResume - 响应数据前500字符:",
+          response.data.substring(0, Math.min(500, response.data.length)),
+        );
+      } else {
+        console.log(
+          "[DEBUG] parseResume - 响应数据摘要:",
+          JSON.stringify(response.data).substring(0, 500),
+        );
+      }
+
+      // 适配 smartresume 返回的数据格式
+      result = this.formatSmartResumeResult(response.data);
+      console.log("[DEBUG] parseResume - 格式化结果成功:", result.success);
+    }
+
+    // 情况4：既没有 resumeId、resumeContent 也没有 file
+    else {
+      throw new Error("请提供简历ID、简历内容或上传简历文件");
+    }
+
+    return result;
+  }
+
+  // 使用百度文档解析API + 阿里云百炼大模型API解析简历（线上环境）
+  async parseResumeWithCloudServices(userId, resumeId, resumeContent, file) {
+    let result;
+    let filePath = null;
+
+    // 情况1：通过 resumeId 分析已上传的简历文件
+    if (resumeId) {
+      // 获取简历信息
+      const resume = await resumeModel.getResumeById(resumeId);
+
+      if (!resume) {
+        throw new Error("简历不存在");
+      }
+
+      // 检查权限
+      if (resume.studentId && resume.studentId.toString() !== userId) {
+        throw new Error("无权访问此简历");
+      }
+
+      // 获取文件路径
+      filePath = path.join(__dirname, "../..", resume.fileUrl);
+
+      if (!fs.existsSync(filePath)) {
+        throw new Error("简历文件不存在");
+      }
+    }
+
+    // 情况2：直接传入简历文本内容
+    else if (resumeContent) {
+      // 创建临时文件
+      const tempDir = path.join(__dirname, "../../temp");
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      filePath = path.join(tempDir, `resume_${Date.now()}.txt`);
+      fs.writeFileSync(filePath, resumeContent, "utf-8");
+    }
+
+    // 情况3：直接上传文件
+    else if (file) {
+      filePath = file.path;
+    }
+
+    // 情况4：既没有 resumeId、resumeContent 也没有 file
+    else {
+      throw new Error("请提供简历ID、简历内容或上传简历文件");
+    }
+
+    // 第一步：使用百度智能云解析文档获取文本内容
+    console.log("Step 1: Parsing document with Baidu...");
+    const resumeTextContent =
+      await baiduDocumentService.parseDocument(filePath);
+    console.log(
+      "Resume parsed successfully, content length:",
+      resumeTextContent.length,
+    );
+
+    if (!resumeTextContent || resumeTextContent.trim().length === 0) {
+      console.warn("Empty resume content after parsing, using fallback");
+      return {
+        success: true,
+        extracted_data: {},
+        analysis: {
+          score: 50,
+          strengths: ["简历格式规范"],
+          improvements: ["简历内容为空或无法解析"],
+        },
+      };
+    }
+
+    // 第二步：使用阿里云百炼进行简历分析
+    console.log("Step 2: Analyzing resume with Aliyun Bailian...");
+    const analysisResult =
+      await aliyunBailianService.parseResume(resumeTextContent);
+    console.log(
+      "Analysis result received:",
+      JSON.stringify(analysisResult).substring(0, 200),
+    );
+
+    // 构建返回结果格式（百分制转十分制，保持与SmartResume一致）
+    const percentScore = analysisResult.analysis?.score || 0;
+    const tenPointScore = Math.round((percentScore / 10) * 100) / 100;
+
+    result = {
+      success: true,
+      extracted_data: {
+        name: analysisResult.name || "",
+        phone: analysisResult.contact?.phone || "",
+        email: analysisResult.contact?.email || "",
+        basic_info: {
+          name: analysisResult.name || "",
+          phone: analysisResult.contact?.phone || "",
+          email: analysisResult.contact?.email || "",
+          school: analysisResult.education?.[0]?.school || "",
+          major: analysisResult.education?.[0]?.major || "",
+          graduation_year: analysisResult.education?.[0]?.graduationDate || "",
+          education: analysisResult.education?.[0]?.degree || "",
+          work_years: 0,
+        },
+        education: analysisResult.education || [],
+        work_experience: analysisResult.workExperience || [],
+        projects: analysisResult.projectExperience || [],
+        skills: [
+          ...(analysisResult.skills?.technical || []),
+          ...(analysisResult.skills?.soft || []),
+        ],
+      },
+      analysis: {
+        score: tenPointScore,
+        score_raw: percentScore,
+        strengths: analysisResult.analysis?.strengths || [],
+        weaknesses: analysisResult.analysis?.improvements || [],
+        optimization_suggestions: analysisResult.analysis?.suggestions || [],
+        overall_comment: analysisResult.analysis?.overallComment || "",
+        interview_questions: analysisResult.analysis?.interviewQuestions || [],
+      },
+    };
+
+    // 清理临时文件（如果是临时文件）
+    if (resumeContent && filePath && fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    return result;
   }
 
   // 适配 smartresume 返回的数据格式
@@ -524,6 +667,25 @@ class AiPreInterviewController {
     }
 
     // smartresume 返回的格式：
+        },
+        analysis: {
+          score: smartAnalysis.score || 0,
+          strengths: smartAnalysis.strengths || [],
+          weaknesses: smartAnalysis.weaknesses || [],
+          optimization_suggestions: smartAnalysis.suggestions || [],
+          overall_comment:
+            smartAnalysis.overall_comment || smartAnalysis.overallComment || "",
+          interview_questions:
+            smartAnalysis.interview_questions ||
+            smartAnalysis.interviewQuestions ||
+            [],
+          recommended_positions: smartAnalysis.recommended_positions || [],
+          skills: smartAnalysis.skills || {},
+        },
+      };
+    }
+
+    // 旧的 smartresume 返回格式：
     // {
     //   summary: { name, education, school, major, graduation_year, work_years },
     //   skills: { tech_stack, soft_skills, missing_skills },

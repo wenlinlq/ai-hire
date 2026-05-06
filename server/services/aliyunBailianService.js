@@ -176,6 +176,8 @@ ${truncatedContent}
 2. 优点分析（至少3点）
 3. 改进建议（至少3点）
 4. 具体的修改意见（针对简历中需要改进的部分）
+5. 综合评价（对候选人的整体评价和职业发展建议）
+6. 面试提问预测（根据简历内容，预测面试官可能会问到的问题，至少5个）
 
 请以JSON格式返回解析结果，不要包含任何其他文本。
 JSON格式要求：
@@ -224,7 +226,9 @@ JSON格式要求：
     "score": 0,
     "strengths": [""],
     "improvements": [""],
-    "suggestions": [""]
+    "suggestions": [""],
+    "overallComment": "",
+    "interviewQuestions": [""]
   }
 }
 `;
@@ -248,7 +252,7 @@ JSON格式要求：
             },
           ],
           temperature: 0.3,
-          max_tokens: 2000, // 一次解析最多消耗2000token
+          max_tokens: 4000, // 增加token限制，确保完整返回
         },
         {
           headers: {

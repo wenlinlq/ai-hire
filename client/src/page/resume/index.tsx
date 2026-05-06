@@ -354,6 +354,7 @@ function ResumeAnalyze() {
                       const educationList = extractedData.education || [];
                       const workExperience =
                         extractedData.work_experience || [];
+                      const projects = extractedData.projects || [];
                       const skills = analysis.skills || {};
 
                       return (
@@ -425,31 +426,28 @@ function ResumeAnalyze() {
                           )}
 
                           {/* 项目经历 */}
-                          {workExperience.length > 0 && (
+                          {projects.length > 0 && (
                             <div className="mt-4">
                               <span className="font-medium">项目经历：</span>
                               <div className="mt-2 space-y-2">
-                                {workExperience.map(
-                                  (project: any, index: number) => (
-                                    <div
-                                      key={index}
-                                      className="p-3 rounded-lg border border-neutral-100"
-                                    >
-                                      <p className="font-medium">
-                                        {project.companyName ||
-                                          project.position ||
-                                          "未识别"}
-                                      </p>
-                                      <p className="text-sm text-neutral-600">
-                                        {project.jobDescription?.substring(
-                                          0,
-                                          200,
-                                        ) || "未提取"}
-                                        ...
-                                      </p>
-                                    </div>
-                                  ),
-                                )}
+                                {projects.map((project: any, index: number) => (
+                                  <div
+                                    key={index}
+                                    className="p-3 rounded-lg border border-neutral-100"
+                                  >
+                                    <p className="font-medium">
+                                      {project.name ||
+                                        project.projectName ||
+                                        "未识别项目"}
+                                    </p>
+                                    <p className="text-sm text-neutral-600">
+                                      {project.responsibilities?.[0] ||
+                                        project.description ||
+                                        project.jobDescription ||
+                                        "未提取"}
+                                    </p>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           )}
@@ -560,11 +558,17 @@ function ResumeAnalyze() {
                                       (item: any, index: number) => (
                                         <li key={index} className="text-sm">
                                           <span className="font-medium text-neutral-700">
-                                            Q{index + 1}：{item.question}
+                                            Q{index + 1}：
+                                            {typeof item === "string"
+                                              ? item
+                                              : item.question}
                                           </span>
-                                          <p className="text-neutral-600 ml-2">
-                                            考察方向：{item.reason}
-                                          </p>
+                                          {typeof item !== "string" &&
+                                            item.reason && (
+                                              <p className="text-neutral-600 ml-2">
+                                                考察方向：{item.reason}
+                                              </p>
+                                            )}
                                         </li>
                                       ),
                                     )}

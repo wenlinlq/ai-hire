@@ -1,573 +1,202 @@
-import { useState, useEffect } from "react";
-import { LogoMark } from "../../components/site";
+import { useState, useEffect, useRef } from "react";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { TeamProvider, useTeam } from "./TeamContext";
 import positionApi from "../../api/positionApi";
 import applicationApi from "../../api/applicationApi";
-import userApi from "../../api/userApi";
 import * as questionBankApi from "../../api/questionBankApi";
 import {
   notificationApi,
   notificationTemplateApi,
 } from "../../api/notificationApi";
-import { interviewInvitationApi } from "../../api/interviewInvitationApi";
-import ReactECharts from "echarts-for-react";
 
-type AdminTab =
-  | "dashboard"
-  | "jobs"
-  | "candidates"
-  | "questions"
-  | "notifications";
-type AdminModal =
-  | "job"
-  | "candidate"
-  | "interview"
-  | "questionBank"
-  | "notification"
-  | null;
+function TeamLayout() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const {
+    activeTab,
+    setActiveTab,
+    handleTabChange,
+    modal,
+    setModal,
+    openModal,
+    jobs,
+    setJobs,
+    isLoading,
+    setIsLoading,
+    error,
+    setError,
+    jobForm,
+    setJobForm,
+    skillsInput,
+    setSkillsInput,
+    aiResumeFilterSkillsInput,
+    setAiResumeFilterSkillsInput,
+    currentJobId,
+    setCurrentJobId,
+    questionBanks,
+    setQuestionBanks,
+    isLoadingQuestionBanks,
+    setIsLoadingQuestionBanks,
+    errorQuestionBanks,
+    setErrorQuestionBanks,
+    currentQuestionBankId,
+    setCurrentQuestionBankId,
+    questionBankForm,
+    setQuestionBankForm,
+    questionForm,
+    setQuestionForm,
+    candidates,
+    setCandidates,
+    isLoadingCandidates,
+    setIsLoadingCandidates,
+    errorCandidates,
+    setErrorCandidates,
+    searchKeyword,
+    setSearchKeyword,
+    selectedStatus,
+    setSelectedStatus,
+    dashboardStats,
+    setDashboardStats,
+    candidateForm,
+    setCandidateForm,
+    notificationTemplates,
+    setNotificationTemplates,
+    isLoadingTemplates,
+    setIsLoadingTemplates,
+    errorTemplates,
+    setErrorTemplates,
+    notificationForm,
+    setNotificationForm,
+    currentNotificationId,
+    setCurrentNotificationId,
+    viewModal,
+    setViewModal,
+    currentCandidate,
+    setCurrentCandidate,
+    currentUser,
+    setCurrentUser,
+    showUserMenu,
+    setShowUserMenu,
+    menuTimeout,
+    setMenuTimeout,
+    fetchQuestionBanks,
+    fetchNotificationTemplates,
+    fetchJobs,
+    fetchCandidates,
+    calculateDashboardStats,
+  } = useTeam();
 
-const dashboardStats = [
-  {
-    label: "开放职位",
-    value: "24",
-    delta: "+12%",
-    iconClass: "bg-primary-100 text-primary-600",
-  },
-  {
-    label: "候选人",
-    value: "156",
-    delta: "+8%",
-    iconClass: "bg-primary-100 text-primary-600",
-  },
-  {
-    label: "面试中",
-    value: "32",
-    delta: "-3%",
-    iconClass: "bg-blue-100 text-blue-600",
-  },
-  {
-    label: "已录用",
-    value: "8",
-    delta: "+25%",
-    iconClass: "bg-green-100 text-green-600",
-  },
-] as const;
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
-const activityFeed = [
-  {
-    title: "新职位发布",
-    subtitle: "高级前端工程师 - 阿里巴巴",
-    time: "2小时前",
-  },
-  { title: "候选人通过面试", subtitle: "李四 - 产品经理", time: "5小时前" },
-  { title: "面试安排", subtitle: "王五 - UI设计师", time: "1天前" },
-] as const;
-
-// 职位数据类型
-interface Job {
-  _id: string;
-  title: string;
-  type: string;
-  department: string;
-  quota: number;
-  requirements: {
-    skills: string[];
-    experience: string;
-    education: string;
-    description: string;
-  };
-  responsibilities: string[];
-  benefits: string[];
-  status: string;
-  deadline: string;
-  viewCount: number;
-  applyCount: number;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-  teamId: string;
-  aiQuestionBankId?: string;
-  aiQuestionBankName?: string;
-  aiPreInterview?: boolean;
-  aiPreInterviewScore?: number;
-}
-
-// 职位表单状态类型
-interface JobFormState {
-  title: string;
-  type: string;
-  department: string;
-  quota: number;
-  salary: string;
-  requirements: {
-    skills: string[];
-    experience: string;
-    education: string;
-    description: string;
-  };
-  responsibilities: string[];
-  benefits: string[];
-  status: string;
-  deadline: string;
-  teamId: string;
-  interviewType: string;
-  aiQuestionBankId: string;
-  aiPreInterview: boolean;
-  aiPreInterviewScore: number;
-  aiResumeFilter: boolean;
-  aiResumeFilterScore: number;
-  aiResumeFilterSkills: string[];
-}
-
-function Admin() {
-  // 从localStorage读取标签页状态，如果没有则默认为dashboard
-  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
-    const savedTab = localStorage.getItem("adminActiveTab");
-    return (savedTab as AdminTab) || "dashboard";
-  });
-
-  // 切换标签页并保存到localStorage
-  const handleTabChange = (tab: AdminTab) => {
-    setActiveTab(tab);
-    localStorage.setItem("adminActiveTab", tab);
-  };
-  const [modal, setModal] = useState<AdminModal>(null);
-
-  // 打开模态框时的处理
-  const openModal = (modalType: AdminModal) => {
-    setModal(modalType);
-    // 当打开面试弹框时，确保加载候选人数据
-    if (modalType === "interview" && candidates.length === 0) {
-      fetchCandidates();
-    }
-  };
-
-  // 职位列表状态
-  const [jobs, setJobs] = useState<Job[]>([]);
-  // 加载状态
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  // 错误状态
-  const [error, setError] = useState<string | null>(null);
-  // 职位表单状态
-  const [jobForm, setJobForm] = useState<JobFormState>({
-    title: "",
-    type: "full-time",
-    department: "",
-    quota: 1,
-    salary: "",
-    requirements: {
-      skills: [],
-      experience: "",
-      education: "",
-      description: "",
-    },
-    responsibilities: [],
-    benefits: [],
-    status: "open",
-    deadline: "",
-    teamId: "",
-    interviewType: "online",
-    aiQuestionBankId: "",
-    aiPreInterview: false,
-    aiPreInterviewScore: 60,
-    aiResumeFilter: false,
-    aiResumeFilterScore: 60,
-    aiResumeFilterSkills: [],
-  });
-  // 技能标签输入临时状态
-  const [skillsInput, setSkillsInput] = useState<string>("");
-  // AI简历筛选硬性技能标签输入临时状态
-  const [aiResumeFilterSkillsInput, setAiResumeFilterSkillsInput] =
-    useState<string>("");
-  // 当前编辑的职位ID
-  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
-
-  // 题目类型
-  interface Question {
-    id: string;
-    content: string;
-  }
-
-  // 题库表单状态
-  interface QuestionBankFormState {
-    title: string;
-    description: string;
-    category: string;
-    questionCount: number;
-    createdAt: string;
-    questions: Question[];
-  }
-
-  // 当前编辑的题库ID
-  const [currentQuestionBankId, setCurrentQuestionBankId] = useState<
-    string | null
-  >(null);
-  // 题库表单状态
-  const [questionBankForm, setQuestionBankForm] =
-    useState<QuestionBankFormState>({
-      title: "",
-      description: "",
-      category: "",
-      questionCount: 0,
-      createdAt: new Date().toISOString().split("T")[0],
-      questions: [],
-    });
-
-  // 题目表单状态
-  const [questionForm, setQuestionForm] = useState({
-    content: "",
-  });
-
-  // 面试题库列表状态
-  const [questionBanks, setQuestionBanks] = useState<
-    questionBankApi.QuestionBank[]
-  >([]);
-  // 面试题库加载状态
-  const [isLoadingQuestionBanks, setIsLoadingQuestionBanks] =
-    useState<boolean>(false);
-  // 面试题库错误状态
-  const [errorQuestionBanks, setErrorQuestionBanks] = useState<string | null>(
-    null,
-  );
-
-  // 候选人列表状态
-  const [candidates, setCandidates] = useState<any[]>([]);
-  // 候选人加载状态
-  const [isLoadingCandidates, setIsLoadingCandidates] =
-    useState<boolean>(false);
-  // 候选人错误状态
-  const [errorCandidates, setErrorCandidates] = useState<string | null>(null);
-  // 搜索关键词
-  const [searchKeyword, setSearchKeyword] = useState<string>("");
-  // 选中的状态
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
-
-  // 仪表盘统计数据
-  const [dashboardStats, setDashboardStats] = useState({
-    activeJobs: 0,
-    closedJobs: 0,
-    totalApplications: 0,
-    pendingResumes: 0,
-    pendingInterviews: 0,
-    monthlyApplications: 0,
-    monthlyGrowth: 0,
-  });
-
-  // 候选人表单状态
-  const [candidateForm, setCandidateForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    grade: "",
-    major: "",
-    positionId: "",
-    teamId: "",
-    resume: null,
-  });
-
-  // 通知模板列表状态
-  const [notificationTemplates, setNotificationTemplates] = useState<any[]>([]);
-  // 通知模板加载状态
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState<boolean>(false);
-  // 通知模板错误状态
-  const [errorTemplates, setErrorTemplates] = useState<string | null>(null);
-
-  // 通知表单状态
-  const [notificationForm, setNotificationForm] = useState({
-    type: "",
-    trigger: "",
-    content: "",
-  });
-  // 当前编辑的通知ID
-  const [currentNotificationId, setCurrentNotificationId] = useState<
-    string | null
-  >(null);
-
-  // 查看候选人弹窗状态
-  const [viewModal, setViewModal] = useState(false);
-  // 当前查看的候选人信息
-  const [currentCandidate, setCurrentCandidate] = useState<any>(null);
-
-  // 当前用户信息
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  // 下拉菜单显示状态
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  // 延迟隐藏定时器
-  const [menuTimeout, setMenuTimeout] = useState<number | null>(null);
-
-  // 获取当前用户信息
   useEffect(() => {
-    const user = userApi.getCurrentUser();
-    setCurrentUser(user);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target as Node)
+      ) {
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
-  // 获取面试题库列表
-  const fetchQuestionBanks = async () => {
-    setIsLoadingQuestionBanks(true);
-    setErrorQuestionBanks(null);
-    try {
-      const response = await questionBankApi.getAllQuestionBanks();
-      let questionBanks = response.data || [];
-      // 根据用户的teamId过滤题库
-      if (currentUser?.team) {
-        questionBanks = questionBanks.filter(
-          (bank) => bank.teamId === currentUser.team,
-        );
-      }
-      setQuestionBanks(questionBanks);
-    } catch (err: any) {
-      console.error("获取面试题库列表错误:", err);
-      setErrorQuestionBanks(err.message || "获取面试题库列表失败");
-    } finally {
-      setIsLoadingQuestionBanks(false);
-    }
-  };
-
-  // 当用户信息变化时，获取面试题库列表
   useEffect(() => {
-    if (currentUser?.team) {
-      fetchQuestionBanks();
-      fetchNotificationTemplates();
-    }
-  }, [currentUser]);
-
-  // 获取通知模板列表
-  const fetchNotificationTemplates = async () => {
-    if (!currentUser?.team) return;
-
-    setIsLoadingTemplates(true);
-    setErrorTemplates(null);
-    try {
-      const response = await notificationTemplateApi.getTeamTemplates(
-        currentUser.team,
-      );
-      setNotificationTemplates(response.data || []);
-    } catch (err: any) {
-      console.error("获取通知模板列表错误:", err);
-      setErrorTemplates(err.message || "获取通知模板列表失败");
-    } finally {
-      setIsLoadingTemplates(false);
-    }
-  };
-
-  // 获取职位列表
-  const fetchJobs = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      let jobList;
-      // 如果当前用户有团队ID，则获取该团队的职位；否则获取所有职位
-      console.log("当前用户信息:", currentUser);
-      console.log("当前用户team字段:", currentUser?.team);
-      console.log("team字段类型:", typeof currentUser?.team);
-
-      if (currentUser?.team) {
-        jobList = await positionApi.getPositionsByTeam(currentUser.team);
-        console.log("根据团队获取的职位列表:", jobList);
-      } else {
-        jobList = await positionApi.getPositions();
-        console.log("获取的所有职位列表:", jobList);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowUserMenu(false);
       }
-      // 确保jobList是一个数组
-      if (Array.isArray(jobList)) {
-        // 为每个职位添加AI试题名称
-        const jobsWithQuestionBankNames = jobList.map((job) => {
-          if (job.aiQuestionBankId) {
-            const questionBank = questionBanks.find(
-              (bank) => bank._id === job.aiQuestionBankId,
-            );
-            return {
-              ...job,
-              aiQuestionBankName: questionBank?.title || "已设置",
-            };
-          }
-          return job;
-        });
-        setJobs(jobsWithQuestionBankNames);
-      } else {
-        setJobs([]);
-      }
-    } catch (err: any) {
-      console.error("获取职位列表错误:", err);
-      setError(err.message || "获取职位列表失败");
-      // 发生错误时，确保jobs是一个空数组
-      setJobs([]);
-    } finally {
-      setIsLoading(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [setShowUserMenu]);
+
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes("/team/jobs")) {
+      setActiveTab("jobs");
+    } else if (path.includes("/team/candidates")) {
+      setActiveTab("candidates");
+    } else if (path.includes("/team/questions")) {
+      setActiveTab("questions");
+    } else if (path.includes("/team/notifications")) {
+      setActiveTab("notifications");
+    } else {
+      setActiveTab("dashboard");
     }
+  }, [location.pathname, setActiveTab]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
   };
 
-  // 获取候选人列表
-  const fetchCandidates = async (
-    searchKeywordParam: string = searchKeyword,
-    selectedStatusParam: string = selectedStatus,
-  ) => {
-    setIsLoadingCandidates(true);
-    setErrorCandidates(null);
-    try {
-      let candidateList;
-      // 如果当前用户有团队ID，则获取该团队的候选人；否则获取所有候选人
-      if (currentUser?.team) {
-        candidateList = await applicationApi.getApplicationsByTeam(
-          currentUser.team,
-        );
-      } else {
-        candidateList = await applicationApi.getApplications();
-      }
-
-      // 确保candidateList是一个数组
-      const candidatesArray = Array.isArray(candidateList) ? candidateList : [];
-
-      // 筛选候选人
-      const filteredCandidates = candidatesArray.filter((candidate) => {
-        // 状态筛选
-        if (selectedStatusParam) {
-          // 处理特殊状态值
-          if (selectedStatusParam === "rejected") {
-            // 已拒绝状态：包括rejected和其他未明确指定的状态
-            if (
-              candidate.status !== "rejected" &&
-              candidate.status !== "pending" &&
-              candidate.status !== "screening" &&
-              candidate.status !== "interview" &&
-              candidate.status !== "offer" &&
-              candidate.status !== "已通过预面试"
-            ) {
-              return true;
-            } else {
-              return false;
-            }
-          } else if (candidate.status !== selectedStatusParam) {
-            return false;
-          }
-        }
-
-        // 搜索关键词筛选
-        if (searchKeywordParam) {
-          const keyword = searchKeywordParam.toLowerCase();
-          return (
-            (candidate.name || "").toLowerCase().includes(keyword) ||
-            (candidate.email || "").toLowerCase().includes(keyword) ||
-            (candidate.positionName || "").toLowerCase().includes(keyword) ||
-            (candidate.major || "").toLowerCase().includes(keyword)
-          );
-        }
-
-        return true;
-      });
-
-      setCandidates(filteredCandidates);
-    } catch (err: any) {
-      setErrorCandidates(err.message || "获取候选人列表失败");
-      // 发生错误时，确保candidates是一个空数组
-      setCandidates([]);
-    } finally {
-      setIsLoadingCandidates(false);
-    }
-  };
-
-  // 计算仪表盘统计数据
-  const calculateDashboardStats = () => {
-    const now = new Date();
-
-    // 计算进行中和已结束的职位数
-    const activeJobs = jobs.filter(
-      (job) => new Date(job.deadline) >= now,
-    ).length;
-    const closedJobs = jobs.filter(
-      (job) => new Date(job.deadline) < now,
-    ).length;
-
-    // 计算总投递量
-    const totalApplications = jobs.reduce(
-      (sum, job) => sum + (job.applyCount || 0),
-      0,
-    );
-
-    // 计算待筛选简历数（状态为"待处理"）
-    const pendingResumes = candidates.filter(
-      (candidate) => candidate.status === "pending",
-    ).length;
-
-    // 计算待安排面试数（状态为"简历筛选"和"已通过预面试"）
-    const pendingInterviews = candidates.filter(
-      (candidate) =>
-        candidate.status === "screening" || candidate.status === "已通过预面试",
-    ).length;
-
-    // 计算本月新投递数
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthlyApplications = candidates.filter(
-      (candidate) => new Date(candidate.appliedAt) >= monthStart,
-    ).length;
-
-    // 计算环比增长（简化版，实际应该与上月比较）
-    const monthlyGrowth = 12.5; // 这里可以根据实际数据计算
-
-    setDashboardStats({
-      activeJobs,
-      closedJobs,
-      totalApplications,
-      pendingResumes,
-      pendingInterviews,
-      monthlyApplications,
-      monthlyGrowth,
-    });
-  };
-
-  // 组件挂载时获取数据
-  useEffect(() => {
-    // 无论当前标签页是什么，都获取职位列表，因为导入候选人弹窗需要使用
-    if (currentUser) {
-      fetchJobs();
-      fetchCandidates(); // 总是获取候选人数据，因为仪表盘需要
-    }
-  }, [currentUser]);
-
-  // 当职位或候选人数据更新时，重新计算仪表盘统计数据
-  useEffect(() => {
-    calculateDashboardStats();
-  }, [jobs, candidates]);
-
-  // 当面试题库列表更新时，重新获取职位列表以更新AI试题名称
-  useEffect(() => {
-    if (currentUser && activeTab === "jobs") {
-      fetchJobs();
-    }
-  }, [questionBanks, currentUser, activeTab]);
+  const tabItems: { key: string; label: string; path: string }[] = [
+    { key: "dashboard", label: "团队仪表盘", path: "/team" },
+    { key: "jobs", label: "职位管理", path: "/team/jobs" },
+    { key: "candidates", label: "候选人管理", path: "/team/candidates" },
+    { key: "questions", label: "面试题库", path: "/team/questions" },
+    {
+      key: "notifications",
+      label: "消息通知管理",
+      path: "/team/notifications",
+    },
+  ];
 
   return (
     <div className="flex min-h-screen bg-neutral-50 text-neutral-700">
-      <aside className="sticky top-0 h-screen w-64 border-r border-neutral-200 bg-white">
-        <div className="border-b border-neutral-200 p-4">
+      <aside
+        ref={sidebarRef}
+        className="sticky top-0 h-screen w-64 border-r border-neutral-200 bg-white"
+      >
+        <div className="flex h-16 items-center border-b border-neutral-200 px-6">
           <div className="flex items-center space-x-2">
-            <LogoMark className="h-8 w-8 text-primary-600" />
-            <span className="text-xl font-bold text-neutral-800">AI招聘</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+            </div>
+            <span className="text-lg font-bold text-neutral-800">
+              AI招聘平台
+            </span>
           </div>
         </div>
-
-        <nav className="py-4">
-          <div className="mb-2 px-4 text-xs font-semibold uppercase text-neutral-500">
-            管理后台
-          </div>
+        <nav className="p-4">
           <ul className="space-y-1">
-            {[
-              ["dashboard", "团队仪表盘"],
-              ["jobs", "职位管理"],
-              ["candidates", "候选人管理"],
-              ["questions", "面试题库"],
-              ["notifications", "消息通知管理"],
-            ].map(([key, label]) => (
-              <li key={key}>
+            {tabItems.map((item) => (
+              <li key={item.key}>
                 <button
-                  type="button"
-                  className={`w-full border-r-4 px-4 py-3 text-left transition-colors ${
-                    activeTab === key
-                      ? "border-primary-500 bg-neutral-50 text-primary-500"
-                      : "border-transparent hover:bg-neutral-50"
+                  onClick={() => {
+                    navigate(item.path);
+                  }}
+                  className={`w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium transition-colors ${
+                    activeTab === item.key
+                      ? "bg-primary-50 text-primary-700"
+                      : "text-neutral-600 hover:bg-neutral-100"
                   }`}
-                  onClick={() => handleTabChange(key as AdminTab)}
                 >
-                  {label}
+                  {item.label}
                 </button>
               </li>
             ))}
@@ -577,2380 +206,528 @@ function Admin() {
 
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-neutral-200 bg-white px-6">
-          <h1 className="text-xl font-bold text-neutral-800">管理后台</h1>
-          <div className="relative">
-            <div
-              className="flex items-center space-x-2 cursor-pointer hover:bg-neutral-100 rounded-lg px-2 py-1 transition-colors"
-              onMouseEnter={() => {
-                if (menuTimeout) clearTimeout(menuTimeout);
-                setShowUserMenu(true);
-              }}
-              onMouseLeave={() => {
-                const timeout = window.setTimeout(() => {
-                  setShowUserMenu(false);
-                }, 300);
-                setMenuTimeout(timeout);
-              }}
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
-                <span className="font-semibold text-primary-600">
-                  {currentUser?.username?.charAt(0)?.toUpperCase() || "U"}
+          <div className="flex items-center space-x-4">
+            <h1 className="text-xl font-semibold text-neutral-800">
+              {tabItems.find((item) => item.key === activeTab)?.label ||
+                "团队管理"}
+            </h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="relative" ref={userMenuRef}>
+              <button
+                className="flex items-center space-x-2 rounded-lg px-3 py-2 hover:bg-neutral-100"
+                onMouseEnter={() => {
+                  if (menuTimeout) {
+                    clearTimeout(menuTimeout);
+                    setMenuTimeout(null);
+                  }
+                  setShowUserMenu(true);
+                }}
+                onMouseLeave={() => {
+                  const timeout = window.setTimeout(() => {
+                    setShowUserMenu(false);
+                  }, 200);
+                  setMenuTimeout(timeout);
+                }}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
+                  <span className="text-sm font-medium text-primary-700">
+                    {currentUser?.username?.charAt(0).toUpperCase() || "U"}
+                  </span>
+                </div>
+                <span className="text-sm font-medium text-neutral-700">
+                  {currentUser?.username || "用户"}
                 </span>
-              </div>
-              <span className="text-sm font-medium text-neutral-700">
-                {currentUser?.username || "用户"}
-              </span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 text-neutral-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </div>
-            {/* 下拉菜单 - 添加延迟消失效果 */}
-            <div
-              className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50 transition-opacity duration-150 ${showUserMenu ? "opacity-100 visible" : "opacity-0 invisible"}`}
-              onMouseEnter={() => {
-                if (menuTimeout) clearTimeout(menuTimeout);
-                setShowUserMenu(true);
-              }}
-              onMouseLeave={() => {
-                const timeout = window.setTimeout(() => {
-                  setShowUserMenu(false);
-                }, 300);
-                setMenuTimeout(timeout);
-              }}
-            >
-              <button
-                className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-                onClick={() => {
-                  window.location.href = "/profile";
-                }}
-              >
-                个人中心
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 text-neutral-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
               </button>
-              <button
-                className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-                onClick={() => {
-                  userApi.logout();
-                  window.location.href = "/login";
-                }}
-              >
-                退出登录
-              </button>
+              {showUserMenu && (
+                <div
+                  className="absolute right-0 mt-2 w-48 rounded-lg border border-neutral-200 bg-white py-1 shadow-lg"
+                  onMouseEnter={() => {
+                    if (menuTimeout) {
+                      clearTimeout(menuTimeout);
+                      setMenuTimeout(null);
+                    }
+                    setShowUserMenu(true);
+                  }}
+                  onMouseLeave={() => {
+                    const timeout = window.setTimeout(() => {
+                      setShowUserMenu(false);
+                    }, 200);
+                    setMenuTimeout(timeout);
+                  }}
+                >
+                  <button
+                    onClick={() => navigate("/profile")}
+                    className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
+                  >
+                    个人中心
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-neutral-100"
+                  >
+                    退出登录
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
 
         <main className="flex-1 p-6">
-          {activeTab === "dashboard" && (
-            <section>
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-neutral-800">
-                  团队管理员仪表盘
-                </h2>
-              </div>
-
-              {/* 核心指标卡片区 */}
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">
-                      本团队职位数
-                    </h3>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 text-purple-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="text-3xl font-bold text-neutral-800">
-                    {dashboardStats.activeJobs}/{dashboardStats.closedJobs}
-                  </p>
-                  <p className="mt-2 text-sm text-neutral-500">进行中/已结束</p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">
-                      本团队总投递量
-                    </h3>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 text-blue-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="text-3xl font-bold text-neutral-800">
-                    {dashboardStats.totalApplications}
-                  </p>
-                  <p className="mt-2 text-sm text-neutral-500">累计投递次数</p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">
-                      待筛选简历数
-                    </h3>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-100">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 text-yellow-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="text-3xl font-bold text-neutral-800">
-                    {dashboardStats.pendingResumes}
-                  </p>
-                  <p className="mt-2 text-sm text-neutral-500">等待处理</p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">
-                      待安排面试数
-                    </h3>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 text-green-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="text-3xl font-bold text-neutral-800">
-                    {dashboardStats.pendingInterviews}
-                  </p>
-                  <p className="mt-2 text-sm text-neutral-500">需要安排</p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">
-                      本月新投递数（环比）
-                    </h3>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 text-red-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="text-3xl font-bold text-neutral-800">
-                    {dashboardStats.monthlyApplications}
-                  </p>
-                  <p
-                    className={`mt-2 text-sm ${dashboardStats.monthlyGrowth >= 0 ? "text-green-600" : "text-red-600"}`}
-                  >
-                    {dashboardStats.monthlyGrowth >= 0 ? "+" : ""}
-                    {dashboardStats.monthlyGrowth}% 较上月
-                  </p>
-                </div>
-              </div>
-
-              {/* 投递趋势图表区 */}
-              <div className="grid gap-6 md:grid-cols-2 mb-6">
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-                    本团队投递量趋势（近30天）
-                  </h3>
-                  <ReactECharts
-                    option={{
-                      tooltip: { trigger: "axis" },
-                      legend: {
-                        data: ["前端", "后端", "产品", "设计"],
-                      },
-                      xAxis: {
-                        type: "category",
-                        data: [
-                          "第1日",
-                          "第5日",
-                          "第10日",
-                          "第15日",
-                          "第20日",
-                          "第25日",
-                          "第30日",
-                        ],
-                      },
-                      yAxis: {
-                        type: "value",
-                      },
-                      series: [
-                        {
-                          name: "前端",
-                          type: "line",
-                          data: [12, 19, 15, 21, 18, 25, 22],
-                          smooth: true,
-                          itemStyle: { color: "#3b82f6" },
-                        },
-                        {
-                          name: "后端",
-                          type: "line",
-                          data: [8, 15, 12, 18, 14, 20, 17],
-                          smooth: true,
-                          itemStyle: { color: "#10b981" },
-                        },
-                        {
-                          name: "产品",
-                          type: "line",
-                          data: [5, 10, 8, 12, 9, 14, 11],
-                          smooth: true,
-                          itemStyle: { color: "#f59e0b" },
-                        },
-                        {
-                          name: "设计",
-                          type: "line",
-                          data: [3, 7, 5, 9, 6, 11, 8],
-                          smooth: true,
-                          itemStyle: { color: "#8b5cf6" },
-                        },
-                      ],
-                    }}
-                    style={{ height: "320px" }}
-                  />
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-                    各职位投递分布
-                  </h3>
-                  <ReactECharts
-                    option={{
-                      tooltip: { trigger: "item" },
-                      legend: {
-                        orient: "vertical",
-                        left: "left",
-                      },
-                      series: [
-                        {
-                          name: "投递量",
-                          type: "pie",
-                          radius: "60%",
-                          data: [
-                            { value: 68, name: "前端" },
-                            { value: 52, name: "后端" },
-                            { value: 24, name: "产品" },
-                            { value: 12, name: "设计" },
-                          ],
-                          emphasis: {
-                            itemStyle: {
-                              shadowBlur: 10,
-                              shadowOffsetX: 0,
-                              shadowColor: "rgba(0, 0, 0, 0.5)",
-                            },
-                          },
-                        },
-                      ],
-                    }}
-                    style={{ height: "320px" }}
-                  />
-                </div>
-              </div>
-
-              {/* 候选人质量概览区 */}
-              <div className="grid gap-6 md:grid-cols-2 mb-6">
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-                    AI评分分布
-                  </h3>
-                  <ReactECharts
-                    option={{
-                      tooltip: { trigger: "item" },
-                      legend: {
-                        orient: "vertical",
-                        left: "left",
-                      },
-                      series: [
-                        {
-                          name: "评分分布",
-                          type: "pie",
-                          radius: "60%",
-                          data: [
-                            { value: 45, name: "高匹配" },
-                            { value: 78, name: "中匹配" },
-                            { value: 33, name: "低匹配" },
-                          ],
-                          itemStyle: {
-                            color: function (params) {
-                              const colors = ["#10b981", "#f59e0b", "#ef4444"];
-                              return colors[params.dataIndex];
-                            },
-                          },
-                        },
-                      ],
-                    }}
-                    style={{ height: "320px" }}
-                  />
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-                    各状态人数
-                  </h3>
-                  <ReactECharts
-                    option={{
-                      tooltip: { trigger: "axis" },
-                      xAxis: {
-                        type: "category",
-                        data: ["待筛选", "面试中", "已通过", "已拒绝"],
-                      },
-                      yAxis: {
-                        type: "value",
-                      },
-                      series: [
-                        {
-                          name: "人数",
-                          type: "bar",
-                          data: [42, 36, 18, 60],
-                          itemStyle: {
-                            color: function (params) {
-                              const colors = [
-                                "#f59e0b",
-                                "#3b82f6",
-                                "#10b981",
-                                "#ef4444",
-                              ];
-                              return colors[params.dataIndex];
-                            },
-                          },
-                        },
-                      ],
-                    }}
-                    style={{ height: "320px" }}
-                  />
-                </div>
-              </div>
-
-              {/* 待处理事项区 */}
-              <div className="grid gap-6 md:grid-cols-3 mb-6">
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">
-                      待筛选简历
-                    </h3>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-100">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 text-yellow-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-lg font-bold text-neutral-800 mr-4">
-                      {dashboardStats.pendingResumes}
-                    </span>
-                    <button className="px-3 py-1 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 transition-colors">
-                      处理
-                    </button>
-                  </div>
-                  <p className="mt-2 text-xs text-neutral-500">
-                    需要筛选的简历数量
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">
-                      待安排面试
-                    </h3>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 text-green-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-lg font-bold text-neutral-800 mr-4">
-                      {dashboardStats.pendingInterviews}
-                    </span>
-                    <button className="px-3 py-1 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 transition-colors">
-                      安排
-                    </button>
-                  </div>
-                  <p className="mt-2 text-xs text-neutral-500">
-                    需要安排的面试数量
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">
-                      待填写面试反馈
-                    </h3>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 text-blue-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-lg font-bold text-neutral-800 mr-4">
-                      7
-                    </span>
-                    <button className="px-3 py-1 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 transition-colors">
-                      处理
-                    </button>
-                  </div>
-                  <p className="mt-2 text-xs text-neutral-500">
-                    需要填写的面试反馈数量
-                  </p>
-                </div>
-              </div>
-
-              {/* 快捷操作入口 */}
-              <div className="grid gap-6 md:grid-cols-3 mb-6">
-                <button className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm hover:bg-neutral-50 transition-colors">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 mb-4">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 text-blue-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-neutral-800 mb-2">
-                    发布新职位
-                  </h3>
-                  <p className="text-sm text-neutral-500">创建新的招聘职位</p>
-                </button>
-
-                <button className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm hover:bg-neutral-50 transition-colors">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 text-green-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-neutral-800 mb-2">
-                    查看全部候选人
-                  </h3>
-                  <p className="text-sm text-neutral-500">管理所有候选人信息</p>
-                </button>
-
-                <button className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm hover:bg-neutral-50 transition-colors">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 mb-4">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 text-purple-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-neutral-800 mb-2">
-                    查看数据报表
-                  </h3>
-                  <p className="text-sm text-neutral-500">分析招聘数据趋势</p>
-                </button>
-              </div>
-            </section>
-          )}
-
-          {activeTab === "jobs" && (
-            <section>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-800">
-                  职位管理
-                </h2>
-                <button
-                  type="button"
-                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => {
-                    // 重置表单
-                    setCurrentJobId(null);
-                    setSkillsInput("");
-                    setAiResumeFilterSkillsInput("");
-                    setJobForm({
-                      title: "",
-                      type: "full-time",
-                      department: "",
-                      quota: 1,
-                      salary: "",
-                      requirements: {
-                        skills: [],
-                        experience: "",
-                        education: "",
-                        description: "",
-                      },
-                      responsibilities: [],
-                      benefits: [],
-                      status: "open",
-                      deadline: "",
-                      teamId: currentUser?.team || "",
-                      interviewType: "online",
-                      aiQuestionBankId: "",
-                      aiPreInterview: false,
-                      aiPreInterviewScore: 60,
-                      aiResumeFilter: false,
-                      aiResumeFilterScore: 60,
-                      aiResumeFilterSkills: [],
-                    });
-                    openModal("job");
-                  }}
-                >
-                  发布新职位
-                </button>
-              </div>
-
-              <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-                <div className="border-b border-neutral-200 p-4">
-                  <div className="flex items-center space-x-4">
-                    <input
-                      type="text"
-                      placeholder="搜索职位"
-                      className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                    <select className="rounded-lg border border-neutral-300 px-4 py-2">
-                      <option>全部状态</option>
-                      <option>招聘中</option>
-                      <option>已关闭</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-neutral-50">
-                      <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
-                        {[
-                          "职位名称",
-                          "部门",
-                          "招聘人数",
-                          "截止时间",
-                          "状态",
-                          "AI试题",
-                          "AI预面试最低分",
-                          "AI简历筛选最低分",
-                          "AI简历筛选关键词",
-                          "操作",
-                        ].map((item) => (
-                          <th key={item} className="px-6 py-3">
-                            {item}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-200">
-                      {isLoading ? (
-                        <tr>
-                          <td
-                            colSpan={9}
-                            className="px-6 py-8 text-center text-neutral-500"
-                          >
-                            加载中...
-                          </td>
-                        </tr>
-                      ) : error ? (
-                        <tr>
-                          <td
-                            colSpan={9}
-                            className="px-6 py-8 text-center text-red-500"
-                          >
-                            {error}
-                          </td>
-                        </tr>
-                      ) : jobs.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={9}
-                            className="px-6 py-8 text-center text-neutral-500"
-                          >
-                            暂无职位
-                          </td>
-                        </tr>
-                      ) : (
-                        jobs.map((job) => (
-                          <tr key={job._id}>
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-medium text-neutral-900">
-                                {job.title}
-                              </div>
-                              <div className="text-sm text-neutral-500">
-                                {job.type}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {job.department}
-                            </td>
-                            <td className="px-6 py-4 text-sm">{job.quota}</td>
-                            <td className="px-6 py-4 text-sm">
-                              {new Date(job.deadline).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <span
-                                className={`rounded-full px-2 py-1 text-xs font-semibold ${job.status === "open" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
-                              >
-                                {job.status === "open" ? "招聘中" : "已关闭"}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {job.aiPreInterview
-                                ? job.aiQuestionBankName ||
-                                  (job.aiQuestionBankId ? "已设置" : "未设置")
-                                : "-"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {job.aiPreInterview
-                                ? job.aiPreInterviewScore || 60
-                                : "-"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {job.aiResumeFilter
-                                ? job.aiResumeFilterScore || 60
-                                : "-"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {job.aiResumeFilterSkills &&
-                              job.aiResumeFilterSkills.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {job.aiResumeFilterSkills
-                                    .slice(0, 3)
-                                    .map((skill, index) => (
-                                      <span
-                                        key={index}
-                                        className="text-xs bg-blue-100 text-blue-800 rounded px-1.5 py-0.5"
-                                      >
-                                        {skill}
-                                      </span>
-                                    ))}
-                                  {job.aiResumeFilterSkills.length > 3 && (
-                                    <span className="text-xs text-neutral-500">
-                                      +{job.aiResumeFilterSkills.length - 3}
-                                    </span>
-                                  )}
-                                </div>
-                              ) : (
-                                "-"
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <button
-                                type="button"
-                                className="mr-3 text-primary-600 hover:text-primary-900"
-                                onClick={() => {
-                                  // 填充表单
-                                  setCurrentJobId(job._id);
-                                  const skillsValue = Array.isArray(
-                                    job.requirements?.skills,
-                                  )
-                                    ? job.requirements.skills.join(",")
-                                    : "";
-                                  const aiResumeFilterSkillsValue =
-                                    Array.isArray(job.aiResumeFilterSkills)
-                                      ? job.aiResumeFilterSkills.join(",")
-                                      : "";
-                                  setSkillsInput(skillsValue);
-                                  setAiResumeFilterSkillsInput(
-                                    aiResumeFilterSkillsValue,
-                                  );
-                                  setJobForm({
-                                    title: job.title,
-                                    type: job.type,
-                                    department: job.department,
-                                    quota: job.quota,
-                                    salary: job.salary || "",
-                                    requirements: {
-                                      ...job.requirements,
-                                      skills: Array.isArray(
-                                        job.requirements?.skills,
-                                      )
-                                        ? job.requirements.skills
-                                        : [],
-                                    },
-                                    responsibilities:
-                                      job.responsibilities || [],
-                                    benefits: job.benefits || [],
-                                    status: job.status,
-                                    deadline: new Date(job.deadline)
-                                      .toISOString()
-                                      .split("T")[0],
-                                    teamId: job.teamId,
-                                    interviewType:
-                                      job.interviewType || "online",
-                                    aiQuestionBankId:
-                                      job.aiQuestionBankId || "",
-                                    aiPreInterview: job.aiPreInterview || false,
-                                    aiPreInterviewScore:
-                                      job.aiPreInterviewScore || 60,
-                                    aiResumeFilter: job.aiResumeFilter || false,
-                                    aiResumeFilterScore:
-                                      job.aiResumeFilterScore || 60,
-                                    aiResumeFilterSkills:
-                                      job.aiResumeFilterSkills || [],
-                                  });
-                                  setModal("job");
-                                }}
-                              >
-                                编辑
-                              </button>
-                              <button
-                                type="button"
-                                className={
-                                  job.status === "open"
-                                    ? "text-red-600 hover:text-red-900"
-                                    : "text-green-600 hover:text-green-900"
-                                }
-                                onClick={async () => {
-                                  try {
-                                    if (job.status === "open") {
-                                      // 关闭职位
-                                      await positionApi.updatePosition(
-                                        job._id,
-                                        { status: "closed" },
-                                      );
-                                      window.message.success("职位已关闭");
-                                    } else {
-                                      // 重新开放职位
-                                      await positionApi.updatePosition(
-                                        job._id,
-                                        { status: "open" },
-                                      );
-                                      window.message.success("职位已重新开放");
-                                    }
-                                    // 重新获取职位列表
-                                    fetchJobs();
-                                  } catch (err: any) {
-                                    window.message.error(
-                                      err.message || "操作失败",
-                                    );
-                                  }
-                                }}
-                              >
-                                {job.status === "open" ? "关闭" : "重新开放"}
-                              </button>
-                              <button
-                                type="button"
-                                className="ml-3 text-red-600 hover:text-red-900"
-                                onClick={async () => {
-                                  try {
-                                    if (
-                                      window.confirm("确定要删除这个职位吗？")
-                                    ) {
-                                      await positionApi.deletePosition(job._id);
-                                      window.message.success("职位已删除");
-                                      // 重新获取职位列表
-                                      fetchJobs();
-                                    }
-                                  } catch (err: any) {
-                                    window.message.error(
-                                      err.message || "删除失败",
-                                    );
-                                  }
-                                }}
-                              >
-                                删除
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activeTab === "candidates" && (
-            <section>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-800">
-                  候选人管理
-                </h2>
-                <div className="flex space-x-3">
-                  <button
-                    type="button"
-                    className="rounded-lg bg-red-500 px-4 py-2 text-white transition-colors hover:bg-red-600"
-                    onClick={() => {
-                      // 显示批量删除确认对话框
-                      const statusToDelete = prompt(
-                        "请输入要删除的候选人状态（例如：已拒绝、已录用、待处理、面试中、简历筛选、已通过预面试）:",
-                      );
-                      if (!statusToDelete) return;
-
-                      if (
-                        window.confirm(
-                          `确定要删除所有状态为"${statusToDelete}"的候选人吗？`,
-                        )
-                      ) {
-                        // 执行批量删除操作
-                        (async () => {
-                          try {
-                            // 状态映射：中文状态名称 -> 实际状态值
-                            const statusMap: Record<string, string> = {
-                              待处理: "pending",
-                              简历筛选: "screening",
-                              面试中: "interview",
-                              已录用: "offer",
-                              已通过预面试: "已通过预面试",
-                              已拒绝: "rejected",
-                            };
-
-                            // 获取实际状态值
-                            const actualStatus =
-                              statusMap[statusToDelete] || statusToDelete;
-
-                            // 筛选出要删除的候选人
-                            const candidatesToDelete = candidates.filter(
-                              (candidate) => candidate.status === actualStatus,
-                            );
-
-                            if (candidatesToDelete.length === 0) {
-                              window.message.info(
-                                `没有状态为"${statusToDelete}"的候选人`,
-                              );
-                              return;
-                            }
-
-                            // 逐个删除候选人
-                            let deletedCount = 0;
-                            for (const candidate of candidatesToDelete) {
-                              try {
-                                await applicationApi.deleteApplication(
-                                  candidate._id,
-                                );
-                                deletedCount++;
-                              } catch (error) {
-                                console.warn(
-                                  `删除候选人${candidate._id}失败:`,
-                                  error,
-                                );
-                              }
-                            }
-
-                            window.message.success(
-                              `成功删除${deletedCount}个候选人`,
-                            );
-                            // 重新获取候选人列表
-                            fetchCandidates();
-                          } catch (err: any) {
-                            console.error("批量删除失败:", err);
-                            window.message.error(err.message || "操作失败");
-                          }
-                        })();
-                      }
-                    }}
-                  >
-                    批量删除
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                    onClick={() => {
-                      // 重置表单，设置团队ID为当前用户的团队ID
-                      setCandidateForm({
-                        name: "",
-                        phone: "",
-                        email: "",
-                        grade: "",
-                        major: "",
-                        positionId: "",
-                        teamId: currentUser?.team || "",
-                        resume: null,
-                      });
-                      openModal("candidate");
-                    }}
-                  >
-                    导入候选人
-                  </button>
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-                <div className="border-b border-neutral-200 p-4">
-                  <div className="flex items-center space-x-4">
-                    <input
-                      type="text"
-                      placeholder="搜索候选人"
-                      className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setSearchKeyword(value);
-                        // 直接传递搜索关键词作为参数
-                        fetchCandidates(value, selectedStatus);
-                      }}
-                    />
-                    <select
-                      className="rounded-lg border border-neutral-300 px-4 py-2"
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setSelectedStatus(value);
-                        // 直接传递选中状态作为参数
-                        fetchCandidates(searchKeyword, value);
-                      }}
-                    >
-                      {[
-                        { value: "", label: "全部状态" },
-                        { value: "pending", label: "待处理" },
-                        { value: "screening", label: "简历筛选" },
-                        { value: "interview", label: "面试中" },
-                        { value: "offer", label: "已录用" },
-                        { value: "rejected", label: "已拒绝" },
-                        { value: "已通过预面试", label: "已通过预面试" },
-                      ].map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-neutral-50">
-                      <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
-                        {[
-                          "候选人",
-                          "年级",
-                          "专业",
-                          "应聘职位",
-                          "投递时间",
-                          "状态",
-                          "操作",
-                        ].map((item) => (
-                          <th key={item} className="px-6 py-3">
-                            {item}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-200">
-                      {isLoadingCandidates ? (
-                        <tr>
-                          <td
-                            colSpan={8}
-                            className="px-6 py-8 text-center text-neutral-500"
-                          >
-                            加载中...
-                          </td>
-                        </tr>
-                      ) : errorCandidates ? (
-                        <tr>
-                          <td
-                            colSpan={8}
-                            className="px-6 py-8 text-center text-red-500"
-                          >
-                            {errorCandidates}
-                          </td>
-                        </tr>
-                      ) : candidates.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={8}
-                            className="px-6 py-8 text-center text-neutral-500"
-                          >
-                            暂无候选人
-                          </td>
-                        </tr>
-                      ) : (
-                        candidates.map((candidate) => (
-                          <tr key={candidate._id}>
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-medium text-neutral-900">
-                                {candidate.name || candidate.studentId}{" "}
-                              </div>
-                              <div className="text-sm text-neutral-500">
-                                {candidate.email || candidate.studentId}{" "}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {candidate.grade || "-"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {candidate.major || "-"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {candidate.positionName || candidate.positionId}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {new Date(
-                                candidate.appliedAt,
-                              ).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <span
-                                className={`rounded-full px-2 py-1 text-xs font-semibold ${candidate.status === "pending" ? "bg-yellow-100 text-yellow-800" : candidate.status === "screening" ? "bg-blue-100 text-blue-800" : candidate.status === "interview" ? "bg-purple-100 text-purple-800" : candidate.status === "offer" ? "bg-green-100 text-green-800" : candidate.status === "已通过预面试" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
-                              >
-                                {candidate.status === "pending"
-                                  ? "待处理"
-                                  : candidate.status === "screening"
-                                    ? "简历筛选"
-                                    : candidate.status === "interview"
-                                      ? "面试中"
-                                      : candidate.status === "offer"
-                                        ? "已录用"
-                                        : candidate.status === "已通过预面试"
-                                          ? "已通过预面试"
-                                          : "已拒绝"}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <button
-                                type="button"
-                                className="mr-3 text-primary-600 hover:text-primary-900"
-                                onClick={() => {
-                                  setCurrentCandidate(candidate);
-                                  setViewModal(true);
-                                }}
-                              >
-                                查看
-                              </button>
-                              <button
-                                type="button"
-                                className="text-green-600 hover:text-green-900"
-                                onClick={() => {
-                                  // 显示面试安排弹框
-                                  const scheduledTime = prompt(
-                                    "请输入面试时间（格式：YYYY-MM-DD HH:MM）:",
-                                  );
-                                  if (!scheduledTime) return;
-
-                                  const interviewType = (
-                                    prompt(
-                                      "请输入面试类型（online/offline）:",
-                                    ) || "online"
-                                  ).toLowerCase();
-                                  let meetingUrl = "";
-                                  let location = "";
-
-                                  if (interviewType === "online") {
-                                    meetingUrl =
-                                      prompt("请输入面试链接:") || "";
-                                  } else {
-                                    location =
-                                      prompt("请输入面试地点:") || "未设置";
-                                  }
-
-                                  // 执行安排面试逻辑
-                                  (async () => {
-                                    try {
-                                      console.log(
-                                        "开始安排面试，候选人信息:",
-                                        candidate,
-                                      );
-                                      console.log("当前用户信息:", currentUser);
-
-                                      // 1. 更新候选人状态为面试中
-                                      console.log("开始更新候选人状态");
-                                      const updateResult =
-                                        await applicationApi.updateApplication(
-                                          candidate._id,
-                                          { status: "interview" },
-                                        );
-                                      console.log(
-                                        "状态更新成功:",
-                                        updateResult,
-                                      );
-
-                                      // 2. 创建面试邀请记录
-                                      if (candidate.studentId) {
-                                        console.log("开始创建面试邀请记录");
-                                        const invitationResult =
-                                          await interviewInvitationApi.createInterviewInvitation(
-                                            {
-                                              deliveryId: candidate._id, // 使用候选人ID作为投递ID
-                                              userId: candidate.studentId,
-                                              interviewerId: currentUser?._id,
-                                              type: interviewType as
-                                                | "online"
-                                                | "offline",
-                                              scheduledTime: scheduledTime,
-                                              meetingUrl: meetingUrl,
-                                              location: location,
-                                            },
-                                          );
-                                        console.log(
-                                          "面试邀请创建成功:",
-                                          invitationResult,
-                                        );
-                                      } else {
-                                        console.warn(
-                                          "候选人没有studentId，跳过创建面试邀请",
-                                        );
-                                      }
-
-                                      // 3. 发送面试邀请通知
-                                      if (
-                                        candidate.studentId &&
-                                        currentUser?.team
-                                      ) {
-                                        console.log("开始发送面试邀请通知");
-                                        // 获取团队的面试邀请通知模板
-                                        try {
-                                          const templateResponse =
-                                            await notificationTemplateApi.getTemplateByType(
-                                              currentUser.team,
-                                              "interview_invite",
-                                            );
-                                          const template =
-                                            templateResponse.data;
-                                          console.log(
-                                            "获取通知模板成功:",
-                                            template,
-                                          );
-
-                                          // 替换模板中的变量
-                                          let title =
-                                            template.title || "面试邀请通知";
-                                          let content =
-                                            template.content ||
-                                            `您申请的${candidate.positionName || candidate.positionId}职位已安排面试，请留意查看面试详情。`;
-
-                                          // 替换变量
-                                          title = title
-                                            .replace(
-                                              /{studentName}/g,
-                                              candidate.name || "",
-                                            )
-                                            .replace(
-                                              /{positionName}/g,
-                                              candidate.positionName ||
-                                                candidate.positionId,
-                                            )
-                                            .replace(
-                                              /{teamName}/g,
-                                              currentUser?.teamName || "",
-                                            )
-                                            .replace(
-                                              /{interviewTime}/g,
-                                              scheduledTime,
-                                            )
-                                            .replace(
-                                              /{interviewLocation}/g,
-                                              interviewType === "online"
-                                                ? meetingUrl
-                                                : location,
-                                            )
-                                            .replace(
-                                              /{interviewerName}/g,
-                                              currentUser?.username || "",
-                                            );
-
-                                          content = content
-                                            .replace(
-                                              /{studentName}/g,
-                                              candidate.name || "",
-                                            )
-                                            .replace(
-                                              /{positionName}/g,
-                                              candidate.positionName ||
-                                                candidate.positionId,
-                                            )
-                                            .replace(
-                                              /{teamName}/g,
-                                              currentUser?.teamName || "",
-                                            )
-                                            .replace(
-                                              /{interviewTime}/g,
-                                              scheduledTime,
-                                            )
-                                            .replace(
-                                              /{interviewLocation}/g,
-                                              interviewType === "online"
-                                                ? meetingUrl
-                                                : location,
-                                            )
-                                            .replace(
-                                              /{interviewerName}/g,
-                                              currentUser?.username || "",
-                                            );
-
-                                          // 发送通知
-                                          const notificationResult =
-                                            await notificationApi.sendNotification(
-                                              {
-                                                userId: candidate.studentId,
-                                                type: "interview_invite",
-                                                title: title,
-                                                content: content,
-                                                relatedId: candidate.positionId,
-                                                teamName:
-                                                  currentUser?.teamName || "",
-                                              },
-                                            );
-                                          console.log(
-                                            "通知发送成功:",
-                                            notificationResult,
-                                          );
-                                        } catch (templateError) {
-                                          console.warn(
-                                            "获取通知模板失败，使用默认模板:",
-                                            templateError,
-                                          );
-                                          // 如果获取模板失败，使用默认内容
-                                          const notificationResult =
-                                            await notificationApi.sendNotification(
-                                              {
-                                                userId: candidate.studentId,
-                                                type: "interview_invite",
-                                                title: "面试邀请通知",
-                                                content: `您申请的${candidate.positionName || candidate.positionId}职位已安排面试，请留意查看面试详情。`,
-                                                relatedId: candidate.positionId,
-                                                teamName:
-                                                  currentUser?.teamName || "",
-                                              },
-                                            );
-                                          console.log(
-                                            "使用默认模板发送通知成功:",
-                                            notificationResult,
-                                          );
-                                        }
-                                      } else {
-                                        console.warn(
-                                          "候选人没有studentId或当前用户没有团队信息，跳过发送通知",
-                                        );
-                                      }
-
-                                      window.message.success(
-                                        "面试已安排，状态已更新为面试中",
-                                      );
-                                      // 4. 重新获取候选人列表
-                                      fetchCandidates();
-                                    } catch (err: any) {
-                                      console.error("安排面试失败:", err);
-                                      window.message.error(
-                                        err.message || "安排面试失败",
-                                      );
-                                    }
-                                  })();
-                                }}
-                              >
-                                安排面试
-                              </button>
-                              <button
-                                type="button"
-                                className="ml-3 text-green-600 hover:text-green-900"
-                                onClick={() => {
-                                  // 显示录用信息收集弹框
-                                  const onboardingTime = prompt(
-                                    "请输入入职时间（格式：YYYY-MM-DD）:",
-                                  );
-                                  if (!onboardingTime) return;
-
-                                  const onboardingLocation =
-                                    prompt("请输入入职地点:") || "";
-                                  const contactPerson =
-                                    prompt("请输入联系人:") ||
-                                    currentUser?.username ||
-                                    "";
-
-                                  // 执行录用逻辑
-                                  (async () => {
-                                    try {
-                                      // 更新候选人状态为已录用
-                                      await applicationApi.updateApplication(
-                                        candidate._id,
-                                        { status: "offer" },
-                                      );
-
-                                      // 发送录用通知
-                                      if (
-                                        candidate.studentId &&
-                                        currentUser?.team
-                                      ) {
-                                        try {
-                                          const templateResponse =
-                                            await notificationTemplateApi.getTemplateByType(
-                                              currentUser.team,
-                                              "offer",
-                                            );
-                                          const template =
-                                            templateResponse.data;
-
-                                          // 替换模板中的变量
-                                          let title =
-                                            template.title || "录用通知";
-                                          let content =
-                                            template.content ||
-                                            `恭喜您被录用为${candidate.positionName || candidate.positionId}岗位成员！`;
-
-                                          // 替换变量
-                                          title = title
-                                            .replace(
-                                              /{studentName}/g,
-                                              candidate.name || "",
-                                            )
-                                            .replace(
-                                              /{positionName}/g,
-                                              candidate.positionName ||
-                                                candidate.positionId,
-                                            )
-                                            .replace(
-                                              /{teamName}/g,
-                                              currentUser?.teamName || "",
-                                            )
-                                            .replace(
-                                              /{onboardingTime}/g,
-                                              onboardingTime,
-                                            )
-                                            .replace(
-                                              /{onboardingLocation}/g,
-                                              onboardingLocation,
-                                            )
-                                            .replace(
-                                              /{contactPerson}/g,
-                                              contactPerson,
-                                            );
-
-                                          content = content
-                                            .replace(
-                                              /{studentName}/g,
-                                              candidate.name || "",
-                                            )
-                                            .replace(
-                                              /{positionName}/g,
-                                              candidate.positionName ||
-                                                candidate.positionId,
-                                            )
-                                            .replace(
-                                              /{teamName}/g,
-                                              currentUser?.teamName || "",
-                                            )
-                                            .replace(
-                                              /{onboardingTime}/g,
-                                              onboardingTime,
-                                            )
-                                            .replace(
-                                              /{onboardingLocation}/g,
-                                              onboardingLocation,
-                                            )
-                                            .replace(
-                                              /{contactPerson}/g,
-                                              contactPerson,
-                                            );
-
-                                          // 发送通知
-                                          await notificationApi.sendNotification(
-                                            {
-                                              userId: candidate.studentId,
-                                              type: "offer",
-                                              title: title,
-                                              content: content,
-                                              relatedId: candidate.positionId,
-                                              teamName:
-                                                currentUser?.teamName || "",
-                                            },
-                                          );
-                                        } catch (templateError) {
-                                          console.warn(
-                                            "获取通知模板失败，使用默认模板:",
-                                            templateError,
-                                          );
-                                          // 如果获取模板失败，使用默认内容
-                                          await notificationApi.sendNotification(
-                                            {
-                                              userId: candidate.studentId,
-                                              type: "offer",
-                                              title: "录用通知",
-                                              content: `恭喜您被录用为${candidate.positionName || candidate.positionId}岗位成员！\n\n入职信息如下：\n报到时间：${onboardingTime}\n报到地点：${onboardingLocation}\n联系人：${contactPerson}`,
-                                              relatedId: candidate.positionId,
-                                              teamName:
-                                                currentUser?.teamName || "",
-                                            },
-                                          );
-                                        }
-                                      }
-
-                                      window.message.success(
-                                        "候选人已录用，通知已发送",
-                                      );
-                                      // 重新获取候选人列表
-                                      fetchCandidates();
-                                    } catch (err: any) {
-                                      console.error("录用操作失败:", err);
-                                      window.message.error(
-                                        err.message || "操作失败",
-                                      );
-                                    }
-                                  })();
-                                }}
-                              >
-                                录用
-                              </button>
-                              <button
-                                type="button"
-                                className="ml-3 text-red-600 hover:text-red-900"
-                                onClick={() => {
-                                  // 执行拒绝逻辑
-                                  (async () => {
-                                    try {
-                                      console.log(
-                                        "开始拒绝操作，候选人信息:",
-                                        candidate,
-                                      );
-                                      console.log("当前用户信息:", currentUser);
-
-                                      // 1. 更新候选人状态为已拒绝
-                                      console.log("开始更新候选人状态");
-                                      const updateResult =
-                                        await applicationApi.updateApplication(
-                                          candidate._id,
-                                          { status: "rejected" },
-                                        );
-                                      console.log(
-                                        "状态更新成功:",
-                                        updateResult,
-                                      );
-
-                                      // 2. 发送拒绝通知
-                                      if (
-                                        candidate.studentId &&
-                                        currentUser?.team
-                                      ) {
-                                        console.log("开始发送拒绝通知");
-                                        try {
-                                          const templateResponse =
-                                            await notificationTemplateApi.getTemplateByType(
-                                              currentUser.team,
-                                              "rejection",
-                                            );
-                                          const template =
-                                            templateResponse.data;
-                                          console.log(
-                                            "获取通知模板成功:",
-                                            template,
-                                          );
-
-                                          // 替换模板中的变量
-                                          let title =
-                                            template.title || "感谢您的申请";
-                                          let content =
-                                            template.content ||
-                                            `感谢您申请${candidate.positionName || candidate.positionId}岗位，很遗憾本次未能录用。`;
-
-                                          // 替换变量
-                                          title = title
-                                            .replace(
-                                              /\{studentName\}/g,
-                                              candidate.name || "",
-                                            )
-                                            .replace(
-                                              /\{positionName\}/g,
-                                              candidate.positionName ||
-                                                candidate.positionId,
-                                            )
-                                            .replace(
-                                              /\{teamName\}/g,
-                                              currentUser?.teamName || "",
-                                            );
-
-                                          content = content
-                                            .replace(
-                                              /\{studentName\}/g,
-                                              candidate.name || "",
-                                            )
-                                            .replace(
-                                              /\{positionName\}/g,
-                                              candidate.positionName ||
-                                                candidate.positionId,
-                                            )
-                                            .replace(
-                                              /\{teamName\}/g,
-                                              currentUser?.teamName || "",
-                                            );
-
-                                          // 发送通知
-                                          const notificationResult =
-                                            await notificationApi.sendNotification(
-                                              {
-                                                userId: candidate.studentId,
-                                                type: "rejection",
-                                                title: title,
-                                                content: content,
-                                                relatedId: candidate.positionId,
-                                                teamName:
-                                                  currentUser?.teamName || "",
-                                              },
-                                            );
-                                          console.log(
-                                            "通知发送成功:",
-                                            notificationResult,
-                                          );
-                                        } catch (templateError) {
-                                          console.warn(
-                                            "获取通知模板失败，使用默认模板:",
-                                            templateError,
-                                          );
-                                          // 如果获取模板失败，使用默认内容
-                                          try {
-                                            const notificationResult =
-                                              await notificationApi.sendNotification(
-                                                {
-                                                  userId: candidate.studentId,
-                                                  type: "rejection",
-                                                  title: "感谢您的申请",
-                                                  content: `感谢您申请${candidate.positionName || candidate.positionId}岗位，很遗憾本次未能录用。`,
-                                                  relatedId:
-                                                    candidate.positionId,
-                                                  teamName:
-                                                    currentUser?.teamName || "",
-                                                },
-                                              );
-                                            console.log(
-                                              "使用默认模板发送通知成功:",
-                                              notificationResult,
-                                            );
-                                          } catch (notificationError) {
-                                            console.warn(
-                                              "发送通知失败:",
-                                              notificationError,
-                                            );
-                                            // 发送通知失败不影响状态更新
-                                          }
-                                        }
-                                      } else {
-                                        console.warn(
-                                          "候选人没有studentId或当前用户没有团队信息，跳过发送通知",
-                                        );
-                                      }
-
-                                      window.message.success(
-                                        "候选人已拒绝，通知已发送",
-                                      );
-                                      // 3. 重新获取候选人列表
-                                      fetchCandidates();
-                                    } catch (err: any) {
-                                      console.error("拒绝操作失败:", err);
-                                      window.message.error(
-                                        err.message || "操作失败",
-                                      );
-                                    }
-                                  })();
-                                }}
-                              >
-                                拒绝
-                              </button>
-                              <button
-                                type="button"
-                                className="ml-3 text-red-600 hover:text-red-900"
-                                onClick={async () => {
-                                  if (
-                                    window.confirm(
-                                      `确定要删除候选人"${candidate.name || candidate.studentId}"吗？`,
-                                    )
-                                  ) {
-                                    try {
-                                      await applicationApi.deleteApplication(
-                                        candidate._id,
-                                      );
-                                      window.message.success("候选人已删除");
-                                      // 重新获取候选人列表
-                                      fetchCandidates();
-                                    } catch (err: any) {
-                                      console.error("删除候选人失败:", err);
-                                      window.message.error(
-                                        err.message || "删除失败",
-                                      );
-                                    }
-                                  }
-                                }}
-                              >
-                                删除
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activeTab === "questions" && (
-            <section>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-800">
-                  面试题库
-                </h2>
-                <button
-                  type="button"
-                  className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
-                  onClick={() => {
-                    // 重置表单
-                    setCurrentQuestionBankId(null);
-                    setQuestionBankForm({
-                      title: "",
-                      description: "",
-                      category: "",
-                      questionCount: 0,
-                      createdAt: new Date().toISOString().split("T")[0],
-                      questions: [],
-                    });
-                    openModal("questionBank");
-                  }}
-                >
-                  添加题库
-                </button>
-              </div>
-
-              <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-                <div className="border-b border-neutral-200 p-4">
-                  <div className="flex items-center space-x-4">
-                    <input
-                      type="text"
-                      placeholder="搜索题库"
-                      className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                    <select className="rounded-lg border border-neutral-300 px-4 py-2">
-                      <option>全部分类</option>
-                      <option>技术类</option>
-                      <option>行为类</option>
-                      <option>专业知识</option>
-                      <option>项目经验</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-neutral-50">
-                      <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
-                        {[
-                          "题库名称",
-                          "描述",
-                          "分类",
-                          "题目数量",
-                          "创建时间",
-                          "操作",
-                        ].map((item) => (
-                          <th key={item} className="px-6 py-3">
-                            {item}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-200">
-                      {isLoadingQuestionBanks ? (
-                        <tr>
-                          <td
-                            colSpan={6}
-                            className="px-6 py-10 text-center text-neutral-500"
-                          >
-                            加载中...
-                          </td>
-                        </tr>
-                      ) : errorQuestionBanks ? (
-                        <tr>
-                          <td
-                            colSpan={6}
-                            className="px-6 py-10 text-center text-red-500"
-                          >
-                            {errorQuestionBanks}
-                          </td>
-                        </tr>
-                      ) : questionBanks.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={6}
-                            className="px-6 py-10 text-center text-neutral-500"
-                          >
-                            暂无面试题库
-                          </td>
-                        </tr>
-                      ) : (
-                        questionBanks.map((bank) => (
-                          <tr key={bank._id}>
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-medium text-neutral-900">
-                                {bank.title}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-neutral-500">
-                              {bank.type || "无类型"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
-                                {bank.category}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {bank.questions.length}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {
-                                new Date(bank.createdAt)
-                                  .toISOString()
-                                  .split("T")[0]
-                              }
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <button
-                                type="button"
-                                className="mr-3 text-primary-600 hover:text-primary-900"
-                                onClick={() => {
-                                  // 填充表单
-                                  setCurrentQuestionBankId(bank._id);
-                                  setQuestionBankForm({
-                                    title: bank.title,
-                                    description: bank.description || "",
-                                    category: bank.category,
-                                    questionCount: bank.questions.length,
-                                    createdAt: new Date(bank.createdAt)
-                                      .toISOString()
-                                      .split("T")[0],
-                                    questions: bank.questions.map(
-                                      (q, index) => ({
-                                        id: `q-${index}`,
-                                        content: q,
-                                      }),
-                                    ),
-                                  });
-                                  openModal("questionBank");
-                                }}
-                              >
-                                编辑
-                              </button>
-                              <button
-                                type="button"
-                                className="text-red-600 hover:text-red-900"
-                                onClick={async () => {
-                                  if (
-                                    window.confirm("确定要删除这个题库吗？")
-                                  ) {
-                                    try {
-                                      await questionBankApi.deleteQuestionBank(
-                                        bank._id,
-                                      );
-                                      window.message.success("题库删除成功");
-                                      fetchQuestionBanks();
-                                    } catch (err: any) {
-                                      console.error("删除题库错误:", err);
-                                      window.message.error(
-                                        err.message || "删除题库失败",
-                                      );
-                                    }
-                                  }
-                                }}
-                              >
-                                删除
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activeTab === "notifications" && (
-            <section>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-800">
-                  消息通知管理
-                </h2>
-                {/* <button
-                  className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
-                  onClick={() => {
-                    setCurrentNotificationId(null);
-                    setNotificationForm({ type: "", trigger: "", content: "" });
-                    setModal("notification");
-                  }}
-                >
-                  新建通知
-                </button> */}
-              </div>
-
-              {/* 通知类型列表 */}
-              <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm mb-6">
-                <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-                  通知类型列表
-                </h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-neutral-50">
-                      <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
-                        <th className="px-6 py-3">通知类型</th>
-                        <th className="px-6 py-3">触发时机</th>
-                        <th className="px-6 py-3">是否可编辑</th>
-                        <th className="px-6 py-3">操作</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-200">
-                      {isLoadingTemplates ? (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="px-6 py-8 text-center text-neutral-500"
-                          >
-                            加载中...
-                          </td>
-                        </tr>
-                      ) : errorTemplates ? (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="px-6 py-8 text-center text-red-500"
-                          >
-                            {errorTemplates}
-                          </td>
-                        </tr>
-                      ) : notificationTemplates.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="px-6 py-8 text-center text-neutral-500"
-                          >
-                            暂无通知模板
-                          </td>
-                        </tr>
-                      ) : (
-                        notificationTemplates.map((template) => (
-                          <tr key={template._id}>
-                            <td className="px-6 py-4 text-sm font-medium text-neutral-900">
-                              {template.name}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-neutral-500">
-                              {template.type === "resume_pass" &&
-                                "HR将状态改为'待面试'"}
-                              {template.type === "resume_reject" &&
-                                "HR将状态改为'已拒绝'"}
-                              {template.type === "interview_invite" &&
-                                "HR安排面试后"}
-                              {template.type === "interview_reminder" &&
-                                "面试前1小时自动发送"}
-                              {template.type === "interview_result" &&
-                                "面试后HR填写结果"}
-                              {template.type === "offer" &&
-                                "HR将状态改为'已录取'"}
-                              {template.type === "rejection" && "最终未录取"}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <span
-                                className={
-                                  template.isDefault
-                                    ? "text-yellow-600"
-                                    : "text-green-600"
-                                }
-                              >
-                                {template.isDefault ? "系统默认" : "✅"}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              <button
-                                className="text-primary-600 hover:text-primary-900 mr-3"
-                                onClick={() => {
-                                  setCurrentNotificationId(template._id);
-                                  setNotificationForm({
-                                    type: template.type,
-                                    name: template.name,
-                                    title: template.title,
-                                    content: template.content,
-                                  });
-                                  setModal("notification");
-                                }}
-                              >
-                                编辑
-                              </button>
-                              {!template.isDefault && (
-                                <button
-                                  className="text-red-600 hover:text-red-900"
-                                  onClick={async () => {
-                                    if (
-                                      window.confirm(
-                                        "确定要删除这个通知模板吗？",
-                                      )
-                                    ) {
-                                      try {
-                                        await notificationTemplateApi.deleteTemplate(
-                                          template._id,
-                                          { teamId: currentUser?.team },
-                                        );
-                                        fetchNotificationTemplates();
-                                      } catch (err) {
-                                        console.error("删除通知模板失败:", err);
-                                      }
-                                    }
-                                  }}
-                                >
-                                  删除
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-          )}
+          <Outlet />
         </main>
       </div>
 
-      {modal !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-2xl">
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-neutral-800">
-                {modal === "job"
-                  ? "发布新职位"
-                  : modal === "candidate"
-                    ? "导入候选人"
-                    : modal === "interview"
-                      ? "创建面试"
-                      : modal === "notification"
-                        ? currentNotificationId
-                          ? "编辑通知"
-                          : "新建通知"
-                        : "添加题库"}
+              <h3 className="text-lg font-semibold text-neutral-800">
+                {modal === "job" && (currentJobId ? "编辑职位" : "发布新职位")}
+                {modal === "candidate" && "导入候选人"}
+                {modal === "interview" && "安排面试"}
+                {modal === "questionBank" &&
+                  (currentQuestionBankId ? "编辑题库" : "添加题库")}
+                {modal === "notification" &&
+                  (currentNotificationId ? "编辑通知模板" : "添加通知模板")}
               </h3>
               <button
-                type="button"
-                className="text-neutral-500 hover:text-neutral-800"
                 onClick={() => setModal(null)}
+                className="text-neutral-500 hover:text-neutral-700"
               >
-                关闭
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
             </div>
 
             {modal === "job" && (
               <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
-                <input
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="职位名称"
-                  value={jobForm.title}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, title: e.target.value })
-                  }
-                />
-                <input
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="部门"
-                  value={jobForm.department}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, department: e.target.value })
-                  }
-                />
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={jobForm.type}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, type: e.target.value })
-                  }
-                >
-                  <option value="full-time">全职</option>
-                  <option value="part-time">兼职</option>
-                  <option value="intern">实习</option>
-                </select>
-                <input
-                  type="number"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="招聘人数"
-                  value={jobForm.quota}
-                  onChange={(e) =>
-                    setJobForm({
-                      ...jobForm,
-                      quota: parseInt(e.target.value) || 1,
-                    })
-                  }
-                />
-                <input
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="薪资（如：10k-20k）"
-                  value={jobForm.salary}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, salary: e.target.value })
-                  }
-                />
-                <textarea
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  rows={3}
-                  placeholder="职位描述"
-                  value={jobForm.requirements.description}
-                  onChange={(e) =>
-                    setJobForm({
-                      ...jobForm,
-                      requirements: {
-                        ...jobForm.requirements,
-                        description: e.target.value,
-                      },
-                    })
-                  }
-                />
-                <input
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="技能标签（多个标签用逗号分隔）"
-                  value={skillsInput}
-                  onChange={(e) => setSkillsInput(e.target.value)}
-                  onBlur={() => {
-                    setJobForm({
-                      ...jobForm,
-                      requirements: {
-                        ...jobForm.requirements,
-                        skills: skillsInput
-                          .split(/[,，]/)
-                          .map((s) => s.trim())
-                          .filter((s) => s),
-                      },
-                    });
-                  }}
-                />
-                <textarea
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  rows={3}
-                  placeholder="任职要求"
-                  value={jobForm.requirements.experience}
-                  onChange={(e) =>
-                    setJobForm({
-                      ...jobForm,
-                      requirements: {
-                        ...jobForm.requirements,
-                        experience: e.target.value,
-                      },
-                    })
-                  }
-                />
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={jobForm.deadline}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, deadline: e.target.value })
-                  }
-                />
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={jobForm.status}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, status: e.target.value })
-                  }
-                >
-                  <option value="open">招聘中</option>
-                  <option value="closed">已关闭</option>
-                </select>
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={jobForm.interviewType}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, interviewType: e.target.value })
-                  }
-                >
-                  <option value="online">线上面试</option>
-                  <option value="offline">线下面试</option>
-                </select>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="aiPreInterview"
-                    className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
-                    checked={jobForm.aiPreInterview}
-                    onChange={(e) =>
-                      setJobForm({
-                        ...jobForm,
-                        aiPreInterview: e.target.checked,
-                      })
-                    }
-                  />
-                  <label
-                    htmlFor="aiPreInterview"
-                    className="text-sm font-medium text-neutral-700"
-                  >
-                    启用AI预面试
-                  </label>
-                </div>
-                {jobForm.aiPreInterview && (
-                  <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      职位名称
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      placeholder="例如：前端开发工程师"
+                      value={jobForm.title}
+                      onChange={(e) =>
+                        setJobForm({ ...jobForm, title: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      职位类型
+                    </label>
                     <select
                       className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                      value={jobForm.aiQuestionBankId}
+                      value={jobForm.type}
+                      onChange={(e) =>
+                        setJobForm({ ...jobForm, type: e.target.value })
+                      }
+                    >
+                      <option value="full-time">全职</option>
+                      <option value="part-time">兼职</option>
+                      <option value="intern">实习</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      所属部门
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      placeholder="例如：技术部"
+                      value={jobForm.department}
+                      onChange={(e) =>
+                        setJobForm({ ...jobForm, department: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      招聘人数
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      placeholder="例如：5"
+                      value={jobForm.quota}
                       onChange={(e) =>
                         setJobForm({
                           ...jobForm,
-                          aiQuestionBankId: e.target.value,
+                          quota: parseInt(e.target.value) || 0,
                         })
                       }
-                    >
-                      <option value="">选择AI试题</option>
-                      {questionBanks.map((bank) => (
-                        <option key={bank._id} value={bank._id}>
-                          {bank.title}
-                        </option>
-                      ))}
-                    </select>
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
-                        AI预面试最低分
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                        value={jobForm.aiPreInterviewScore}
-                        onChange={(e) =>
-                          setJobForm({
-                            ...jobForm,
-                            aiPreInterviewScore: parseInt(e.target.value) || 0,
-                          })
-                        }
-                      />
-                    </div>
+                    />
                   </div>
-                )}
-                <div className="flex items-center space-x-2">
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      薪资范围
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      placeholder="例如：15k-25k"
+                      value={jobForm.salary}
+                      onChange={(e) =>
+                        setJobForm({ ...jobForm, salary: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      截止时间
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      value={jobForm.deadline}
+                      onChange={(e) =>
+                        setJobForm({ ...jobForm, deadline: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    技能要求（用逗号分隔）
+                  </label>
                   <input
-                    type="checkbox"
-                    id="aiResumeFilter"
-                    className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
-                    checked={jobForm.aiResumeFilter}
+                    type="text"
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                    placeholder="例如：React,TypeScript,Node.js"
+                    value={skillsInput}
+                    onChange={(e) => {
+                      setSkillsInput(e.target.value);
+                      setJobForm({
+                        ...jobForm,
+                        requirements: {
+                          ...jobForm.requirements,
+                          skills: e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        },
+                      });
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    职位描述
+                  </label>
+                  <textarea
+                    className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                    rows={4}
+                    placeholder="请输入职位描述"
+                    value={jobForm.requirements.description}
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        aiResumeFilter: e.target.checked,
+                        requirements: {
+                          ...jobForm.requirements,
+                          description: e.target.value,
+                        },
                       })
                     }
                   />
-                  <label
-                    htmlFor="aiResumeFilter"
-                    className="text-sm font-medium text-neutral-700"
-                  >
-                    启用AI筛选简历
-                  </label>
                 </div>
-                {jobForm.aiResumeFilter && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
-                        AI简历筛选最低分
-                      </label>
+                <div className="border-t border-neutral-200 pt-4">
+                  <h4 className="text-md font-semibold text-neutral-800 mb-3">
+                    AI预面试设置
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
                       <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                        value={jobForm.aiResumeFilterScore}
+                        type="checkbox"
+                        id="aiPreInterview"
+                        checked={jobForm.aiPreInterview}
                         onChange={(e) =>
                           setJobForm({
                             ...jobForm,
-                            aiResumeFilterScore: parseInt(e.target.value) || 0,
+                            aiPreInterview: e.target.checked,
                           })
                         }
+                        className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
-                        硬性技能标签（用逗号分隔）
+                      <label
+                        htmlFor="aiPreInterview"
+                        className="ml-2 text-sm text-neutral-700"
+                      >
+                        启用AI预面试
                       </label>
+                    </div>
+                    {jobForm.aiPreInterview && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            选择面试题库
+                          </label>
+                          <select
+                            className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                            value={jobForm.aiQuestionBankId}
+                            onChange={(e) =>
+                              setJobForm({
+                                ...jobForm,
+                                aiQuestionBankId: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="">请选择题库</option>
+                            {questionBanks.map((bank) => (
+                              <option key={bank._id} value={bank._id}>
+                                {bank.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            AI预面试最低通过分数
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                            value={jobForm.aiPreInterviewScore}
+                            onChange={(e) =>
+                              setJobForm({
+                                ...jobForm,
+                                aiPreInterviewScore:
+                                  parseInt(e.target.value) || 60,
+                              })
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="border-t border-neutral-200 pt-4">
+                  <h4 className="text-md font-semibold text-neutral-800 mb-3">
+                    AI简历筛选设置
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
                       <input
-                        type="text"
-                        className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                        placeholder="例如：Vue, React, Node.js"
-                        value={aiResumeFilterSkillsInput}
+                        type="checkbox"
+                        id="aiResumeFilter"
+                        checked={jobForm.aiResumeFilter}
                         onChange={(e) =>
-                          setAiResumeFilterSkillsInput(e.target.value)
-                        }
-                        onBlur={() => {
                           setJobForm({
                             ...jobForm,
-                            aiResumeFilterSkills: aiResumeFilterSkillsInput
-                              .split(/[,，]/)
-                              .map((s) => s.trim())
-                              .filter((s) => s),
-                          });
-                        }}
+                            aiResumeFilter: e.target.checked,
+                          })
+                        }
+                        className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                       />
+                      <label
+                        htmlFor="aiResumeFilter"
+                        className="ml-2 text-sm text-neutral-700"
+                      >
+                        启用AI简历筛选
+                      </label>
                     </div>
+                    {jobForm.aiResumeFilter && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            AI简历筛选最低通过分数
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                            value={jobForm.aiResumeFilterScore}
+                            onChange={(e) =>
+                              setJobForm({
+                                ...jobForm,
+                                aiResumeFilterScore:
+                                  parseInt(e.target.value) || 60,
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            简历筛选关键词（用逗号分隔）
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                            placeholder="例如：React,TypeScript,Node.js"
+                            value={aiResumeFilterSkillsInput}
+                            onChange={(e) => {
+                              setAiResumeFilterSkillsInput(e.target.value);
+                              setJobForm({
+                                ...jobForm,
+                                aiResumeFilterSkills: e.target.value
+                                  .split(",")
+                                  .map((s) => s.trim())
+                                  .filter(Boolean),
+                              });
+                            }}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             )}
 
             {modal === "candidate" && (
               <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="姓名"
-                  value={candidateForm.name}
-                  onChange={(e) =>
-                    setCandidateForm({ ...candidateForm, name: e.target.value })
-                  }
-                />
-                <input
-                  type="tel"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="手机号"
-                  value={candidateForm.phone}
-                  onChange={(e) =>
-                    setCandidateForm({
-                      ...candidateForm,
-                      phone: e.target.value,
-                    })
-                  }
-                />
-                <input
-                  type="email"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="邮箱"
-                  value={candidateForm.email}
-                  onChange={(e) =>
-                    setCandidateForm({
-                      ...candidateForm,
-                      email: e.target.value,
-                    })
-                  }
-                />
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="年级"
-                  value={candidateForm.grade}
-                  onChange={(e) =>
-                    setCandidateForm({
-                      ...candidateForm,
-                      grade: e.target.value,
-                    })
-                  }
-                />
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  placeholder="专业"
-                  value={candidateForm.major}
-                  onChange={(e) =>
-                    setCandidateForm({
-                      ...candidateForm,
-                      major: e.target.value,
-                    })
-                  }
-                />
-                <select
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-                  value={candidateForm.positionId}
-                  onChange={(e) => {
-                    setCandidateForm({
-                      ...candidateForm,
-                      positionId: e.target.value,
-                    });
-                  }}
-                >
-                  <option value="">选择职位</option>
-                  {jobs.map((job) => (
-                    <option key={job._id} value={job._id}>
-                      {job.title}
-                    </option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      姓名
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      placeholder="请输入姓名"
+                      value={candidateForm.name}
+                      onChange={(e) =>
+                        setCandidateForm({
+                          ...candidateForm,
+                          name: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      手机号
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      placeholder="请输入手机号"
+                      value={candidateForm.phone}
+                      onChange={(e) =>
+                        setCandidateForm({
+                          ...candidateForm,
+                          phone: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      邮箱
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      placeholder="请输入邮箱"
+                      value={candidateForm.email}
+                      onChange={(e) =>
+                        setCandidateForm({
+                          ...candidateForm,
+                          email: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      年级
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      placeholder="请输入年级"
+                      value={candidateForm.grade}
+                      onChange={(e) =>
+                        setCandidateForm({
+                          ...candidateForm,
+                          grade: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      专业
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      placeholder="请输入专业"
+                      value={candidateForm.major}
+                      onChange={(e) =>
+                        setCandidateForm({
+                          ...candidateForm,
+                          major: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      应聘职位
+                    </label>
+                    <select
+                      className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                      value={candidateForm.positionId}
+                      onChange={(e) =>
+                        setCandidateForm({
+                          ...candidateForm,
+                          positionId: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">请选择职位</option>
+                      {jobs.map((job) => (
+                        <option key={job._id} value={job._id}>
+                          {job.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -3009,7 +786,6 @@ function Admin() {
                   }
                 />
 
-                {/* 面试题目管理 */}
                 <div>
                   <div className="mb-4 flex items-center justify-between">
                     <h4 className="text-lg font-semibold text-neutral-800">
@@ -3034,7 +810,6 @@ function Admin() {
                       className="w-full rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
                       onClick={() => {
                         if (questionForm.content.trim()) {
-                          // 添加题目
                           const newQuestion = {
                             id: `q-${Date.now()}`,
                             content: questionForm.content,
@@ -3046,7 +821,6 @@ function Admin() {
                               newQuestion,
                             ],
                           });
-                          // 重置题目表单
                           setQuestionForm({
                             content: "",
                           });
@@ -3168,7 +942,6 @@ function Admin() {
                   <option value="rejection">感谢信/拒绝信</option>
                 </select>
 
-                {/* 变量提示 */}
                 {notificationForm.type && (
                   <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
                     <h4 className="text-sm font-medium text-neutral-800 mb-2">
@@ -3319,7 +1092,6 @@ function Admin() {
                 onClick={async () => {
                   try {
                     if (modal === "notification") {
-                      // 保存通知模板
                       if (!currentUser?.team) {
                         alert("请先选择团队");
                         return;
@@ -3331,29 +1103,25 @@ function Admin() {
                         name: notificationForm.name,
                         title: notificationForm.title,
                         content: notificationForm.content,
-                        variables: [], // 这里可以根据模板内容自动提取变量
+                        variables: [],
                         status: "active",
                         createdBy: currentUser._id,
                       };
 
                       if (currentNotificationId) {
-                        // 编辑模式
                         await notificationTemplateApi.updateTemplate(
                           currentNotificationId,
                           templateData,
                         );
                       } else {
-                        // 新建模式
                         await notificationTemplateApi.createTemplate(
                           templateData,
                         );
                       }
 
-                      // 重新获取通知模板列表
                       fetchNotificationTemplates();
                       setModal(null);
                     } else if (modal === "candidate") {
-                      // 导入候选人
                       const formData = new FormData();
                       formData.append("name", candidateForm.name);
                       formData.append("phone", candidateForm.phone);
@@ -3369,9 +1137,7 @@ function Admin() {
                       console.log("发送的请求数据:", formData);
                       await applicationApi.importCandidate(formData);
                       window.message.success("候选人导入成功");
-                      // 重新获取候选人列表
                       fetchCandidates();
-                      // 重置表单
                       setCandidateForm({
                         name: "",
                         phone: "",
@@ -3383,355 +1149,189 @@ function Admin() {
                         resume: null,
                       });
                     } else if (modal === "questionBank") {
-                      // 保存题库
-                      // 获取用户信息
                       const userStr = localStorage.getItem("user");
                       const user = userStr ? JSON.parse(userStr) : null;
-                      // 准备表单数据
                       const formData = {
                         title: questionBankForm.title,
-                        type: "essay", // 默认为简答题
+                        type: "essay",
                         category: questionBankForm.category,
-                        teamId: currentUser?.team || user?._id || "", // 使用当前用户的team或用户ID
+                        teamId: currentUser?.team || user?._id || "",
                         questions: questionBankForm.questions.map(
                           (q) => q.content,
-                        ), // 转换为字符串数组
+                        ),
                       };
                       if (currentQuestionBankId) {
-                        // 编辑题库
                         await questionBankApi.updateQuestionBank(
                           currentQuestionBankId,
                           formData,
                         );
                         window.message.success("题库更新成功");
                       } else {
-                        // 创建题库
                         await questionBankApi.createQuestionBank(formData);
                         window.message.success("题库创建成功");
                       }
-                      // 重新获取面试题库列表
                       fetchQuestionBanks();
-                    } else {
-                      // 获取用户信息
-                      const userStr = localStorage.getItem("user");
-                      const user = userStr ? JSON.parse(userStr) : null;
-                      // 准备表单数据
-                      const formData = {
+                      setModal(null);
+                    } else if (modal === "job") {
+                      if (!jobForm.title || !jobForm.department) {
+                        window.message.error("请填写职位名称和所属部门");
+                        return;
+                      }
+
+                      const jobData = {
                         ...jobForm,
-                        // 添加创建人信息
-                        createdBy: user?._id || "660a0b6c4f1a2b3c4d5e6f70", // 使用有效的默认ObjectId
-                        // 确保teamId有值且格式正确
-                        teamId: currentUser?.team || "", // 使用当前用户的team，不使用硬编码的默认值
+                        teamId: currentUser?.team || "",
                       };
+
                       if (currentJobId) {
-                        // 编辑职位
-                        await positionApi.updatePosition(
-                          currentJobId,
-                          formData,
-                        );
+                        await positionApi.updatePosition(currentJobId, jobData);
                         window.message.success("职位更新成功");
                       } else {
-                        // 创建职位
-                        await positionApi.createPosition(formData);
-                        window.message.success("职位创建成功");
+                        await positionApi.createPosition(jobData);
+                        window.message.success("职位发布成功");
                       }
-                      // 重新获取职位列表
                       fetchJobs();
+                      setModal(null);
                     }
-                    // 关闭模态框
-                    setModal(null);
                   } catch (err: any) {
-                    // 解析错误信息
-                    let errorMessage = "操作失败";
-                    if (err.response && err.response.data) {
-                      errorMessage =
-                        err.response.data.message ||
-                        err.response.data.error ||
-                        errorMessage;
-                    } else if (err.message) {
-                      errorMessage = err.message;
-                    }
-                    window.message.error(errorMessage);
+                    console.error("操作失败:", err);
+                    window.message.error(err.message || "操作失败");
                   }
                 }}
-                className="rounded-lg bg-primary-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-primary-600"
+                className="rounded-lg bg-primary-500 px-6 py-2.5 font-medium text-white hover:bg-primary-600"
               >
-                确认
+                {modal === "notification"
+                  ? currentNotificationId
+                    ? "更新"
+                    : "创建"
+                  : modal === "candidate"
+                    ? "导入"
+                    : modal === "questionBank"
+                      ? currentQuestionBankId
+                        ? "更新"
+                        : "创建"
+                      : modal === "job"
+                        ? currentJobId
+                          ? "更新"
+                          : "发布"
+                        : "确定"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 查看候选人弹窗 */}
       {viewModal && currentCandidate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-xl max-h-[80vh] rounded-xl bg-white p-6 shadow-2xl flex flex-col">
-            <div className="mb-4 flex items-center justify-between flex-shrink-0">
-              <h3 className="text-lg font-semibold text-neutral-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-neutral-800">
                 候选人详情
               </h3>
               <button
-                type="button"
-                className="text-neutral-500 hover:text-neutral-900"
-                onClick={() => setViewModal(false)}
+                onClick={() => {
+                  setViewModal(false);
+                  setCurrentCandidate(null);
+                }}
+                className="text-neutral-500 hover:text-neutral-700"
               >
-                &times;
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto mb-6 space-y-4 scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  姓名
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.name || currentCandidate.studentId}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    姓名
+                  </label>
+                  <p className="text-neutral-900">
+                    {currentCandidate.name || currentCandidate.studentId}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    邮箱
+                  </label>
+                  <p className="text-neutral-900">
+                    {currentCandidate.email || "-"}
+                  </p>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  手机号
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.phone || "-"}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    年级
+                  </label>
+                  <p className="text-neutral-900">
+                    {currentCandidate.grade || "-"}
+                  </p>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  邮箱
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.email || currentCandidate.studentId}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  年级
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.grade || "-"}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  专业
-                </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.major || "-"}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    专业
+                  </label>
+                  <p className="text-neutral-900">
+                    {currentCandidate.major || "-"}
+                  </p>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   应聘职位
                 </label>
-                <div className="text-sm text-neutral-900">
+                <p className="text-neutral-900">
                   {currentCandidate.positionName || currentCandidate.positionId}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  状态
-                </label>
-                <div className="text-sm">
-                  <span
-                    className={`rounded-full px-2 py-1 text-xs font-semibold ${currentCandidate.status === "pending" ? "bg-yellow-100 text-yellow-800" : currentCandidate.status === "screening" ? "bg-blue-100 text-blue-800" : currentCandidate.status === "interview" ? "bg-purple-100 text-purple-800" : currentCandidate.status === "offer" ? "bg-green-100 text-green-800" : currentCandidate.status === "已通过预面试" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
-                  >
-                    {currentCandidate.status === "pending"
-                      ? "待处理"
-                      : currentCandidate.status === "screening"
-                        ? "简历筛选"
-                        : currentCandidate.status === "interview"
-                          ? "面试中"
-                          : currentCandidate.status === "offer"
-                            ? "已录用"
-                            : currentCandidate.status === "已通过预面试"
-                              ? "已通过预面试"
-                              : "已拒绝"}
-                  </span>
-                </div>
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   投递时间
                 </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.appliedAt
-                    ? new Date(currentCandidate.appliedAt).toLocaleDateString()
-                    : "-"}
-                </div>
+                <p className="text-neutral-900">
+                  {new Date(currentCandidate.appliedAt).toLocaleDateString()}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  简历文件
+                  状态
                 </label>
-                <div className="text-sm text-neutral-900">
-                  {currentCandidate.resumeFileUrl ? (
-                    <a
-                      href={`http://localhost:3000${currentCandidate.resumeFileUrl}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      查看简历
-                    </a>
-                  ) : currentCandidate.resumeId ? (
-                    <a
-                      href={`http://localhost:3000/uploads/${encodeURIComponent(currentCandidate.resumeId)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      查看简历
-                    </a>
-                  ) : (
-                    "-"
-                  )}
-                </div>
+                <span
+                  className={`rounded-full px-2 py-1 text-xs font-semibold ${currentCandidate.status === "pending" ? "bg-yellow-100 text-yellow-800" : currentCandidate.status === "screening" ? "bg-blue-100 text-blue-800" : currentCandidate.status === "interview" ? "bg-purple-100 text-purple-800" : currentCandidate.status === "offer" ? "bg-green-100 text-green-800" : currentCandidate.status === "已通过预面试" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
+                >
+                  {currentCandidate.status === "pending"
+                    ? "待处理"
+                    : currentCandidate.status === "screening"
+                      ? "简历筛选"
+                      : currentCandidate.status === "interview"
+                        ? "面试中"
+                        : currentCandidate.status === "offer"
+                          ? "已录用"
+                          : currentCandidate.status === "已通过预面试"
+                            ? "已通过预面试"
+                            : "已拒绝"}
+                </span>
               </div>
-              {/* AI 筛选分析结果 */}
-              {((currentCandidate.aiScreening?.details?.strengths &&
-                currentCandidate.aiScreening.details.strengths.length > 0) ||
-                (currentCandidate.aiScreening?.details?.weaknesses &&
-                  currentCandidate.aiScreening.details.weaknesses.length > 0) ||
-                (currentCandidate.aiAnalysis?.strengths &&
-                  currentCandidate.aiAnalysis.strengths.length > 0) ||
-                (currentCandidate.aiAnalysis?.weaknesses &&
-                  currentCandidate.aiAnalysis.weaknesses.length > 0)) && (
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <label className="block text-sm font-medium text-neutral-700 mb-3">
-                    AI 筛选分析
-                  </label>
-                  {/* 优势 / 通过原因 */}
-                  {((currentCandidate.aiScreening?.details?.strengths &&
-                    currentCandidate.aiScreening.details.strengths.length >
-                      0) ||
-                    (currentCandidate.aiAnalysis?.strengths &&
-                      currentCandidate.aiAnalysis.strengths.length > 0)) && (
-                    <div className="mb-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg
-                          className="w-4 h-4 text-green-500"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        <span className="text-sm font-medium text-green-600">
-                          候选人优势
-                        </span>
-                      </div>
-                      <div className="bg-green-50 rounded-lg p-3 space-y-2">
-                        {(
-                          currentCandidate.aiScreening?.details?.strengths ||
-                          currentCandidate.aiAnalysis?.strengths ||
-                          []
-                        )
-                          .filter((item: any) => {
-                            if (typeof item === "string") return true;
-                            if (
-                              typeof item === "object" &&
-                              item !== null &&
-                              item.name
-                            ) {
-                              return true;
-                            }
-                            return false;
-                          })
-                          .map((item: any, index: number) => (
-                            <div
-                              key={index}
-                              className="flex items-start text-sm text-green-800"
-                            >
-                              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mt-1.5 mr-2 flex-shrink-0"></span>
-                              <span>
-                                {typeof item === "string" ? item : item.name}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* 不足 / 待改进项 */}
-                  {((currentCandidate.aiScreening?.details?.weaknesses &&
-                    currentCandidate.aiScreening.details.weaknesses.length >
-                      0) ||
-                    (currentCandidate.aiAnalysis?.weaknesses &&
-                      currentCandidate.aiAnalysis.weaknesses.length > 0)) && (
-                    <div className="mb-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg
-                          className="w-4 h-4 text-orange-500"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        <span className="text-sm font-medium text-orange-600">
-                          待改进项
-                        </span>
-                      </div>
-                      <div className="bg-orange-50 rounded-lg p-3 space-y-2">
-                        {(
-                          currentCandidate.aiScreening?.details?.weaknesses ||
-                          currentCandidate.aiAnalysis?.weaknesses ||
-                          []
-                        )
-                          .filter((item: any) => {
-                            if (typeof item === "string") return true;
-                            if (
-                              typeof item === "object" &&
-                              item !== null &&
-                              item.name
-                            ) {
-                              return true;
-                            }
-                            return false;
-                          })
-                          .map((item: any, index: number) => (
-                            <div
-                              key={index}
-                              className="flex items-start text-sm text-orange-800"
-                            >
-                              <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mt-1.5 mr-2 flex-shrink-0"></span>
-                              <span>
-                                {typeof item === "string" ? item : item.name}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* AI分析摘要 */}
-                  {currentCandidate.aiAnalysis?.summary && (
-                    <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                      <div className="text-xs font-medium text-blue-600 mb-1">
-                        分析摘要
-                      </div>
-                      <p className="text-sm text-neutral-700">
-                        {currentCandidate.aiAnalysis.summary}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
-            <div className="flex justify-end">
+            <div className="mt-6 flex justify-end">
               <button
-                type="button"
-                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-                onClick={() => setViewModal(false)}
+                onClick={() => {
+                  setViewModal(false);
+                  setCurrentCandidate(null);
+                }}
+                className="rounded-lg border border-neutral-300 px-6 py-2.5 font-medium text-neutral-700 hover:bg-neutral-100"
               >
                 关闭
               </button>
@@ -3743,4 +1343,10 @@ function Admin() {
   );
 }
 
-export default Admin;
+export default function Team() {
+  return (
+    <TeamProvider>
+      <TeamLayout />
+    </TeamProvider>
+  );
+}

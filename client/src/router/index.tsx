@@ -4,6 +4,10 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 
 const Admin = lazy(() => import("../page/admin"));
+const AdminDashboard = lazy(() => import("../page/admin/AdminDashboard"));
+const AdminUser = lazy(() => import("../page/admin/AdminUser"));
+const AdminTeam = lazy(() => import("../page/admin/AdminTeam"));
+const AdminConfig = lazy(() => import("../page/admin/AdminConfig"));
 const Hall = lazy(() => import("../page/hall"));
 const JobDetail = lazy(() => import("../page/hall/detail"));
 const Home = lazy(() => import("../page/home"));
@@ -25,6 +29,11 @@ const MyResume = lazy(() => import("../page/profile/MyResume"));
 const MyInterviews = lazy(() => import("../page/profile/MyInterviews"));
 const FavoriteJobs = lazy(() => import("../page/profile/FavoriteJobs"));
 const Team = lazy(() => import("../page/team"));
+const TeamDashboard = lazy(() => import("../page/team/TeamDashboard"));
+const TeamJobs = lazy(() => import("../page/team/TeamJobs"));
+const TeamCandidates = lazy(() => import("../page/team/TeamCandidates"));
+const TeamQuestions = lazy(() => import("../page/team/TeamQuestions"));
+const TeamNotifications = lazy(() => import("../page/team/TeamNotifications"));
 const ResumeAnalyze = lazy(() => import("../page/resume"));
 
 const router = createBrowserRouter([
@@ -172,6 +181,40 @@ const router = createBrowserRouter([
             <Admin />
           </Suspense>
         ),
+        children: [
+          {
+            index: true,
+            element: (
+              <Suspense fallback={null}>
+                <AdminDashboard />
+              </Suspense>
+            ),
+          },
+          {
+            path: "user",
+            element: (
+              <Suspense fallback={null}>
+                <AdminUser />
+              </Suspense>
+            ),
+          },
+          {
+            path: "team",
+            element: (
+              <Suspense fallback={null}>
+                <AdminTeam />
+              </Suspense>
+            ),
+          },
+          {
+            path: "config",
+            element: (
+              <Suspense fallback={null}>
+                <AdminConfig />
+              </Suspense>
+            ),
+          },
+        ],
       },
       {
         path: "/team",
@@ -180,6 +223,48 @@ const router = createBrowserRouter([
             <Team />
           </Suspense>
         ),
+        children: [
+          {
+            index: true,
+            element: (
+              <Suspense fallback={null}>
+                <TeamDashboard />
+              </Suspense>
+            ),
+          },
+          {
+            path: "jobs",
+            element: (
+              <Suspense fallback={null}>
+                <TeamJobs />
+              </Suspense>
+            ),
+          },
+          {
+            path: "candidates",
+            element: (
+              <Suspense fallback={null}>
+                <TeamCandidates />
+              </Suspense>
+            ),
+          },
+          {
+            path: "questions",
+            element: (
+              <Suspense fallback={null}>
+                <TeamQuestions />
+              </Suspense>
+            ),
+          },
+          {
+            path: "notifications",
+            element: (
+              <Suspense fallback={null}>
+                <TeamNotifications />
+              </Suspense>
+            ),
+          },
+        ],
       },
       {
         path: "/ai-chat",

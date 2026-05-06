@@ -1,13 +1,21 @@
 import { useAdmin } from "./AdminContext";
 
 export default function AdminUser() {
-  const { users, teams, isLoading, error, openEditModal, handleDeleteUser, openAddModal } = useAdmin();
+  const {
+    users,
+    teams,
+    isLoading,
+    error,
+    openEditModal,
+    handleDeleteUser,
+    openAddModal,
+  } = useAdmin();
 
-  const getRoleLabel = (role: string, userTeam: string | object) => {
+  const getRoleLabel = (role: string, userTeam: string | object | null) => {
     if (role === "admin") return "超级管理员";
     if (role === "hr") {
       const team = teams.find((t: any) => {
-        if (typeof userTeam === "object" && userTeam._id) {
+        if (userTeam && typeof userTeam === "object" && "_id" in userTeam) {
           return t._id === userTeam._id;
         }
         return t._id === userTeam;
@@ -17,10 +25,10 @@ export default function AdminUser() {
     return "学生";
   };
 
-  const getTeamName = (userTeam: string | object) => {
+  const getTeamName = (userTeam: string | object | null) => {
     if (!userTeam) return "无";
     const team = teams.find((t: any) => {
-      if (typeof userTeam === "object" && userTeam._id) {
+      if (userTeam && typeof userTeam === "object" && "_id" in userTeam) {
         return t._id === userTeam._id;
       }
       return t._id === userTeam;
@@ -62,26 +70,37 @@ export default function AdminUser() {
             <thead className="bg-neutral-50">
               <tr className="text-left text-xs uppercase tracking-wider text-neutral-500">
                 {["用户", "邮箱", "所属团队", "状态", "操作"].map((item) => (
-                  <th key={item} className="px-6 py-3">{item}</th>
+                  <th key={item} className="px-6 py-3">
+                    {item}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200 bg-white">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-neutral-500">
+                  <td
+                    colSpan={6}
+                    className="px-6 py-8 text-center text-neutral-500"
+                  >
                     加载中...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-red-500">
+                  <td
+                    colSpan={6}
+                    className="px-6 py-8 text-center text-red-500"
+                  >
                     {error}
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-neutral-500">
+                  <td
+                    colSpan={6}
+                    className="px-6 py-8 text-center text-neutral-500"
+                  >
                     暂无用户
                   </td>
                 </tr>
@@ -105,8 +124,12 @@ export default function AdminUser() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-neutral-900">{user.email}</td>
-                    <td className="px-6 py-4 text-sm text-neutral-900">{getTeamName(user.team)}</td>
+                    <td className="px-6 py-4 text-sm text-neutral-900">
+                      {user.email}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-neutral-900">
+                      {getTeamName(user.team)}
+                    </td>
                     <td className="px-6 py-4 text-sm">
                       <span
                         className={`rounded-full px-2 py-1 text-xs font-semibold ${user.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}

@@ -2,7 +2,8 @@ import axios from "axios";
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: "http://localhost:3000/api",
+  baseURL:
+    import.meta.env.VITE_API_BASE_URL || "http://47.109.205.191:3000/api",
   timeout: 300000, // 5分钟，支持AI简历筛选等耗时操作
   headers: {
     "Content-Type": "application/json",

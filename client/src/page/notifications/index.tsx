@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { SiteNav } from "../../components/site";
 import userApi from "../../api/userApi";
 import { notificationApi } from "../../api/notificationApi";
+import { useNotifications } from "../../context/NotificationContext";
 
 interface Notification {
   id: string;
@@ -19,6 +20,7 @@ function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [loading, setLoading] = useState(false);
+  const { refreshNotifications } = useNotifications();
 
   // 获取通知数据
   useEffect(() => {
@@ -62,6 +64,8 @@ function Notifications() {
             : notification,
         ),
       );
+      // 刷新导航栏徽章
+      refreshNotifications();
     } catch (error) {
       console.error("标记通知为已读失败:", error);
     }
@@ -81,6 +85,8 @@ function Notifications() {
           isRead: true,
         })),
       );
+      // 刷新导航栏徽章
+      refreshNotifications();
     } catch (error) {
       console.error("标记所有通知为已读失败:", error);
     }
@@ -94,6 +100,8 @@ function Notifications() {
       setNotifications(
         notifications.filter((notification) => notification.id !== id),
       );
+      // 刷新导航栏徽章
+      refreshNotifications();
     } catch (error) {
       console.error("删除通知失败:", error);
     }

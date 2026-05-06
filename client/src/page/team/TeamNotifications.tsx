@@ -1,5 +1,7 @@
 import { useTeam } from "./TeamContext";
 import { notificationTemplateApi } from "../../api/notificationApi";
+import userApi from "../../api/userApi";
+import EmptyTeamNotice from "./EmptyTeamNotice";
 
 export default function TeamNotifications() {
   const {
@@ -14,6 +16,13 @@ export default function TeamNotifications() {
     openModal,
     fetchNotificationTemplates,
   } = useTeam();
+
+  const user = userApi.getCurrentUser();
+  const hasNoTeam = user?.role === "hr" && !user?.team;
+
+  if (hasNoTeam) {
+    return <EmptyTeamNotice />;
+  }
 
   return (
     <section>

@@ -1,5 +1,7 @@
 import { useTeam } from "./TeamContext";
 import positionApi from "../../api/positionApi";
+import userApi from "../../api/userApi";
+import EmptyTeamNotice from "./EmptyTeamNotice";
 
 export default function TeamJobs() {
   const {
@@ -19,6 +21,13 @@ export default function TeamJobs() {
     openModal,
     fetchJobs,
   } = useTeam();
+
+  const user = userApi.getCurrentUser();
+  const hasNoTeam = user?.role === "hr" && !user?.team;
+
+  if (hasNoTeam) {
+    return <EmptyTeamNotice />;
+  }
 
   return (
     <section>

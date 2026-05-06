@@ -5,6 +5,8 @@ import {
   notificationTemplateApi,
 } from "../../api/notificationApi";
 import { interviewInvitationApi } from "../../api/interviewInvitationApi";
+import userApi from "../../api/userApi";
+import EmptyTeamNotice from "./EmptyTeamNotice";
 
 export default function TeamCandidates() {
   const {
@@ -24,6 +26,13 @@ export default function TeamCandidates() {
     candidateForm,
     jobs,
   } = useTeam();
+
+  const user = userApi.getCurrentUser();
+  const hasNoTeam = user?.role === "hr" && !user?.team;
+
+  if (hasNoTeam) {
+    return <EmptyTeamNotice />;
+  }
 
   return (
     <section>

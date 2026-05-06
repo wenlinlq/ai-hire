@@ -1,8 +1,16 @@
 import ReactECharts from "echarts-for-react";
 import { useTeam } from "./TeamContext";
+import userApi from "../../api/userApi";
+import EmptyTeamNotice from "./EmptyTeamNotice";
 
 export default function TeamDashboard() {
   const { dashboardStats } = useTeam();
+  const currentUser = userApi.getCurrentUser();
+  const hasNoTeam = currentUser?.role === "hr" && !currentUser?.team;
+
+  if (hasNoTeam) {
+    return <EmptyTeamNotice />;
+  }
 
   return (
     <section>
@@ -337,9 +345,7 @@ export default function TeamDashboard() {
       <div className="grid gap-6 md:grid-cols-3 mb-6">
         <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-neutral-500">
-              待筛选简历
-            </h3>
+            <h3 className="text-sm font-medium text-neutral-500">待筛选简历</h3>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-100">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -365,16 +371,12 @@ export default function TeamDashboard() {
               处理
             </button>
           </div>
-          <p className="mt-2 text-xs text-neutral-500">
-            需要筛选的简历数量
-          </p>
+          <p className="mt-2 text-xs text-neutral-500">需要筛选的简历数量</p>
         </div>
 
         <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-neutral-500">
-              待安排面试
-            </h3>
+            <h3 className="text-sm font-medium text-neutral-500">待安排面试</h3>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -400,9 +402,7 @@ export default function TeamDashboard() {
               安排
             </button>
           </div>
-          <p className="mt-2 text-xs text-neutral-500">
-            需要安排的面试数量
-          </p>
+          <p className="mt-2 text-xs text-neutral-500">需要安排的面试数量</p>
         </div>
 
         <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
@@ -428,9 +428,7 @@ export default function TeamDashboard() {
             </div>
           </div>
           <div className="flex items-center">
-            <span className="text-lg font-bold text-neutral-800 mr-4">
-              7
-            </span>
+            <span className="text-lg font-bold text-neutral-800 mr-4">7</span>
             <button className="px-3 py-1 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 transition-colors">
               处理
             </button>
@@ -488,9 +486,7 @@ export default function TeamDashboard() {
           <h4 className="text-lg font-semibold text-neutral-800 mb-2">
             导入候选人
           </h4>
-          <p className="text-sm text-neutral-500">
-            批量导入候选人信息到系统
-          </p>
+          <p className="text-sm text-neutral-500">批量导入候选人信息到系统</p>
         </button>
 
         <button className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm hover:bg-neutral-50 transition-colors">
@@ -513,9 +509,7 @@ export default function TeamDashboard() {
           <h4 className="text-lg font-semibold text-neutral-800 mb-2">
             创建面试题库
           </h4>
-          <p className="text-sm text-neutral-500">
-            为不同职位创建专属面试题库
-          </p>
+          <p className="text-sm text-neutral-500">为不同职位创建专属面试题库</p>
         </button>
       </div>
     </section>

@@ -1,5 +1,7 @@
 import { useTeam } from "./TeamContext";
 import * as questionBankApi from "../../api/questionBankApi";
+import userApi from "../../api/userApi";
+import EmptyTeamNotice from "./EmptyTeamNotice";
 
 export default function TeamQuestions() {
   const {
@@ -13,6 +15,13 @@ export default function TeamQuestions() {
     openModal,
     fetchQuestionBanks,
   } = useTeam();
+
+  const user = userApi.getCurrentUser();
+  const hasNoTeam = user?.role === "hr" && !user?.team;
+
+  if (hasNoTeam) {
+    return <EmptyTeamNotice />;
+  }
 
   return (
     <section>

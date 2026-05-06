@@ -28,6 +28,7 @@ const ProtectedRoute: React.FC = () => {
 
   // 角色权限检查
   const userRole = currentUser?.role;
+  const userTeam = currentUser?.team;
   const isAdminPage = location.pathname.startsWith("/admin");
   const isTeamPage = location.pathname.startsWith("/team");
 
@@ -42,6 +43,9 @@ const ProtectedRoute: React.FC = () => {
     alert("您没有权限访问该页面");
     return <Navigate to="/team" replace />;
   }
+
+  // 团队管理员(hr)无所属团队时，允许访问team页面但显示空数据提示
+  // 提示信息在team页面内部显示
 
   // 如果用户已登录且有权限，渲染子路由
   return <Outlet />;

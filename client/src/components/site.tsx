@@ -1,9 +1,7 @@
-import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import userApi from "../api/userApi";
-import { notificationApi } from "../api/notificationApi";
-import { aiPreInterviewApi } from "../api/aiPreInterviewApi";
-import { interviewInvitationApi } from "../api/interviewInvitationApi";
+import { useNotifications } from "../context/NotificationContext";
 
 type SiteNavProps = {
   current?: "home" | "hall" | "resume" | "interview" | "profile";
@@ -38,60 +36,10 @@ export function SiteNav({ current }: SiteNavProps) {
   const [dropdownTimer, setDropdownTimer] = useState<NodeJS.Timeout | null>(
     null,
   );
-  const [messageCount, setMessageCount] = useState(0);
-  const [profileCount, setProfileCount] = useState(0);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const totalCount = messageCount + profileCount;
+  const [isLoggedIn] = useState(userApi.isLoggedIn());
+  const [currentUser] = useState(userApi.getCurrentUser());
+  const { messageCount, profileCount, totalCount } = useNotifications();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    const user = userApi.getCurrentUser();
-    const loggedIn = userApi.isLoggedIn();
-    setCurrentUser(user);
-    setIsLoggedIn(loggedIn);
-  }, []);
-
-  const fetchNotificationData = async () => {
-    if (!currentUser) return;
-
-    try {
-      const unreadNotificationData =
-        await notificationApi.getUnreadNotifications(currentUser._id);
-      setMessageCount(unreadNotificationData.data?.length || 0);
-
-      const aiPreInterviewData = await aiPreInterviewApi.getUserAiPreInterviews(
-        currentUser._id,
-      );
-      const aiPreInterviewCount =
-        aiPreInterviewData.data?.filter(
-          (item: any) => item.status !== "completed",
-        ).length || 0;
-
-      const interviewInvitationData =
-        await interviewInvitationApi.getUserInterviewInvitations(
-          currentUser._id,
-        );
-      const interviewInvitationCount =
-        interviewInvitationData.data?.length || 0;
-
-      setProfileCount(aiPreInterviewCount + interviewInvitationCount);
-    } catch (error) {
-      console.error("获取通知数据失败:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotificationData();
-  }, [currentUser, location.pathname]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const interval = setInterval(fetchNotificationData, 30000);
-    return () => clearInterval(interval);
-  }, [currentUser]);
 
   const handleLogout = () => {
     userApi.logout();

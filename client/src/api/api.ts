@@ -8,12 +8,8 @@ const getBaseUrl = () => {
     return import.meta.env.VITE_API_BASE_URL;
   }
 
-  // 检查是否为生产环境（使用 PROD 环境变量）
-  const isProduction =
-    import.meta.env.PROD || process.env.NODE_ENV === "production";
-
-  if (isProduction) {
-    // 生产模式使用公网地址
+  // 如果是生产构建（npm run build 时），强制使用公网地址
+  if (import.meta.env.PROD) {
     return "http://47.109.205.191:3000/api";
   }
 

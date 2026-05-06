@@ -666,7 +666,55 @@ class AiPreInterviewController {
       return rawResult;
     }
 
-    // smartresume 返回的格式：
+    // 新的 SmartResume 格式：
+    // {
+    //   extracted_data: {
+    //     basicInfo: { name, phoneNumber, personalEmail, ... },
+    //     workExperience: [...],
+    //     education: [...],
+    //     ...
+    //   },
+    //   analysis: null 或 {...}
+    // }
+    if (rawResult.extracted_data && rawResult.analysis !== undefined) {
+      const smartData = rawResult.extracted_data;
+      const smartAnalysis = rawResult.analysis || {};
+
+      return {
+        success: true,
+        extracted_data: {
+          name: smartData.basicInfo?.name || "",
+          phone:
+            smartData.basicInfo?.phoneNumber ||
+            smartData.basicInfo?.phone ||
+            "",
+          email:
+            smartData.basicInfo?.personalEmail ||
+            smartData.basicInfo?.email ||
+            "",
+          basic_info: {
+            name: smartData.basicInfo?.name || "",
+            phone:
+              smartData.basicInfo?.phoneNumber ||
+              smartData.basicInfo?.phone ||
+              "",
+            email:
+              smartData.basicInfo?.personalEmail ||
+              smartData.basicInfo?.email ||
+              "",
+            school: smartData.education?.[0]?.school || "",
+            major: smartData.education?.[0]?.major || "",
+            graduation_year:
+              smartData.education?.[0]?.period?.endDate ||
+              smartData.education?.[0]?.graduationDate ||
+              "",
+            education: smartData.education?.[0]?.degreeLevel || "",
+            work_years: 0,
+          },
+          education: smartData.education || [],
+          work_experience: smartData.workExperience || [],
+          projects: smartData.projects || [],
+          skills: smartData.skills || [],
         },
         analysis: {
           score: smartAnalysis.score || 0,

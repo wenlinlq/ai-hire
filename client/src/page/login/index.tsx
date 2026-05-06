@@ -128,9 +128,9 @@ function Login() {
                     // 根据用户角色进行不同的跳转
                     setTimeout(() => {
                       if (response.user.role === "admin") {
-                        navigate("/team");
-                      } else if (response.user.role === "hr") {
                         navigate("/admin");
+                      } else if (response.user.role === "hr") {
+                        navigate("/team");
                       } else {
                         navigate("/");
                       }

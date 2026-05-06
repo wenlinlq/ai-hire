@@ -6,8 +6,9 @@ const ProtectedRoute: React.FC = () => {
   const location = useLocation();
   const [isChecked, setIsChecked] = useState(false);
   const isLoggedIn = userApi.isLoggedIn();
+  const currentUser = userApi.getCurrentUser();
 
-  // 检查登录状态并显示提示
+  // 检查登录状态和权限
   useEffect(() => {
     if (!isLoggedIn && location.pathname !== "/") {
       alert("您需要先登录才能访问该页面");
@@ -25,7 +26,24 @@ const ProtectedRoute: React.FC = () => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 如果用户已登录，渲染子路由
+  // 角色权限检查
+  const userRole = currentUser?.role;
+  const isAdminPage = location.pathname.startsWith("/admin");
+  const isTeamPage = location.pathname.startsWith("/team");
+
+  // 普通用户(student)不能访问admin和team页面
+  if (userRole === "student" && (isAdminPage || isTeamPage)) {
+    alert("您没有权限访问该页面");
+    return <Navigate to="/" replace />;
+  }
+
+  // 团队管理员(hr)不能访问admin页面
+  if (userRole === "hr" && isAdminPage) {
+    alert("您没有权限访问该页面");
+    return <Navigate to="/team" replace />;
+  }
+
+  // 如果用户已登录且有权限，渲染子路由
   return <Outlet />;
 };
 

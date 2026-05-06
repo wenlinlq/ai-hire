@@ -85,7 +85,7 @@ const resumeApi = {
 
     const response = await apiClient.post("/resumes/upload", formData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        "Content-Type": undefined,
       },
     });
     return response.data.data;

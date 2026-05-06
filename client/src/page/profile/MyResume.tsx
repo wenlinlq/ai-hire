@@ -63,11 +63,8 @@ export default function MyResume() {
 
     try {
       setResumeLoading(true);
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("userId", user._id);
 
-      await resumeApi.uploadResume(formData);
+      await resumeApi.uploadResume(file);
 
       const resumeData = await resumeApi.getStudentResumes();
       const formattedResumes: ResumeItem[] = resumeData.map((r) => ({

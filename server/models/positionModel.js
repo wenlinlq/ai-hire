@@ -134,9 +134,29 @@ class PositionModel {
   async findPositionById(positionId) {
     try {
       const collection = this.getCollection();
-      // 使用 findOne 方法查询，将字符串 ID 转换为 ObjectId 类型
-      // 返回匹配的岗位文档，如果没有找到则返回 null
-      return await collection.findOne({ _id: new ObjectId(positionId) });
+      
+      // 处理 positionId 可能是字符串或 ObjectId 对象的情况
+      let queryId;
+      if (positionId instanceof ObjectId) {
+        queryId = positionId;
+      } else if (typeof positionId === 'string') {
+        // 尝试将字符串转换为 ObjectId
+        try {
+          queryId = new ObjectId(positionId);
+        } catch (e) {
+          console.error("Invalid ObjectId string:", positionId);
+          return null;
+        }
+      } else {
+        console.error("Invalid positionId type:", typeof positionId, positionId);
+        return null;
+      }
+      
+      console.log("Finding position with ID:", queryId);
+      const position = await collection.findOne({ _id: queryId });
+      console.log("Position found:", position ? "Yes" : "No");
+      
+      return position;
     } catch (error) {
       // 查询失败时输出错误信息
       console.error("Error finding position by ID:", error);

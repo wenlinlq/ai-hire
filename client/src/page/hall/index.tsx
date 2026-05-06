@@ -478,10 +478,14 @@ function Hall() {
                                 const hasAiPreInterview =
                                   job.aiPreInterview || false;
 
+                                // 确保jobId是字符串格式
+                                const jobId = typeof job._id === 'object' ? job._id.toString() : job._id;
+                                console.log("投递职位ID:", jobId, "类型:", typeof jobId);
+
                                 const response =
                                   await deliveryApi.createDelivery({
                                     userId: currentUser._id,
-                                    jobId: job._id,
+                                    jobId: jobId,
                                     resumeId,
                                     hasAiPreInterview,
                                   });

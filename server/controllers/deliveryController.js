@@ -18,13 +18,40 @@ class DeliveryController {
     try {
       const { userId, jobId, resumeId, hasAiPreInterview } = req.body;
 
+      console.log("=== 收到投递请求 ===");
+      console.log("userId:", userId, "Type:", typeof userId);
+      console.log("jobId:", jobId, "Type:", typeof jobId);
+      console.log("resumeId:", resumeId, "Type:", typeof resumeId);
+
       if (!userId || !jobId || !resumeId) {
         return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // 验证 jobId 是否为有效的 ObjectId
+      let validJobId;
+      const ObjectId = require("mongodb").ObjectId;
+
+      try {
+        // 处理 jobId 可能是对象的情况（如 MongoDB 返回的 ObjectId 对象）
+        if (jobId instanceof ObjectId) {
+          validJobId = jobId;
+        } else if (typeof jobId === "object" && jobId._id) {
+          // 如果是带有 _id 属性的对象，提取 _id
+          validJobId = new ObjectId(jobId._id.toString());
+        } else {
+          // 尝试将字符串转换为 ObjectId
+          const jobIdStr = typeof jobId === "string" ? jobId : String(jobId);
+          validJobId = new ObjectId(jobIdStr);
+        }
+      } catch (error) {
+        console.error("Invalid jobId format:", jobId, "Type:", typeof jobId);
+        return res.status(400).json({ error: "Invalid jobId format" });
       }
 
       // 获取职位信息
       const position = await positionModel.findPositionById(jobId);
       if (!position) {
+        console.error("Position not found for jobId:", jobId);
         return res.status(404).json({ error: "Position not found" });
       }
 

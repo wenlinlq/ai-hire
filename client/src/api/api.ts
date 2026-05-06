@@ -1,9 +1,23 @@
 import axios from "axios";
 
+// 根据环境确定API地址
+// 开发模式默认使用本地地址，生产模式使用环境变量或默认公网地址
+const getBaseUrl = () => {
+  // 优先使用环境变量
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  // 开发模式默认使用本地地址
+  if (import.meta.env.DEV) {
+    return "http://localhost:3000/api";
+  }
+  // 生产模式默认使用公网地址
+  return "http://47.109.205.191:3000/api";
+};
+
 // 创建axios实例
 const api = axios.create({
-  baseURL:
-    import.meta.env.VITE_API_BASE_URL || "http://47.109.205.191:3000/api",
+  baseURL: getBaseUrl(),
   timeout: 300000, // 5分钟，支持AI简历筛选等耗时操作
   headers: {
     "Content-Type": "application/json",

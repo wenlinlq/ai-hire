@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import userApi from "../../api/userApi";
 import resumeApi from "../../api/resumeApi";
+import { API_BASE_URL } from "../../api/api";
 
 type ResumeItem = {
   name: string;
@@ -162,7 +163,9 @@ export default function MyResume() {
               >
                 <div className="flex items-center space-x-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100">
-                    <span className="font-bold text-red-600">{resume.type}</span>
+                    <span className="font-bold text-red-600">
+                      {resume.type}
+                    </span>
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
@@ -186,7 +189,7 @@ export default function MyResume() {
                     className="rounded-lg px-4 py-2 text-primary-600 transition-colors hover:bg-primary-50"
                     onClick={() => {
                       window.open(
-                        `http://localhost:3000/uploads/${encodeURIComponent(resume.name)}`,
+                        `${API_BASE_URL}/uploads/${encodeURIComponent(resume.name)}`,
                         "_blank",
                       );
                     }}
@@ -202,9 +205,10 @@ export default function MyResume() {
                           await resumeApi.setCurrentResume(resume._id);
                           const user = userApi.getCurrentUser();
                           if (user) {
-                            const resumeData = await resumeApi.getStudentResumes();
-                            const formattedResumes: ResumeItem[] = resumeData.map(
-                              (r) => ({
+                            const resumeData =
+                              await resumeApi.getStudentResumes();
+                            const formattedResumes: ResumeItem[] =
+                              resumeData.map((r) => ({
                                 _id: r._id,
                                 name: r.fileUrl.split("/").pop() || "resume",
                                 uploadedAt: new Date(
@@ -212,8 +216,7 @@ export default function MyResume() {
                                 ).toLocaleString("zh-CN"),
                                 type: r.fileType.toUpperCase() as "PDF",
                                 isActive: r.isActive,
-                              }),
-                            );
+                              }));
                             setResumes(formattedResumes);
                           }
                         } catch (error) {
@@ -234,9 +237,10 @@ export default function MyResume() {
                           await resumeApi.deleteResume(resume._id);
                           const user = userApi.getCurrentUser();
                           if (user) {
-                            const resumeData = await resumeApi.getStudentResumes();
-                            const formattedResumes: ResumeItem[] = resumeData.map(
-                              (r) => ({
+                            const resumeData =
+                              await resumeApi.getStudentResumes();
+                            const formattedResumes: ResumeItem[] =
+                              resumeData.map((r) => ({
                                 _id: r._id,
                                 name: r.fileUrl.split("/").pop() || "resume",
                                 uploadedAt: new Date(
@@ -244,8 +248,7 @@ export default function MyResume() {
                                 ).toLocaleString("zh-CN"),
                                 type: (r.fileType || "").toUpperCase() as "PDF",
                                 isActive: r.isActive,
-                              }),
-                            );
+                              }));
                             setResumes(formattedResumes);
                           }
                         } catch (error) {

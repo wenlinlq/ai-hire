@@ -1,6 +1,5 @@
 import axios from "axios";
-
-const API_BASE_URL = "http://localhost:3000/api";
+import { API_BASE_URL } from "./api";
 
 // 获取认证token
 const getAuthToken = (): string | null => {
@@ -38,7 +37,10 @@ interface Favorite {
 
 const favoriteApi = {
   // 添加收藏
-  addFavorite: async (userId: string, positionId: string): Promise<Favorite> => {
+  addFavorite: async (
+    userId: string,
+    positionId: string,
+  ): Promise<Favorite> => {
     const response = await apiClient.post("/favorites", {
       userId,
       positionId,
@@ -57,7 +59,10 @@ const favoriteApi = {
   },
 
   // 检查是否收藏
-  checkFavorite: async (userId: string, positionId: string): Promise<boolean> => {
+  checkFavorite: async (
+    userId: string,
+    positionId: string,
+  ): Promise<boolean> => {
     const response = await apiClient.get("/favorites/check", {
       params: {
         userId,

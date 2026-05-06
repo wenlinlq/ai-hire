@@ -1,6 +1,5 @@
 import axios from "axios";
-
-const API_BASE_URL = "http://localhost:3000/api";
+import { API_BASE_URL } from "./api";
 
 // 获取认证token
 const getAuthToken = (): string | null => {

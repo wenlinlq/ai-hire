@@ -2,7 +2,7 @@ import axios from "axios";
 
 // 根据环境确定API地址
 // 开发模式默认使用本地地址，生产模式使用环境变量或默认公网地址
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
   // 优先使用环境变量（最高优先级）
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
@@ -16,6 +16,9 @@ const getBaseUrl = () => {
   // 开发模式默认使用本地地址
   return "http://localhost:3000/api";
 };
+
+// 导出统一的API地址常量
+export const API_BASE_URL = getBaseUrl();
 
 // 创建axios实例
 const api = axios.create({

@@ -1,4 +1,4 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import userApi from "../api/userApi";
 import { notificationApi } from "../api/notificationApi";
@@ -38,48 +38,60 @@ export function SiteNav({ current }: SiteNavProps) {
   const [dropdownTimer, setDropdownTimer] = useState<NodeJS.Timeout | null>(
     null,
   );
-  // 消息通知数量
   const [messageCount, setMessageCount] = useState(0);
-  // 个人中心通知数量
   const [profileCount, setProfileCount] = useState(0);
-  // 总通知数量
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const totalCount = messageCount + profileCount;
   const navigate = useNavigate();
-  const user = userApi.getCurrentUser();
-  const isLoggedIn = userApi.isLoggedIn();
+  const location = useLocation();
 
-  // 获取通知和面试数据
   useEffect(() => {
-    const fetchNotificationData = async () => {
-      if (!user) return;
+    const user = userApi.getCurrentUser();
+    const loggedIn = userApi.isLoggedIn();
+    setCurrentUser(user);
+    setIsLoggedIn(loggedIn);
+  }, []);
 
-      try {
-        // 获取用户的未读通知
-        const unreadNotificationData =
-          await notificationApi.getUnreadNotifications(user._id);
-        setMessageCount(unreadNotificationData.data?.length || 0);
+  const fetchNotificationData = async () => {
+    if (!currentUser) return;
 
-        // 获取用户的AI预面试记录
-        const aiPreInterviewData =
-          await aiPreInterviewApi.getUserAiPreInterviews(user._id);
-        // 只计算未完成的AI预面试记录
-        const aiPreInterviewCount = aiPreInterviewData.data?.filter((item: any) => item.status !== 'completed').length || 0;
+    try {
+      const unreadNotificationData =
+        await notificationApi.getUnreadNotifications(currentUser._id);
+      setMessageCount(unreadNotificationData.data?.length || 0);
 
-        // 获取用户的面试邀请
-        const interviewInvitationData =
-          await interviewInvitationApi.getUserInterviewInvitations(user._id);
-        const interviewInvitationCount =
-          interviewInvitationData.data?.length || 0;
+      const aiPreInterviewData = await aiPreInterviewApi.getUserAiPreInterviews(
+        currentUser._id,
+      );
+      const aiPreInterviewCount =
+        aiPreInterviewData.data?.filter(
+          (item: any) => item.status !== "completed",
+        ).length || 0;
 
-        // 计算个人中心通知数量
-        setProfileCount(aiPreInterviewCount + interviewInvitationCount);
-      } catch (error) {
-        console.error("获取通知数据失败:", error);
-      }
-    };
+      const interviewInvitationData =
+        await interviewInvitationApi.getUserInterviewInvitations(
+          currentUser._id,
+        );
+      const interviewInvitationCount =
+        interviewInvitationData.data?.length || 0;
 
+      setProfileCount(aiPreInterviewCount + interviewInvitationCount);
+    } catch (error) {
+      console.error("获取通知数据失败:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchNotificationData();
-  }, [user]);
+  }, [currentUser, location.pathname]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const interval = setInterval(fetchNotificationData, 30000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   const handleLogout = () => {
     userApi.logout();
@@ -140,14 +152,14 @@ export function SiteNav({ current }: SiteNavProps) {
           >
             <button className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-white/10">
               <div className="relative h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center">
-                {user?.username.charAt(0).toUpperCase()}
+                {currentUser?.username.charAt(0).toUpperCase()}
                 {totalCount > 0 && (
                   <span className="absolute -top-1 -left-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-medium text-white">
                     {totalCount > 99 ? "99+" : totalCount}
                   </span>
                 )}
               </div>
-              <span className="hidden sm:inline">{user?.username}</span>
+              <span className="hidden sm:inline">{currentUser?.username}</span>
             </button>
             {isDropdownOpen && (
               <div

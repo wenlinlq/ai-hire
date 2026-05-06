@@ -381,7 +381,7 @@ function Profile() {
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-6">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/")}
             className="flex items-center gap-2 text-neutral-600 hover:text-neutral-800 transition-colors"
           >
             <svg

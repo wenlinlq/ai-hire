@@ -214,7 +214,7 @@ function Notifications() {
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/")}
             className="mb-4 flex items-center gap-2 text-neutral-600 hover:text-neutral-800 transition-colors"
           >
             <svg

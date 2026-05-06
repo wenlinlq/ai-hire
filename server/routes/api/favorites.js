@@ -29,5 +29,10 @@ router.get("/check", verifyToken, favoriteController.checkFavorite);
 // 调用 favoriteController.getUserFavorites 获取用户的收藏列表
 router.get("/user", verifyToken, favoriteController.getUserFavorites);
 
+// 获取用户收藏岗位详情列表路由
+// GET 请求到 /api/favorites
+// 调用 favoriteController.getFavoriteDetails 获取用户收藏的岗位详情
+router.get("/", verifyToken, favoriteController.getFavoriteDetails);
+
 // 导出路由模块，供主应用使用
 module.exports = router;

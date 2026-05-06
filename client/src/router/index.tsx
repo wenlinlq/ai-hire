@@ -20,6 +20,10 @@ const Login = lazy(() => import("../page/login"));
 const Notifications = lazy(() => import("../page/notifications"));
 const NotificationDetail = lazy(() => import("../page/notifications/detail"));
 const Profile = lazy(() => import("../page/profile"));
+const ProfileInfo = lazy(() => import("../page/profile/ProfileInfo"));
+const MyResume = lazy(() => import("../page/profile/MyResume"));
+const MyInterviews = lazy(() => import("../page/profile/MyInterviews"));
+const FavoriteJobs = lazy(() => import("../page/profile/FavoriteJobs"));
 const Team = lazy(() => import("../page/team"));
 const ResumeAnalyze = lazy(() => import("../page/resume"));
 
@@ -126,6 +130,40 @@ const router = createBrowserRouter([
             <Profile />
           </Suspense>
         ),
+        children: [
+          {
+            index: true,
+            element: (
+              <Suspense fallback={null}>
+                <ProfileInfo />
+              </Suspense>
+            ),
+          },
+          {
+            path: "resume",
+            element: (
+              <Suspense fallback={null}>
+                <MyResume />
+              </Suspense>
+            ),
+          },
+          {
+            path: "interviews",
+            element: (
+              <Suspense fallback={null}>
+                <MyInterviews />
+              </Suspense>
+            ),
+          },
+          {
+            path: "favorites",
+            element: (
+              <Suspense fallback={null}>
+                <FavoriteJobs />
+              </Suspense>
+            ),
+          },
+        ],
       },
       {
         path: "/admin",

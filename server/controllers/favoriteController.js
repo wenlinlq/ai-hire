@@ -149,6 +149,39 @@ const favoriteController = {
       });
     }
   },
+
+  // 获取用户的收藏岗位详情列表
+  async getFavoriteDetails(req, res) {
+    try {
+      // 从查询参数中获取用户ID
+      const { userId } = req.query;
+
+      // 验证必要参数
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "缺少用户ID",
+        });
+      }
+
+      // 调用模型方法获取用户的收藏岗位详情列表
+      const favoriteDetails = await favoriteModel.getUserFavoriteDetails(userId);
+
+      // 返回成功响应
+      res.status(200).json({
+        success: true,
+        message: "获取收藏岗位详情成功",
+        data: favoriteDetails,
+      });
+    } catch (error) {
+      // 捕获错误并返回错误响应
+      res.status(500).json({
+        success: false,
+        message: "获取收藏岗位详情失败",
+        error: error.message,
+      });
+    }
+  },
 };
 
 // 导出收藏控制器

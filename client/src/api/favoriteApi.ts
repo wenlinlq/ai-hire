@@ -76,6 +76,16 @@ const favoriteApi = {
     });
     return response.data.data;
   },
+
+  // 获取用户收藏的岗位详情列表
+  getFavorites: async (userId: string) => {
+    const response = await apiClient.get("/favorites", {
+      params: {
+        userId,
+      },
+    });
+    return response.data;
+  },
 };
 
 export default favoriteApi;

@@ -23,7 +23,10 @@ class FavoriteModel {
     try {
       const collection = this.getCollection();
       // 创建复合唯一索引，确保同一个用户不能重复收藏同一个职位
-      await collection.createIndex({ userId: 1, positionId: 1 }, { unique: true });
+      await collection.createIndex(
+        { userId: 1, positionId: 1 },
+        { unique: true },
+      );
       // 控制台输出索引初始化成功的消息
       console.log("Favorite indexes initialized successfully");
     } catch (error) {
@@ -110,16 +113,67 @@ class FavoriteModel {
       const collection = this.getCollection();
 
       // 查询用户的所有收藏记录
-      const favorites = await collection.find({
-        userId: new ObjectId(userId),
-      }).toArray();
+      const favorites = await collection
+        .find({
+          userId: new ObjectId(userId),
+        })
+        .toArray();
 
       // 返回职位ID数组
-      return favorites.map(favorite => favorite.positionId.toString());
+      return favorites.map((favorite) => favorite.positionId.toString());
     } catch (error) {
       // 如果查询失败，输出错误信息
       console.error("Error getting user favorites:", error);
       // 抛出错误，让上层调用者处理
+      throw error;
+    }
+  }
+
+  // 获取用户的收藏岗位详情列表（包含岗位信息）
+  async getUserFavoriteDetails(userId) {
+    try {
+      const collection = this.getCollection();
+      const { getDB } = require("../db/db");
+
+      // 查询用户的所有收藏记录
+      const favorites = await collection
+        .find({
+          userId: new ObjectId(userId),
+        })
+        .toArray();
+
+      // 获取所有收藏的职位ID
+      const positionIds = favorites.map((fav) => fav.positionId);
+
+      if (positionIds.length === 0) {
+        return [];
+      }
+
+      // 从 positions 集合中获取对应的职位详情
+      const positionsCollection = getDB().collection("positions");
+      const positions = await positionsCollection
+        .find({
+          _id: { $in: positionIds },
+        })
+        .toArray();
+
+      // 合并收藏记录和职位详情
+      const result = favorites.map((fav) => {
+        const position = positions.find(
+          (pos) => pos._id.toString() === fav.positionId.toString(),
+        );
+        return {
+          _id: fav._id,
+          userId: fav.userId,
+          positionId: fav.positionId,
+          jobId: position,
+          createdAt: fav.createdAt,
+        };
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Error getting user favorite details:", error);
       throw error;
     }
   }

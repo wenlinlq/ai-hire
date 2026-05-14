@@ -10,7 +10,7 @@ export const getBaseUrl = () => {
 
   // 如果是生产构建（npm run build 时），强制使用公网地址
   if (import.meta.env.PROD) {
-    return "http://47.109.194.235:3000/api";
+    return "http://47.109.205.191:3000/api";
   }
 
   // 开发模式默认使用本地地址

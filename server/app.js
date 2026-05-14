@@ -51,11 +51,7 @@ var resumeAnalysesRouter = require("./routes/api/resumeAnalyses");
 
 var app = express();
 // 配置CORS中间件
-const allowedOrigins = [
-  "http://47.109.194.235:5173",
-  "http://47.109.205.191:5173",
-  "http://localhost:5173",
-];
+const allowedOrigins = ["http://47.109.205.191:5173", "http://localhost:5173"];
 
 app.use(
   cors({
@@ -63,7 +59,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,

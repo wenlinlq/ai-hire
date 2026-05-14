@@ -47,7 +47,7 @@ export default function MyResume() {
     if (!file) return;
 
     if (file.type !== "application/pdf") {
-      alert("仅支持 PDF 格式");
+      alert("仅支持 PDF  格式");
       return;
     }
 

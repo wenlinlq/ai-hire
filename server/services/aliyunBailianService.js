@@ -1541,6 +1541,111 @@ ${question}
       return "抱歉，我暂时无法回答这个问题。请稍后再试或联系社团负责人获取更多信息。";
     }
   }
+
+  // 智能问答功能（流式）
+  async askQuestionStream(question, context = [], onChunk) {
+    try {
+      console.log("Processing AI question (streaming):", question);
+
+      if (!question || question.trim().length === 0) {
+        throw new Error("No question provided");
+      }
+
+      const prompt = `
+你是一位智能招聘助手，专注于高校社团招新相关的问题。
+
+请根据以下上下文和问题，提供专业、准确的回答：
+
+上下文：
+${context.length > 0 ? context.map((item, index) => `Q: ${item.question}\nA: ${item.answer}`).join("\n\n") : "无"}
+
+用户问题：
+${question}
+
+要求：
+1. 回答要专业、准确，与招聘和社团相关
+2. 语言要友好、自然，适合学生理解
+3. 回答要具体，避免泛泛而谈
+4. 如果问题超出招聘和社团范围，礼貌地说明无法回答
+5. 直接返回回答内容，不要添加任何其他文本
+`;
+
+      console.log(`Question prompt length: ${prompt.length}`);
+
+      // 流式请求配置
+      const response = await axios.post(
+        this.apiUrl,
+        {
+          model: "qwen-flash",
+          messages: [
+            {
+              role: "system",
+              content: "你是一位智能招聘助手，专注于高校社团招新相关的问题。",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 1000,
+          stream: true,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          responseType: "stream",
+        },
+      );
+
+      console.log("AI question API stream response received");
+
+      // 处理流式响应，通过回调返回数据
+      return new Promise((resolve, reject) => {
+        response.data.on("data", (chunk) => {
+          const chunkStr = chunk.toString();
+          const lines = chunkStr.split("\n");
+
+          for (const line of lines) {
+            if (line.trim() === "") continue;
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                if (data.choices && data.choices[0] && data.choices[0].delta) {
+                  const delta = data.choices[0].delta;
+                  if (delta.content) {
+                    // 通过回调返回数据块
+                    onChunk(delta.content);
+                  }
+                }
+              } catch (error) {
+                console.error("Error parsing stream chunk:", error);
+              }
+            }
+          }
+        });
+
+        response.data.on("end", () => {
+          console.log("AI question stream completed");
+          resolve();
+        });
+
+        response.data.on("error", (error) => {
+          reject(error);
+        });
+      });
+    } catch (error) {
+      console.error("Error processing AI question stream with Aliyun Bailian:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+
+      throw error;
+    }
+  }
 }
 
 module.exports = new AliyunBailianService();

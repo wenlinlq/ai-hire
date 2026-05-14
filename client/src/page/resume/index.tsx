@@ -312,7 +312,7 @@ function ResumeAnalyze() {
                         点击或拖拽上传简历
                       </p>
                       <p className="text-sm text-neutral-500">
-                        仅支持 PDF 格式
+                        仅支持 PDF 和 PNG, JPG 格式
                       </p>
                       {file && (
                         <p className="text-sm text-primary-600">

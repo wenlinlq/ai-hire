@@ -57,28 +57,33 @@ const AIChatPage: React.FC = () => {
         }))
         .filter((item) => item.question || item.answer);
 
-      // 模拟流式打字效果
-      const response = await aiChatApi.askQuestion({
-        question: inputValue,
-        context: context.length > 0 ? context : undefined,
-      });
-
-      // 实现打字机效果
-      let currentContent = "";
-      const typingSpeed = 30; // 打字速度（毫秒/字符）
-
-      for (let i = 0; i < response.answer.length; i++) {
-        currentContent += response.answer[i];
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempAiMessageId
-              ? { ...msg, content: currentContent }
-              : msg,
-          ),
-        );
-        // 等待一段时间，模拟打字效果
-        await new Promise((resolve) => setTimeout(resolve, typingSpeed));
-      }
+      // 使用 SSE 流式响应，实现真正的流式打字效果
+      await aiChatApi.askQuestionStream(
+        {
+          question: inputValue,
+          context: context.length > 0 ? context : undefined,
+        },
+        (chunk) => {
+          // 接收到数据块，实时更新消息内容
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === tempAiMessageId
+                ? { ...msg, content: msg.content + chunk }
+                : msg,
+            ),
+          );
+        },
+        (error) => {
+          console.error("流式请求出错:", error);
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === tempAiMessageId
+                ? { ...msg, content: "抱歉，请求失败，请稍后重试" }
+                : msg,
+            ),
+          );
+        }
+      );
     } catch (error) {
       console.error("发送问题失败:", error);
       // 更新临时消息为错误信息

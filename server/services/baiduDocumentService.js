@@ -75,6 +75,15 @@ class BaiduDocumentService {
       const dataBuffer = fs.readFileSync(filePath);
       const data = await pdf(dataBuffer);
       console.log("PDF parsing completed, text length:", data.text.length);
+
+      // 如果提取的文本为空或很短，可能是扫描件 PDF，尝试使用百度 OCR
+      if (!data.text || data.text.trim().length < 10) {
+        console.log(
+          "PDF text is empty or too short, trying Baidu OCR for scanned PDF",
+        );
+        return await this.parsePdfWithOCR(filePath);
+      }
+
       return data.text;
     } catch (error) {
       console.error("Error parsing PDF file:", error.message);
@@ -82,18 +91,57 @@ class BaiduDocumentService {
     }
   }
 
+  async parsePdfWithOCR(filePath) {
+    try {
+      const accessToken = await this.getAccessToken();
+      const fileBuffer = fs.readFileSync(filePath);
+      const base64Content = fileBuffer.toString("base64");
+
+      console.log("Sending scanned PDF to Baidu OCR");
+
+      const response = await axios.post(
+        `https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic?access_token=${accessToken}`,
+        { image: base64Content },
+        {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          timeout: 60000,
+        },
+      );
+
+      console.log("Baidu OCR response for PDF received");
+
+      if (response.data.error_code) {
+        throw new Error(`Baidu API error: ${response.data.error_msg}`);
+      }
+
+      const textContent = this.extractTextFromResponse(response.data);
+      console.log("Extracted text from scanned PDF:", textContent.length);
+
+      return textContent;
+    } catch (error) {
+      console.error("Error parsing scanned PDF with Baidu OCR:", error.message);
+      return "";
+    }
+  }
+
   async parseImageFile(filePath) {
     try {
       const accessToken = await this.getAccessToken();
 
-      const formData = new FormData();
-      formData.append("image", fs.createReadStream(filePath));
+      // 使用 Base64 编码上传图片，避免 FormData 导致的 transcoding error
+      const fileBuffer = fs.readFileSync(filePath);
+      const base64Content = fileBuffer.toString("base64");
+
+      console.log(
+        "Sending image to Baidu OCR, base64 size:",
+        base64Content.length,
+      );
 
       const response = await axios.post(
         `https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic?access_token=${accessToken}`,
-        formData,
+        { image: base64Content },
         {
-          headers: formData.getHeaders(),
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
           timeout: 60000,
         },
       );

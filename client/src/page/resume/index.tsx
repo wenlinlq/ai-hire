@@ -21,10 +21,10 @@ function ResumeAnalyze() {
         return;
       }
       // 限制文件类型，只接受PDF格式
-      const allowedExtensions = ["pdf"];
+      const allowedExtensions = ["pdf", "png", "jpg"];
       const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase();
       if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
-        alert("请上传 PDF 格式的文件");
+        alert("请上传 PDF 或 PNG 格式的文件");
         return;
       }
       setFile(selectedFile);

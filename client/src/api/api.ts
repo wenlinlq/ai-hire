@@ -4,13 +4,13 @@ import axios from "axios";
 // 开发模式默认使用本地地址，生产模式使用环境变量或默认公网地址
 export const getBaseUrl = () => {
   // 优先使用环境变量（最高优先级）
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+  if (import.meta.env.VITE_API_URL) {
+    return `${import.meta.env.VITE_API_URL}/api`;
   }
 
   // 如果是生产构建（npm run build 时），强制使用公网地址
   if (import.meta.env.PROD) {
-    return "http://47.109.205.191:3000/api";
+    return "http://47.109.194.235:3000/api";
   }
 
   // 开发模式默认使用本地地址

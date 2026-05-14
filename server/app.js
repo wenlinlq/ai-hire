@@ -50,16 +50,23 @@ var filterRulesRouter = require("./routes/api/filterRules");
 var resumeAnalysesRouter = require("./routes/api/resumeAnalyses");
 
 var app = express();
-app.use(
-  cors({
-    origin: ["http://47.109.194.235:5173", "http://localhost:5173"],
-    credentials: true,
-  }),
-);
 // 配置CORS中间件
+const allowedOrigins = [
+  "http://47.109.194.235:5173",
+  "http://47.109.205.191:5173",
+  "http://localhost:5173",
+];
+
 app.use(
   cors({
-    origin: "*", // 允许所有来源，生产环境中应该设置具体的前端域名
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),

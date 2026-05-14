@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { getBaseUrl } from "./api";
 
 // 智能问答请求参数
 interface AskQuestionParams {
@@ -38,9 +38,11 @@ const aiChatApi = {
   ): Promise<void> => {
     try {
       const token = localStorage.getItem("token");
-      const apiUrl =
-        (import.meta.env.VITE_API_URL as string) || "http://localhost:3000";
-      const response = await fetch(`${apiUrl}/api/aiChat/ask-stream`, {
+      // 使用统一的 API 地址配置
+      const baseUrl = getBaseUrl();
+      // 移除 /api 后缀，构建完整的流式请求地址
+      const apiBase = baseUrl.replace(/\/api$/, "");
+      const response = await fetch(`${apiBase}/api/aiChat/ask-stream`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
